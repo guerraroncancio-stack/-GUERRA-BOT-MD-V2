@@ -515,23 +515,6 @@ global.conns.set(
    PAIRING CODE FIX REAL
 ========================= */
 
-const esperarConexion = () => {
-    return new Promise((resolve) => {
-
-        if (global.conn?.ws?.readyState === 1) {
-            return resolve(true)
-        }
-
-        const handler = (update) => {
-            if (update?.connection === 'open') {
-                resolve(true)
-            }
-        }
-
-        global.conn.ev.on('connection.update', handler)
-    })
-}
-
 if (!state?.creds?.registered) {
 
     const rl = readline.createInterface({
@@ -550,21 +533,11 @@ if (!state?.creds?.registered) {
 
     const addNumber = phoneNumber.replace(/\D/g, '')
 
-    console.log(
-        chalk.yellow('┃ Iniciando conexión con WhatsApp...')
-    )
-
-    // 🔥 IMPORTANTE: esperamos que el socket realmente esté listo
-    if (global.conn?.ws?.readyState !== 1) {
-
-        await new Promise((resolve) => {
-            global.conn.ev.on('connection.update', (u) => {
-                if (u.connection === 'open') resolve()
-            })
-        })
-    }
-
     try {
+
+        console.log(
+            chalk.yellow('┃ Generando código...')
+        )
 
         const code = await global.conn.requestPairingCode(addNumber)
 
@@ -577,10 +550,9 @@ if (!state?.creds?.registered) {
         )
 
     } catch (e) {
-        console.error('PAIRING ERROR:', e?.output?.payload || e.message)
+        console.error('Pairing Error:', e.message || e)
     }
 }
-
 /* =========================
    MESSAGE HANDLER
 ========================= */
