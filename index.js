@@ -514,52 +514,48 @@ global.conns.set(
 /* =========================
    PAIRING CODE FIX REAL
 ========================= */
+// AUTO PAIRING DIRECTO (SIN INPUT BLOQUEANTE)
+const startAutoPairing = async () => {
 
-if (!state.creds.registered) {
+    if (state?.creds?.registered) return
 
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    })
+    const number = (process.env.NUMBER || '').replace(/\D/g, '')
 
-    const question = (t) =>
-        new Promise(r => rl.question(t, r))
+    if (!number) {
+        console.log('⚠️ No hay número en env (NUMBER)')
+        return
+    }
 
-    const phoneNumber = await question(
-        chalk.cyan('┃ ') + 'Número: '
-    )
+    const tryPair = async () => {
+        try {
 
-    rl.close()
-
-    const addNumber = phoneNumber.replace(/\D/g, '')
-
-    console.log(chalk.yellow('┃ Esperando conexión con WhatsApp...'))
-
-    // 🔥 ESPERA A QUE EL SOCKET ESTÉ LISTO
-    global.conn.ev.on('connection.update', async (update) => {
-
-        if (update.connection === 'open') {
-
-            try {
-                const codeBot =
-                    await global.conn.requestPairingCode(addNumber)
-
-                console.log(
-                    chalk.cyan('┃ ') +
-                    chalk.bgBlack.white.bold(
-                        ` CÓDIGO: ${
-                            codeBot?.match(/.{1,4}/g)?.join('-') ||
-                            codeBot
-                        } `
-                    )
-                )
-
-            } catch (e) {
-                console.error('Pairing Error:', e.message)
+            if (!global.conn?.user) {
+                setTimeout(tryPair, 3000)
+                return
             }
+
+            const code = await global.conn.requestPairingCode(number)
+
+            console.log(
+                chalk.greenBright(
+                    `CÓDIGO GENERADO: ${
+                        code?.match(/.{1,4}/g)?.join('-') || code
+                    }`
+                )
+            )
+
+        } catch (err) {
+
+            console.log('Reintentando pairing...')
+
+            setTimeout(tryPair, 5000)
         }
-    })
+    }
+
+    tryPair()
 }
+
+startAutoPairing()
 /* =========================
    MESSAGE HANDLER
 ========================= */
