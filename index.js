@@ -288,7 +288,17 @@ global.prefix = /^[#!./]/;
 
 const sessionFile = './sessions/main.sqlite';
 
-const { state, saveCreds } = useSQLiteAuthState(sessionFile);
+const authState = await useSQLiteAuthState(sessionFile);
+
+const state = authState?.state || {
+    creds: {},
+    keys: {
+        get: async () => ({}),
+        set: async () => {}
+    }
+};
+
+const saveCreds = authState?.saveCreds || (async () => {});
 
 const { version } = await fetchLatestBaileysVersion();
 
