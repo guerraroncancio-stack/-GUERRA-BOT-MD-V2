@@ -293,24 +293,44 @@ global.conns.set('main', global.conn)
 
 let pairingDone = false
 
-global.conn.ev.on('connection.update', async (update) => {
-    const { connection } = update
-    if (connection !== 'open' || pairingDone) return
-
-    pairingDone = true
-
+const startPairing = () => {
     const number = (process.env.NUMBER || '').replace(/\D/g, '')
-    if (!number) return console.log('┃ ⚠️ No hay número en env (NUMBER)')
 
-    try {
-        const code = await global.conn.requestPairingCode(number)
-        console.log('┃ CÓDIGO:', code?.match(/.{1,4}/g)?.join('-') || code)
-    } catch (e) {
-        pairingDone = false
-        console.error(e)
+    if (!number) {
+        console.log('┃ ⚠️ Falta NUMBER en .env')
+        return
     }
-})
 
+    const tryPair = async (attempt = 1) => {
+        try {
+            const code = await global.conn.requestPairingCode(number)
+
+            console.log(
+                '┃ CÓDIGO DE VINCULACIÓN:',
+                code?.match(/.{1,4}/g)?.join('-') || code
+            )
+
+            pairingDone = true
+
+        } catch (err) {
+            console.error('┃ Error pairing:', err?.message || err)
+
+            if (attempt < 5) {
+                console.log(`┃ Reintentando (${attempt}/5)...`)
+                setTimeout(() => tryPair(attempt + 1), 4000)
+            } else {
+                console.log('┃ ❌ No se pudo generar el código')
+            }
+        }
+    }
+
+    // IMPORTANTE: delay para que Baileys cargue auth
+    setTimeout(() => {
+        if (!pairingDone) tryPair()
+    }, 5000)
+}
+
+startPairing()
 /* =========================
    RELOAD
 ========================= */
