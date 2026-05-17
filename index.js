@@ -288,48 +288,77 @@ global.conn = makeWASocket(connectionOptions)
 global.conns.set('main', global.conn)
 
 /* =========================
-   PAIRING FIX
+   PAIRING CODE FIX (STABLE)
 ========================= */
 
-let pairingDone = false
+if (!state?.creds?.registered) {
 
-const startPairing = () => {
-    const number = '573102286030'
-    if (!number) {
-        console.log('┃ ⚠️ Falta NUMBER en .env')
-        return
-    }
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    })
 
-    const tryPair = async (attempt = 1) => {
+    const question = (t) =>
+        new Promise((r) => rl.question(t, r))
+
+    const runPairing = async () => {
+
         try {
-            const code = await global.conn.requestPairingCode(number)
 
-            console.log(
-                '┃ CÓDIGO DE VINCULACIÓN:',
-                code?.match(/.{1,4}/g)?.join('-') || code
+            let phoneNumber = await question(
+                chalk.cyan('┃ ') + 'Número: '
             )
 
-            pairingDone = true
+            rl.close()
 
-        } catch (err) {
-            console.error('┃ Error pairing:', err?.message || err)
+            const addNumber = phoneNumber.replace(/\D/g, '')
 
-            if (attempt < 5) {
-                console.log(`┃ Reintentando (${attempt}/5)...`)
-                setTimeout(() => tryPair(attempt + 1), 4000)
-            } else {
-                console.log('┃ ❌ No se pudo generar el código')
+            if (!addNumber) {
+                console.log('┃ ❌ Número inválido')
+                return
             }
+
+            console.log('┃ Generando código de vinculación...')
+
+            // espera a que el socket esté listo
+            let tries = 0
+            const maxTries = 10
+
+            const waitSocket = async () => {
+                if (global.conn?.user) {
+                    try {
+                        const code = await global.conn.requestPairingCode(addNumber)
+
+                        console.log(
+                            chalk.greenBright(
+                                '┃ CÓDIGO:',
+                                code?.match(/.{1,4}/g)?.join('-') || code
+                            )
+                        )
+
+                    } catch (e) {
+                        console.error('┃ Error pairing:', e?.message || e)
+                    }
+
+                } else {
+                    if (tries < maxTries) {
+                        tries++
+                        setTimeout(waitSocket, 2000)
+                    } else {
+                        console.log('┃ ❌ Socket no inicializó a tiempo')
+                    }
+                }
+            }
+
+            setTimeout(waitSocket, 3000)
+
+        } catch (e) {
+            console.error('┃ Pairing error:', e?.message || e)
         }
     }
 
-    // IMPORTANTE: delay para que Baileys cargue auth
-    setTimeout(() => {
-        if (!pairingDone) tryPair()
-    }, 5000)
+    runPairing()
 }
-
-startPairing()
 /* =========================
    RELOAD
 ========================= */
