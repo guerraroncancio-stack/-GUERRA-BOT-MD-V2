@@ -265,49 +265,20 @@ global.workerText.on('error', console.error)
    SOCKET
 ========================= */
 
-const connectionOptions = {
-    version,
-    logger: silentLogger,
-    printQRInTerminal: false,
-    browser: Browsers.macOS('Chrome'),
-    auth: {
-        creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, silentLogger)
-    },
-    markOnlineOnConnect: true,
-    syncFullHistory: false,
-    msgRetryCounterCache,
-    connectTimeoutMs: 60000,
-    defaultQueryTimeoutMs: 60000,
-    keepAliveIntervalMs: 15000,
-    emitOwnEvents: true,
-    getMessage: async () => undefined
-}
-
 global.conn = makeWASocket(connectionOptions)
 global.conns.set('main', global.conn)
 
 /* =========================
-   PAIRING + SOCKET READY (PRO STABLE)
+   PAIRING FIX REAL
 ========================= */
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 
-const waitSocketReady = async (timeout = 30000) => {
-    const start = Date.now()
-
-    while (!global.conn?.user) {
-        if (Date.now() - start > timeout) return false
-        await sleep(1000)
-    }
-
-    return true
-}
-
 const startPairingSystem = async () => {
 
+    // 🔴 Si ya está registrado NO pedir código
     if (state?.creds?.registered) {
-        console.log('┃ ✔ Sesión ya registrada')
+        console.log('┃ ✔ Sesión ya registrada (no pairing necesario)')
         return
     }
 
@@ -318,60 +289,41 @@ const startPairingSystem = async () => {
 
     const question = (t) => new Promise(r => rl.question(t, r))
 
-    let phoneNumber = await question(
-        chalk.cyan('┃ ') + 'Número: '
-    )
-
+    const number = (await question('┃ Número: ')).replace(/\D/g, '')
     rl.close()
 
-    const addNumber = phoneNumber.replace(/\D/g, '')
-
-    if (!addNumber) {
+    if (!number) {
         console.log('┃ ❌ Número inválido')
         return
     }
 
-    console.log('┃ ⏳ Esperando conexión del socket...')
+    // 🔴 Esperar a que el socket esté realmente listo
+    let tries = 0
+    while (!global.conn?.user && tries < 20) {
+        await sleep(1000)
+        tries++
+    }
 
-    const ready = await waitSocketReady()
-
-    if (!ready) {
-        console.log('┃ ⚠ Socket tardó demasiado, reintentando pairing en 5s...')
-
-        setTimeout(() => startPairingSystem(), 5000)
+    if (!global.conn?.user) {
+        console.log('┃ ❌ Socket no está listo, no se puede generar código')
         return
     }
 
-    const tryPair = async (attempt = 1) => {
-        try {
+    try {
+        const code = await global.conn.requestPairingCode(number)
 
-            const code = await global.conn.requestPairingCode(addNumber)
+        console.log(
+            '┃ CÓDIGO:',
+            code?.match(/.{1,4}/g)?.join('-') || code
+        )
 
-            console.log(
-                chalk.greenBright(
-                    '┃ CÓDIGO:',
-                    code?.match(/.{1,4}/g)?.join('-') || code
-                )
-            )
-
-        } catch (err) {
-
-            console.error('┃ Error pairing:', err?.message || err)
-
-            if (attempt < 5) {
-                console.log(`┃ Reintentando pairing (${attempt}/5)...`)
-                setTimeout(() => tryPair(attempt + 1), 4000)
-            } else {
-                console.log('┃ ❌ No se pudo generar el código')
-            }
-        }
+    } catch (err) {
+        console.error('┃ Error generando pairing:', err?.message || err)
     }
-
-    await sleep(2000)
-    await tryPair()
 }
 
 startPairingSystem()
+
 /* =========================
    RELOAD
 ========================= */
