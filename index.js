@@ -1,4 +1,3 @@
-import 'dotenv/config'
 import { Worker } from 'worker_threads'
 import './config.js'
 
