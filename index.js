@@ -410,7 +410,19 @@ global.opts = new Object(
 
 global.prefix = /^[#!./]/
 
-const sessionFile = './sessions/main.sqlite'
+const sessionDir = path.join(process.cwd(), 'sessions')
+
+if (!existsSync(sessionDir)) {
+    mkdirSync(sessionDir, { recursive: true })
+}
+
+const sessionFile = path.join(sessionDir, 'main.sqlite')
+
+if (!existsSync(sessionFile)) {
+    fs.writeFileSync(sessionFile, '')
+}
+
+const authState = await useSQLiteAuthState(sessionFile)
 
 let authState = null
 
