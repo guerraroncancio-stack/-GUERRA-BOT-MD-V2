@@ -1,11 +1,19 @@
 import { Worker } from 'worker_threads'
 import './config.js'
+
 import mongoose from 'mongoose'
 import { database, User } from './lib/db.js'
+
 import { platform } from 'process'
 import { fileURLToPath, pathToFileURL } from 'url'
 import path, { join, basename } from 'path'
-import fs, { existsSync, mkdirSync, promises as fsP } from 'fs'
+
+import fs, {
+    existsSync,
+    mkdirSync,
+    promises as fsP
+} from 'fs'
+
 import chalk from 'chalk'
 import pino from 'pino'
 import yargs from 'yargs'
@@ -13,13 +21,32 @@ import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
 import readline from 'readline'
 import cfonts from 'cfonts'
+
 import { smsg } from './lib/serializer.js'
 import { EventEmitter } from 'events'
 import { cacheManager } from './lib/cache.js'
 import useSQLiteAuthState from './lib/auth.js'
 import { observeEvents } from './lib/event/detect.js'
 
-const maskLogs = (chunk, encoding, callback, originalWrite) => {
+const {
+    makeWASocket,
+    DisconnectReason,
+    fetchLatestBaileysVersion,
+    makeCacheableSignalKeyStore,
+    Browsers
+} = await import('@whiskeysockets/baileys')
+
+/* =========================
+   LOG FILTER
+========================= */
+
+const maskLogs = (
+    chunk,
+    encoding,
+    callback,
+    originalWrite
+) => {
+
     const msg = chunk?.toString?.() || ''
 
     if (
@@ -33,18 +60,44 @@ const maskLogs = (chunk, encoding, callback, originalWrite) => {
         return true
     }
 
-    return originalWrite(chunk, encoding, callback)
+    return originalWrite(
+        chunk,
+        encoding,
+        callback
+    )
 }
 
 const _stdout = process.stdout.write.bind(process.stdout)
-process.stdout.write = (chunk, encoding, callback) =>
-    maskLogs(chunk, encoding, callback, _stdout)
+
+process.stdout.write = (
+    chunk,
+    encoding,
+    callback
+) => maskLogs(
+    chunk,
+    encoding,
+    callback,
+    _stdout
+)
 
 const _stderr = process.stderr.write.bind(process.stderr)
-process.stderr.write = (chunk, encoding, callback) =>
-    maskLogs(chunk, encoding, callback, _stderr)
+
+process.stderr.write = (
+    chunk,
+    encoding,
+    callback
+) => maskLogs(
+    chunk,
+    encoding,
+    callback,
+    _stderr
+)
 
 EventEmitter.defaultMaxListeners = 50
+
+/* =========================
+   GLOBALS
+========================= */
 
 global.groupCache = cacheManager.cache
 global.conns = new Map()
@@ -52,7 +105,14 @@ global.subbotConfig = {}
 global.userCache = new Map()
 global.dirtyUsers = new Set()
 
-const sId = (jid) => {
+global.plugins = new Map()
+global.aliases = new Map()
+
+/* =========================
+   HELPERS
+========================= */
+
+const sId = (jid = '') => {
     if (!jid) return jid
 
     return jid.includes('@')
@@ -60,23 +120,30 @@ const sId = (jid) => {
         : jid.split(':')[0] + '@s.whatsapp.net'
 }
 
-global.updateUser = (jid, data) => {
-    const currentData = global.userCache.get(jid) || {}
+global.updateUser = (jid, data = {}) => {
 
-    const updatedData = {
-        ...currentData,
+    const current =
+        global.userCache.get(jid) || {}
+
+    const updated = {
+        ...current,
         ...data,
         id: jid
     }
 
-    global.userCache.set(jid, updatedData)
+    global.userCache.set(jid, updated)
     global.dirtyUsers.add(jid)
 
-    return updatedData
+    return updated
 }
 
-global.updateSubBotSettings = (botId, data) => {
-    const current = global.subbotConfig[botId] || {}
+global.updateSubBotSettings = (
+    botId,
+    data = {}
+) => {
+
+    const current =
+        global.subbotConfig[botId] || {}
 
     global.subbotConfig[botId] = {
         ...current,
@@ -87,268 +154,25 @@ global.updateSubBotSettings = (botId, data) => {
     return global.subbotConfig[botId]
 }
 
-const flushData = async () => {
+/* =========================
+   SAVE USERS
+========================= */
+
+const saveUsers = async () => {
+
     try {
-        if (global.dirtyUsers.size > 0 && global.User) {
-            const usersToSave = Array.from(global.dirtyUsers)
 
-            global.dirtyUsers.clear()
+        if (
+            global.dirtyUsers.size < 1 ||
+            !global.User
+        ) return
 
-            const ops = usersToSave.map(jid => ({
-                updateOne: {
-                    filter: { id: jid },
-                    update: {
-                        $set: global.userCache.get(jid)
-                    },
-                    upsert: true
-                }
-            }))
-
-            await global.User.bulkWrite(ops, { ordered: false })
-        }
-    } catch (e) {
-        console.error('BulkWrite Error:', e.message)
-    }
-
-    process.exit(0)
-}
-
-process.on('SIGINT', flushData)
-process.on('SIGTERM', flushData)
-
-process.on('uncaughtException', (err) => {
-    const msg = err?.message || ''
-
-    if (
-        msg.includes('rate-overlimit') ||
-        msg.includes('timed out') ||
-        msg.includes('Connection Closed') ||
-        msg.includes('decrypt')
-    ) return
-
-    console.error('⚠️ ERROR:', err)
-})
-
-process.on('unhandledRejection', (reason) => {
-    const msg = String(reason?.message || reason || '')
-
-    if (
-        msg.includes('rate-overlimit') ||
-        msg.includes('timed out') ||
-        msg.includes('Connection Closed') ||
-        msg.includes('decrypt')
-    ) return
-
-    console.error('⚠️ REJECTION:', reason)
-})
-
-const silentLogger = pino({
-    level: 'silent'
-})
-
-const originalLog = console.log
-
-console.log = (...args) =>
-    originalLog.apply(console, [chalk.cyan('┃'), ...args])
-
-const originalError = console.error
-
-console.error = (...args) =>
-    originalError.apply(console, [chalk.red('┗'), ...args])
-
-const dbUrlDecoded = process.env.MONGO_DB_URI || ''
-
-const logDB = (type, status) => {
-    console.log(chalk.cyan('┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓'))
-
-    console.log(
-        chalk.cyan('┃ ') +
-        chalk.bold('DATABASE: ') +
-        chalk.blueBright(type)
-    )
-
-    console.log(
-        chalk.cyan('┃ ') +
-        chalk.bold('STATUS:   ') +
-        (
-            status === 'CONNECTED'
-                ? chalk.greenBright(status)
-                : chalk.redBright(status)
-        )
-    )
-
-    console.log(chalk.cyan('┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛'))
-}
-
-console.clear()
-
-cfonts.say('GUERRA BOT', {
-    font: 'slick',
-    align: 'center',
-    colors: ['cyan', 'white'],
-    letterSpacing: 2
-})
-
-if (dbUrlDecoded) {
-    try {
-        await database.connect(dbUrlDecoded)
-
-        logDB('CLOUD', 'CONNECTED')
-
-        global.db = mongoose.connection.db
-        global.User = User
-
-        const chatSchema = new mongoose.Schema({
-            id: {
-                type: String,
-                unique: true
-            },
-
-            isBanned: {
-                type: Boolean,
-                default: false
-            }
-        }, {
-            strict: false
-        })
-
-        global.Chat = mongoose.models.Chat || mongoose.model('Chat', chatSchema)
-
-        const warnSchema = new mongoose.Schema({
-            userId: {
-                type: String,
-                required: true
-            },
-
-            groupId: {
-                type: String,
-                required: true
-            },
-
-            reasons: {
-                type: [String],
-                default: []
-            },
-
-            warnCount: {
-                type: Number,
-                default: 0
-            },
-
-            date: {
-                type: Date,
-                default: Date.now
-            }
-        })
-
-        warnSchema.index(
-            {
-                userId: 1,
-                groupId: 1
-            },
-            {
-                unique: true
-            }
-        )
-
-        global.Warns =
-            mongoose.models.Warns ||
-            mongoose.model('Warns', warnSchema)
-
-        global.News =
-            mongoose.models.News ||
-            mongoose.model(
-                'News',
-                new mongoose.Schema({
-                    title: String,
-                    description: String,
-                    command: String,
-
-                    date: {
-                        type: Date,
-                        default: Date.now
-                    }
-                }, {
-                    strict: false
-                })
-            )
-
-        const subBotSettingsSchema = new mongoose.Schema({
-            botId: {
-                type: String,
-                unique: true
-            },
-
-            prefix: {
-                type: String,
-                default: '.'
-            },
-
-            botName: {
-                type: String,
-                default: 'GUERRA BOT'
-            },
-
-            botImage: {
-                type: String,
-                default: ''
-            },
-
-            status: {
-                type: Boolean,
-                default: true
-            }
-        }, {
-            strict: false
-        })
-
-        global.SubBotSettings =
-            mongoose.models.SubBotSettings ||
-            mongoose.model(
-                'SubBotSettings',
-                subBotSettingsSchema
-            )
-
-        const statsSchema = new mongoose.Schema({
-            command: {
-                type: String,
-                unique: true
-            },
-
-            globalUsage: {
-                type: Number,
-                default: 0
-            },
-
-            groups: {
-                type: Map,
-                of: Number,
-                default: {}
-            }
-        }, {
-            strict: false
-        })
-
-        global.Stats =
-            mongoose.models.Stats ||
-            mongoose.model('Stats', statsSchema)
-
-    } catch (e) {
-        logDB('CLOUD', 'ERROR')
-        console.error(e)
-        process.exit(1)
-    }
-}
-
-setInterval(async () => {
-    try {
-        if (global.dirtyUsers.size === 0 || !global.User) return
-
-        const usersToSave = Array.from(global.dirtyUsers)
+        const users =
+            Array.from(global.dirtyUsers)
 
         global.dirtyUsers.clear()
 
-        const ops = usersToSave.map(jid => ({
+        const ops = users.map(jid => ({
             updateOne: {
                 filter: { id: jid },
                 update: {
@@ -358,39 +182,142 @@ setInterval(async () => {
             }
         }))
 
-        await global.User.bulkWrite(ops, {
-            ordered: false
-        })
+        await global.User.bulkWrite(
+            ops,
+            { ordered: false }
+        )
 
     } catch (e) {
-        console.error('AutoSave Error:', e.message)
+        console.error(
+            'BulkWrite Error:',
+            e.message
+        )
     }
-}, 15000)
-
-const {
-    makeWASocket,
-    DisconnectReason,
-    fetchLatestBaileysVersion,
-    makeCacheableSignalKeyStore,
-    Browsers
-} = await import('@whiskeysockets/baileys')
-
-if (!existsSync('./tmp')) {
-    mkdirSync('./tmp', { recursive: true })
 }
 
-if (!existsSync('./sessions')) {
-    mkdirSync('./sessions', { recursive: true })
+setInterval(saveUsers, 15000)
+
+process.on('SIGINT', async () => {
+    await saveUsers()
+    process.exit(0)
+})
+
+process.on('SIGTERM', async () => {
+    await saveUsers()
+    process.exit(0)
+})
+
+/* =========================
+   ERROR HANDLER
+========================= */
+
+process.on(
+    'uncaughtException',
+    console.error
+)
+
+process.on(
+    'unhandledRejection',
+    console.error
+)
+
+/* =========================
+   LOGGER
+========================= */
+
+const silentLogger = pino({
+    level: 'silent'
+})
+
+const originalLog = console.log
+
+console.log = (...args) =>
+    originalLog.apply(console, [
+        chalk.cyan('┃'),
+        ...args
+    ])
+
+const originalError = console.error
+
+console.error = (...args) =>
+    originalError.apply(console, [
+        chalk.red('┗'),
+        ...args
+    ])
+
+/* =========================
+   BANNER
+========================= */
+
+console.clear()
+
+cfonts.say('GUERRA BOT', {
+    font: 'slick',
+    align: 'center',
+    colors: ['cyan', 'white'],
+    letterSpacing: 1
+})
+
+/* =========================
+   FOLDERS
+========================= */
+
+const folders = [
+    './tmp',
+    './sessions',
+    './lib/workers'
+]
+
+for (const dir of folders) {
+
+    if (!existsSync(dir)) {
+        mkdirSync(dir, {
+            recursive: true
+        })
+    }
 }
 
-if (!existsSync('./lib/workers')) {
-    mkdirSync('./lib/workers', { recursive: true })
+/* =========================
+   DATABASE
+========================= */
+
+const dbUrl =
+    process.env.MONGO_DB_URI || ''
+
+if (dbUrl) {
+
+    try {
+
+        await database.connect(dbUrl)
+
+        console.log(
+            chalk.greenBright(
+                'DATABASE CONNECTED'
+            )
+        )
+
+        global.db =
+            mongoose.connection.db
+
+        global.User = User
+
+    } catch (e) {
+
+        console.error(e)
+
+        process.exit(1)
+    }
 }
+
+/* =========================
+   PATH HELPERS
+========================= */
 
 global.__filename = function filename(
     pathURL = import.meta.url,
     rmPrefix = platform !== 'win32'
 ) {
+
     return rmPrefix
         ? /file:\/\/\//.test(pathURL)
             ? fileURLToPath(pathURL)
@@ -398,8 +325,12 @@ global.__filename = function filename(
         : pathToFileURL(pathURL).toString()
 }
 
-global.__dirname = function dirname(pathURL) {
-    return path.dirname(global.__filename(pathURL, true))
+global.__dirname = function dirname(
+    pathURL
+) {
+    return path.dirname(
+        global.__filename(pathURL, true)
+    )
 }
 
 global.opts = new Object(
@@ -410,31 +341,43 @@ global.opts = new Object(
 
 global.prefix = /^[#!./]/
 
-const sessionDir = path.join(process.cwd(), 'sessions')
+/* =========================
+   SESSION
+========================= */
 
-if (!existsSync(sessionDir)) {
-    mkdirSync(sessionDir, { recursive: true })
-}
+const sessionDir = path.join(
+    process.cwd(),
+    'sessions'
+)
 
-const sessionFile = path.join(sessionDir, 'main.sqlite')
+const sessionFile = path.join(
+    sessionDir,
+    'main.sqlite'
+)
 
 if (!existsSync(sessionFile)) {
     fs.writeFileSync(sessionFile, '')
 }
 
-const authState = await useSQLiteAuthState(sessionFile)
-
 let authState = null
 
 try {
-    authState = await useSQLiteAuthState(sessionFile)
+
+    authState =
+        await useSQLiteAuthState(
+            sessionFile
+        )
+
 } catch (e) {
-    console.error('Auth Error:', e.message)
+
+    console.error(
+        'Auth Error:',
+        e.message
+    )
 }
 
 const state = authState?.state || {
     creds: {},
-
     keys: {
         get: async () => ({}),
         set: async () => {}
@@ -445,6 +388,10 @@ const saveCreds =
     authState?.saveCreds ||
     (async () => {})
 
+/* =========================
+   VERSION
+========================= */
+
 const { version } =
     await fetchLatestBaileysVersion()
 
@@ -454,15 +401,40 @@ const msgRetryCounterCache =
         checkperiod: 600
     })
 
+/* =========================
+   WORKERS
+========================= */
+
 global.workerMedia = new Worker(
-    new URL('./lib/workers/mediaWorker.js', import.meta.url)
+    new URL(
+        './lib/workers/mediaWorker.js',
+        import.meta.url
+    )
 )
 
 global.workerText = new Worker(
-    new URL('./lib/workers/textWorker.js', import.meta.url)
+    new URL(
+        './lib/workers/textWorker.js',
+        import.meta.url
+    )
 )
 
+global.workerMedia.on(
+    'error',
+    console.error
+)
+
+global.workerText.on(
+    'error',
+    console.error
+)
+
+/* =========================
+   SOCKET OPTIONS
+========================= */
+
 const connectionOptions = {
+
     version,
 
     logger: silentLogger,
@@ -473,11 +445,11 @@ const connectionOptions = {
 
     auth: {
         creds: state.creds,
-
-        keys: makeCacheableSignalKeyStore(
-            state.keys,
-            silentLogger
-        )
+        keys:
+            makeCacheableSignalKeyStore(
+                state.keys,
+                silentLogger
+            )
     },
 
     markOnlineOnConnect: true,
@@ -496,7 +468,10 @@ const connectionOptions = {
 
     getMessage: async () => undefined,
 
-    patchMessageBeforeSending: (message) => {
+    patchMessageBeforeSending: (
+        message
+    ) => {
+
         const requiresPatch = !!(
             message?.interactiveMessage ||
             message?.templateMessage ||
@@ -504,6 +479,7 @@ const connectionOptions = {
         )
 
         if (requiresPatch) {
+
             message = {
                 viewOnceMessage: {
                     message: {
@@ -511,7 +487,6 @@ const connectionOptions = {
                             deviceListMetadata: {},
                             deviceListMetadataVersion: 2
                         },
-
                         ...message
                     }
                 }
@@ -522,66 +497,93 @@ const connectionOptions = {
     }
 }
 
-global.conn = makeWASocket(connectionOptions)
+/* =========================
+   CONNECT
+========================= */
+
+global.conn =
+    makeWASocket(connectionOptions)
 
 global.conn.isMain = true
 
-global.conns.set('main', global.conn)
+global.conns.set(
+    'main',
+    global.conn
+)
+
+/* =========================
+   PAIRING CODE
+========================= */
 
 if (!state?.creds?.registered) {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    })
+
+    const rl =
+        readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        })
 
     const question = (text) =>
-        new Promise((resolve) =>
+        new Promise(resolve =>
             rl.question(text, resolve)
         )
 
     const phoneNumber =
         await question(
-            chalk.cyan('┃ ') + 'Número: '
+            chalk.cyan('┃ Número: ')
         )
+
+    rl.close()
 
     const addNumber =
         phoneNumber.replace(/\D/g, '')
 
-    rl.close()
-
     setTimeout(async () => {
+
         try {
-            const codeBot =
-                await global.conn.requestPairingCode(addNumber)
+
+            const code =
+                await global.conn
+                    .requestPairingCode(
+                        addNumber
+                    )
 
             console.log(
-                chalk.cyan('┃ ') +
-                chalk.bgBlack.white.bold(
-                    ` CÓDIGO: ${
-                        codeBot?.match(/.{1,4}/g)?.join('-') ||
-                        codeBot
-                    } `
+                chalk.greenBright(
+                    `CÓDIGO: ${
+                        code
+                        ?.match(/.{1,4}/g)
+                        ?.join('-') || code
+                    }`
                 )
             )
 
         } catch (e) {
             console.error(e)
         }
+
     }, 3000)
 }
+
+/* =========================
+   MESSAGE HANDLER
+========================= */
 
 let messageHandlerMain
 
 const loadHandlers = async () => {
+
     try {
+
         const PathMain = path.join(
             process.cwd(),
             'lib/message.js'
         )
 
-        const moduleMain = await import(
-            `file://${PathMain}?update=${Date.now()}`
-        )
+        const moduleMain =
+            await import(
+                `file://${PathMain}?update=${Date.now()}`
+            )
 
         messageHandlerMain =
             moduleMain.message ||
@@ -595,52 +597,72 @@ const loadHandlers = async () => {
 
 await loadHandlers()
 
-fs.watch(
-    path.join(process.cwd(), 'lib/message.js'),
-    async () => await loadHandlers()
+fs.watchFile(
+    path.join(
+        process.cwd(),
+        'lib/message.js'
+    ),
+    async () => {
+
+        console.log(
+            chalk.yellow(
+                'message.js actualizado'
+            )
+        )
+
+        await loadHandlers()
+    }
 )
 
-global.reload = async function (restartConn) {
+/* =========================
+   RELOAD
+========================= */
+
+global.reload = async (
+    restartConn
+) => {
 
     if (restartConn) {
 
         try {
-            global.conn.ws.close()
+            global.conn?.ws?.close()
         } catch {}
 
-        let newAuth = null
-
-        try {
-            newAuth = await useSQLiteAuthState(sessionFile)
-        } catch (e) {
-            console.error('Reload Auth Error:', e.message)
-            return
-        }
+        const newAuth =
+            await useSQLiteAuthState(
+                sessionFile
+            )
 
         const {
             state: newState,
             saveCreds: newSaveCreds
         } = newAuth
 
-        global.conn = makeWASocket({
-            ...connectionOptions,
+        global.conn =
+            makeWASocket({
+                ...connectionOptions,
 
-            auth: {
-                creds: newState.creds,
+                auth: {
+                    creds:
+                        newState.creds,
 
-                keys: makeCacheableSignalKeyStore(
-                    newState.keys,
-                    silentLogger
-                )
-            }
-        })
+                    keys:
+                        makeCacheableSignalKeyStore(
+                            newState.keys,
+                            silentLogger
+                        )
+                }
+            })
 
         global.conn.ev.on(
             'creds.update',
             newSaveCreds
         )
 
-        global.conns.set('main', global.conn)
+        global.conns.set(
+            'main',
+            global.conn
+        )
     }
 
     global.conn.ev.removeAllListeners(
@@ -653,31 +675,31 @@ global.reload = async function (restartConn) {
         'messages.upsert',
         async (chatUpdate) => {
 
-            const msg =
-                chatUpdate.messages?.[0]
-
-            if (!msg) return
-
             try {
+
+                const msg =
+                    chatUpdate.messages?.[0]
+
+                if (!msg) return
+
                 const m =
-                    await smsg(global.conn, msg)
+                    await smsg(
+                        global.conn,
+                        msg
+                    )
 
                 if (m?.isMedia) {
 
-                    const mClone =
-                        JSON.parse(JSON.stringify(m))
-
-                    const messagesClone =
-                        JSON.parse(
+                    global.workerMedia.postMessage({
+                        sock: 'main',
+                        m: JSON.parse(
+                            JSON.stringify(m)
+                        ),
+                        messages: JSON.parse(
                             JSON.stringify(
                                 chatUpdate.messages
                             )
                         )
-
-                    global.workerMedia.postMessage({
-                        sock: 'main',
-                        m: mClone,
-                        messages: messagesClone
                     })
 
                     return
@@ -685,8 +707,12 @@ global.reload = async function (restartConn) {
 
                 if (
                     messageHandlerMain &&
-                    (msg.message || msg.messageStubType)
+                    (
+                        msg.message ||
+                        msg.messageStubType
+                    )
                 ) {
+
                     await messageHandlerMain.call(
                         global.conn,
                         m,
@@ -696,7 +722,10 @@ global.reload = async function (restartConn) {
 
             } catch (e) {
 
-                if (!e?.message?.includes('decrypt')) {
+                if (
+                    !e?.message
+                        ?.includes('decrypt')
+                ) {
                     console.error(e)
                 }
             }
@@ -719,39 +748,51 @@ global.reload = async function (restartConn) {
             if (connection === 'close') {
 
                 const reason =
-                    new Boom(lastDisconnect?.error)
-                        ?.output?.statusCode || 0
+                    new Boom(
+                        lastDisconnect?.error
+                    )?.output?.statusCode || 0
 
                 if (
-                    reason === DisconnectReason.loggedOut ||
-                    reason === 403
+                    reason ===
+                    DisconnectReason.loggedOut
                 ) {
 
                     console.error(
-                        chalk.red(
-                            '┃ STATUS: SESIÓN INVALIDADA'
-                        )
+                        'SESIÓN CERRADA'
                     )
 
-                    if (fs.existsSync(sessionFile)) {
-                        fs.unlinkSync(sessionFile)
+                    if (
+                        fs.existsSync(
+                            sessionFile
+                        )
+                    ) {
+                        fs.unlinkSync(
+                            sessionFile
+                        )
                     }
 
                     process.exit(1)
 
                 } else {
 
-                    if (!global.isReloading) {
+                    if (
+                        !global.isReloading
+                    ) {
 
                         global.isReloading = true
 
-                        setTimeout(async () => {
+                        setTimeout(
+                            async () => {
 
-                            await global.reload(true)
+                                await global.reload(
+                                    true
+                                )
 
-                            global.isReloading = false
+                                global.isReloading = false
 
-                        }, 10000)
+                            },
+                            10000
+                        )
                     }
                 }
             }
@@ -759,18 +800,13 @@ global.reload = async function (restartConn) {
             if (connection === 'open') {
 
                 global.botNumber =
-                    sId(global.conn.user.id)
-
-                console.log(
-                    chalk.cyan('┃ ') +
-                    chalk.greenBright.bold(
-                        'STATUS: ONLINE'
+                    sId(
+                        global.conn?.user?.id || ''
                     )
-                )
 
                 console.log(
-                    chalk.cyan(
-                        '┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛'
+                    chalk.greenBright(
+                        'STATUS ONLINE'
                     )
                 )
 
@@ -792,76 +828,21 @@ global.reload = async function (restartConn) {
                     )
                 }
 
-                if (global.SubBotSettings) {
+                try {
 
-                    const allSettings =
-                        await global.SubBotSettings.find({
-                            status: true
-                        })
-
-                    allSettings.forEach(s => {
-                        global.subbotConfig[s.botId] = s
-                    })
-                }
-
-                setTimeout(async () => {
-                    try {
-                        const { loadSubBots } =
-                            await import('./lib/serbot.js')
-
-                        await loadSubBots(global.conn)
-
-                    } catch (e) {
-                        console.error(e)
-                    }
-                }, 1000)
-
-                const updateStatus = async () => {
-                    try {
-
-                        const time =
-                            new Date().toLocaleString(
-                                'es-CO',
-                                {
-                                    hour12: true
-                                }
-                            )
-
-                        await global.conn.query({
-                            tag: 'iq',
-
-                            attrs: {
-                                to: '@s.whatsapp.net',
-                                type: 'set',
-                                xmlns: 'status'
-                            },
-
-                            content: [{
-                                tag: 'status',
-
-                                attrs: {},
-
-                                content: Buffer.from(
-                                    `GUERRA BOT | ${time}`,
-                                    'utf-8'
-                                )
-                            }]
-                        })
-
-                    } catch {}
-                }
-
-                updateStatus()
-
-                if (global.keepAlive) {
-                    clearInterval(global.keepAlive)
-                }
-
-                global.keepAlive =
-                    setInterval(
-                        updateStatus,
-                        600000
+                    const {
+                        loadSubBots
+                    } = await import(
+                        './lib/serbot.js'
                     )
+
+                    await loadSubBots(
+                        global.conn
+                    )
+
+                } catch (e) {
+                    console.error(e)
+                }
             }
         }
     )
@@ -870,41 +851,17 @@ global.reload = async function (restartConn) {
         'creds.update',
         saveCreds
     )
-
-    global.conn.ev.on(
-        'groups.update',
-        async (updates) => {
-
-            for (const update of updates) {
-
-                const metadata =
-                    await global.conn
-                        .groupMetadata(update.id)
-                        .catch(() => null)
-
-                if (metadata) {
-
-                    global.groupCache.set(
-                        update.id,
-                        metadata
-                    )
-
-                    cacheManager.updateParticipants(
-                        update.id,
-                        metadata.participants
-                    )
-                }
-            }
-        }
-    )
 }
 
 await global.reload()
 
-global.plugins = new Map()
-global.aliases = new Map()
+/* =========================
+   PLUGINS
+========================= */
 
-async function readRecursive(folder) {
+async function readRecursive(
+    folder
+) {
 
     const files =
         await fsP.readdir(folder)
@@ -921,7 +878,9 @@ async function readRecursive(folder) {
 
             await readRecursive(file)
 
-        } else if (/\.js$/.test(filename)) {
+        } else if (
+            /\.js$/.test(filename)
+        ) {
 
             try {
 
@@ -935,18 +894,29 @@ async function readRecursive(folder) {
 
                 const name =
                     plugin.name ||
-                    basename(filename, '.js')
+                    basename(
+                        filename,
+                        '.js'
+                    )
 
-                global.plugins.set(name, plugin)
+                global.plugins.set(
+                    name,
+                    plugin
+                )
 
                 if (plugin.alias) {
 
                     (
-                        Array.isArray(plugin.alias)
+                        Array.isArray(
+                            plugin.alias
+                        )
                             ? plugin.alias
                             : [plugin.alias]
                     ).forEach(a =>
-                        global.aliases.set(a, name)
+                        global.aliases.set(
+                            a,
+                            name
+                        )
                     )
                 }
 
@@ -957,24 +927,32 @@ async function readRecursive(folder) {
     }
 }
 
-global.reloadHandler = async function (check) {
+global.reloadHandler =
+    async function (check) {
 
-    global.plugins.clear()
+        global.plugins.clear()
+        global.aliases.clear()
 
-    global.aliases.clear()
+        await readRecursive(
+            join(
+                process.cwd(),
+                './plugins'
+            )
+        )
 
-    await readRecursive(
-        join(process.cwd(), './plugins')
-    )
-
-    if (check) return true
-}
+        if (check) return true
+    }
 
 await readRecursive(
-    join(process.cwd(), './plugins')
+    join(
+        process.cwd(),
+        './plugins'
+    )
 )
 
-global.subHandler = async (...args) => {
+global.subHandler = async (
+    ...args
+) => {
 
     if (messageHandlerMain) {
 
