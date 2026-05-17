@@ -512,103 +512,73 @@ global.conns.set(
 )
 
 /* =========================
-   PAIRING CODE
+   PAIRING CODE FIX REAL
 ========================= */
 
-const esperarConexion = async () => {
+const esperarConexion = () => {
+    return new Promise((resolve) => {
 
-    return new Promise((resolve, reject) => {
-
-        const timeout = setTimeout(() => {
-            reject(
-                new Error(
-                    'Tiempo agotado esperando conexión'
-                )
-            )
-        }, 60000)
-
-        if (
-            global.conn?.ws?.readyState === 1
-        ) {
-            clearTimeout(timeout)
+        if (global.conn?.ws?.readyState === 1) {
             return resolve(true)
         }
 
-        global.conn.ev.on(
-            'connection.update',
-            ({ connection }) => {
-
-                if (connection === 'open') {
-
-                    clearTimeout(timeout)
-
-                    resolve(true)
-                }
+        const handler = (update) => {
+            if (update?.connection === 'open') {
+                resolve(true)
             }
-        )
+        }
+
+        global.conn.ev.on('connection.update', handler)
     })
 }
 
 if (!state?.creds?.registered) {
 
-    const rl =
-        readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-        })
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    })
 
     const question = (text) =>
-        new Promise(resolve =>
-            rl.question(text, resolve)
-        )
+        new Promise(resolve => rl.question(text, resolve))
 
-    const phoneNumber =
-        await question(
-            chalk.cyan('┃ Número: ')
-        )
+    const phoneNumber = await question(
+        chalk.cyan('┃ Número: ')
+    )
 
     rl.close()
 
-    const addNumber =
-        phoneNumber.replace(/\D/g, '')
+    const addNumber = phoneNumber.replace(/\D/g, '')
 
-    ;(async () => {
+    console.log(
+        chalk.yellow('┃ Iniciando conexión con WhatsApp...')
+    )
 
-        try {
+    // 🔥 IMPORTANTE: esperamos que el socket realmente esté listo
+    if (global.conn?.ws?.readyState !== 1) {
 
-            console.log(
-                chalk.yellow(
-                    '┃ Esperando conexión con WhatsApp...'
-                )
+        await new Promise((resolve) => {
+            global.conn.ev.on('connection.update', (u) => {
+                if (u.connection === 'open') resolve()
+            })
+        })
+    }
+
+    try {
+
+        const code = await global.conn.requestPairingCode(addNumber)
+
+        console.log(
+            chalk.greenBright(
+                `CÓDIGO: ${
+                    code?.match(/.{1,4}/g)?.join('-') || code
+                }`
             )
+        )
 
-            await esperarConexion()
-
-            const code =
-                await global.conn
-                    .requestPairingCode(
-                        addNumber
-                    )
-
-            console.log(
-                chalk.greenBright(
-                    `CÓDIGO: ${
-                        code
-                        ?.match(/.{1,4}/g)
-                        ?.join('-') || code
-                    }`
-                )
-            )
-
-        } catch (e) {
-
-            console.error(
-                'Pairing Error:',
-                e
-            )
-        }
-
-    })()
+    } catch (e) {
+        console.error('PAIRING ERROR:', e?.output?.payload || e.message)
+    }
 }
 
 /* =========================
