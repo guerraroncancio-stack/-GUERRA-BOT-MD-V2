@@ -515,6 +515,40 @@ global.conns.set(
    PAIRING CODE
 ========================= */
 
+const esperarConexion = async () => {
+
+    return new Promise((resolve, reject) => {
+
+        const timeout = setTimeout(() => {
+            reject(
+                new Error(
+                    'Tiempo agotado esperando conexión'
+                )
+            )
+        }, 60000)
+
+        if (
+            global.conn?.ws?.readyState === 1
+        ) {
+            clearTimeout(timeout)
+            return resolve(true)
+        }
+
+        global.conn.ev.on(
+            'connection.update',
+            ({ connection }) => {
+
+                if (connection === 'open') {
+
+                    clearTimeout(timeout)
+
+                    resolve(true)
+                }
+            }
+        )
+    })
+}
+
 if (!state?.creds?.registered) {
 
     const rl =
@@ -538,9 +572,17 @@ if (!state?.creds?.registered) {
     const addNumber =
         phoneNumber.replace(/\D/g, '')
 
-    setTimeout(async () => {
+    ;(async () => {
 
         try {
+
+            console.log(
+                chalk.yellow(
+                    '┃ Esperando conexión con WhatsApp...'
+                )
+            )
+
+            await esperarConexion()
 
             const code =
                 await global.conn
@@ -559,10 +601,14 @@ if (!state?.creds?.registered) {
             )
 
         } catch (e) {
-            console.error(e)
+
+            console.error(
+                'Pairing Error:',
+                e
+            )
         }
 
-    }, 3000)
+    })()
 }
 
 /* =========================
