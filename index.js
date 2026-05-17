@@ -533,24 +533,41 @@ if (!state?.creds?.registered) {
 
     const addNumber = phoneNumber.replace(/\D/g, '')
 
+    // 🔥 ESPERAR CONEXIÓN REAL
+    const waitOpen = () =>
+        new Promise((resolve) => {
+            const check = (update) => {
+                if (update.connection === 'open') {
+                    global.conn.ev.off('connection.update', check)
+                    resolve(true)
+                }
+            }
+
+            global.conn.ev.on('connection.update', check)
+        })
+
     try {
 
-        console.log(
-            chalk.yellow('┃ Generando código...')
-        )
+        console.log(chalk.yellow('┃ Conectando WhatsApp...'))
+
+        await waitOpen()
+
+        console.log(chalk.green('┃ Conectado, generando código...'))
 
         const code = await global.conn.requestPairingCode(addNumber)
+
+        if (!code) throw new Error('No se generó código')
 
         console.log(
             chalk.greenBright(
                 `CÓDIGO: ${
-                    code?.match(/.{1,4}/g)?.join('-') || code
+                    code.match(/.{1,4}/g)?.join('-') || code
                 }`
             )
         )
 
     } catch (e) {
-        console.error('Pairing Error:', e.message || e)
+        console.error('PAIRING ERROR:', e.message || e)
     }
 }
 /* =========================
