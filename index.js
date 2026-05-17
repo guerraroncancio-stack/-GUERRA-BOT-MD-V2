@@ -512,98 +512,68 @@ global.conns.set(
 )
 
 /* =========================
-   PAIRING CODE FIX REAL
+   PAIRING CODE STABLE FIX
 ========================= */
-// AUTO PAIRING DIRECTO (SIN INPUT BLOQUEANTE)
-const startAutoPairing = async () => {
+
+let pairingDone = false
+
+const startAutoPairing = () => {
 
     if (state?.creds?.registered) return
 
     const number = (process.env.NUMBER || '').replace(/\D/g, '')
 
     if (!number) {
-        console.log('⚠️ No hay número en env (NUMBER)')
+        console.log('┃ ⚠️ No hay número en env (NUMBER)')
         return
     }
 
-    const tryPair = async () => {
-        try {
+    global.conn.ev.on('connection.update', async (update) => {
 
-            if (!global.conn?.user) {
-                setTimeout(tryPair, 3000)
-                return
-            }
+        const { connection } = update
 
-            const code = await global.conn.requestPairingCode(number)
+        if (connection !== 'open') return
 
-            console.log(
-                chalk.greenBright(
-                    `CÓDIGO GENERADO: ${
-                        code?.match(/.{1,4}/g)?.join('-') || code
-                    }`
+        if (pairingDone) return
+
+        pairingDone = true
+
+        const tryGenerate = async (attempt = 1) => {
+
+            try {
+
+                const code = await global.conn.requestPairingCode(number)
+
+                console.log(
+                    chalk.greenBright(
+                        `┃ CÓDIGO GENERADO: ${
+                            code?.match(/.{1,4}/g)?.join('-') || code
+                        }`
+                    )
                 )
-            )
 
-        } catch (err) {
+            } catch (err) {
 
-            console.log('Reintentando pairing...')
+                pairingDone = false
 
-            setTimeout(tryPair, 5000)
+                if (attempt <= 5) {
+
+                    console.log(`┃ Reintentando pairing (${attempt}/5)`)
+
+                    setTimeout(() => tryGenerate(attempt + 1), 4000)
+
+                } else {
+
+                    console.log('┃ ❌ Falló pairing después de varios intentos')
+                }
+            }
         }
-    }
 
-    tryPair()
+        setTimeout(() => tryGenerate(), 3000)
+    })
 }
 
 startAutoPairing()
-/* =========================
-   MESSAGE HANDLER
-========================= */
-
-let messageHandlerMain
-
-const loadHandlers = async () => {
-
-    try {
-
-        const PathMain = path.join(
-            process.cwd(),
-            'lib/message.js'
-        )
-
-        const moduleMain =
-            await import(
-                `file://${PathMain}?update=${Date.now()}`
-            )
-
-        messageHandlerMain =
-            moduleMain.message ||
-            moduleMain.default?.message ||
-            moduleMain.default
-
-    } catch (e) {
-        console.error(e)
-    }
-}
-
-await loadHandlers()
-
-fs.watchFile(
-    path.join(
-        process.cwd(),
-        'lib/message.js'
-    ),
-    async () => {
-
-        console.log(
-            chalk.yellow(
-                'message.js actualizado'
-            )
-        )
-
-        await loadHandlers()
-    }
-)
 
 /* =========================
    RELOAD
