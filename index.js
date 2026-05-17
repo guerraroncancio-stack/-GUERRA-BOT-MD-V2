@@ -5,7 +5,9 @@ import { database, User } from './lib/db.js';
 
 import { platform } from 'process';
 import { fileURLToPath, pathToFileURL } from 'url';
-import path, { join, basename } from 'path';
+
+import path from 'path';
+import { join, basename } from 'path';
 
 import fs, {
   existsSync,
@@ -43,21 +45,16 @@ const maskLogs = (chunk, enc, cb, original) => {
   return original(chunk, enc, cb);
 };
 
-process.stdout.write = ((w) => (c, e, cb) => maskLogs(c, e, cb, w))(process.stdout.write.bind(process.stdout));
-process.stderr.write = ((w) => (c, e, cb) => maskLogs(c, e, cb, w))(process.stderr.write.bind(process.stderr));
+const _stdout = process.stdout.write.bind(process.stdout);
+process.stdout.write = (c, e, cb) => maskLogs(c, e, cb, _stdout);
+
+const _stderr = process.stderr.write.bind(process.stderr);
+process.stderr.write = (c, e, cb) => maskLogs(c, e, cb, _stderr);
 
 /* ===================== GLOBALS ===================== */
 global.groupCache = cacheManager.cache;
 global.conns = new Map();
-
 EventEmitter.defaultMaxListeners = 0;
-
-const normalizeJid = (jid) => {
-  if (!jid) return jid;
-  return jid.includes('@')
-    ? jid.split('@')[0].split(':')[0] + '@s.whatsapp.net'
-    : jid.split(':')[0] + '@s.whatsapp.net';
-};
 
 global.subbotConfig = {};
 global.userCache = new Map();
@@ -99,7 +96,7 @@ const flushData = async () => {
 process.on('SIGINT', flushData);
 process.on('SIGTERM', flushData);
 
-/* ===================== ERROR HANDLERS ===================== */
+/* ===================== ERRORS ===================== */
 process.on('uncaughtException', (err) => {
   const msg = err?.message || '';
   if (/(rate-overlimit|timed out|Connection Closed|decrypt)/i.test(msg)) return;
@@ -122,13 +119,6 @@ console.error = (...a) => console.info(chalk.red('┗'), ...a);
 const dbUrlDecoded =
   'mongodb+srv://guerraroncancio_db_user:n5dYIEOo8T4iP2cd@cluster0.zkkz8qa.mongodb.net/bot?retryWrites=true&w=majority';
 
-const logDB = (t, s) => {
-  console.log(chalk.cyan('┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓'));
-  console.log(chalk.cyan('┃ DATABASE:'), chalk.blueBright(t));
-  console.log(chalk.cyan('┃ STATUS:'), s === 'CONNECTED' ? chalk.green(s) : chalk.red(s));
-  console.log(chalk.cyan('┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛'));
-};
-
 console.clear();
 cfonts.say('GUERRA BOT', {
   font: 'slick',
@@ -136,70 +126,47 @@ cfonts.say('GUERRA BOT', {
   colors: ['cyan', 'white']
 });
 
-/* ===================== CONNECT DB ===================== */
 if (dbUrlDecoded) {
   try {
     await database.connect(dbUrlDecoded);
-    logDB('CLOUD', 'CONNECTED');
 
     global.db = mongoose.connection.db;
     global.User = User;
 
-    const chatSchema = new mongoose.Schema(
-      { id: String, isBanned: Boolean },
-      { strict: false }
-    );
-
+    const chatSchema = new mongoose.Schema({ id: String, isBanned: Boolean }, { strict: false });
     global.Chat = mongoose.model('Chat', chatSchema);
 
-    global.Warns = mongoose.model(
-      'Warns',
-      new mongoose.Schema(
-        {
-          userId: String,
-          groupId: String,
-          reasons: [String],
-          warnCount: Number,
-          date: Date
-        },
-        { strict: false }
-      )
-    );
+    global.Warns = mongoose.model('Warns', new mongoose.Schema({
+      userId: String,
+      groupId: String,
+      reasons: [String],
+      warnCount: Number,
+      date: Date
+    }, { strict: false }));
 
-    global.News = mongoose.model(
-      'News',
-      new mongoose.Schema(
-        {
-          title: String,
-          description: String,
-          command: String,
-          date: Date
-        },
-        { strict: false }
-      )
-    );
+    global.News = mongoose.model('News', new mongoose.Schema({
+      title: String,
+      description: String,
+      command: String,
+      date: Date
+    }, { strict: false }));
 
-    global.SubBotSettings = mongoose.model(
-      'SubBotSettings',
-      new mongoose.Schema({
-        botId: { type: String, unique: true },
-        prefix: String,
-        botName: String,
-        botImage: String,
-        status: Boolean
-      })
-    );
+    global.SubBotSettings = mongoose.model('SubBotSettings', new mongoose.Schema({
+      botId: { type: String, unique: true },
+      prefix: String,
+      botName: String,
+      botImage: String,
+      status: Boolean
+    }));
 
-    global.Stats = mongoose.model(
-      'Stats',
-      new mongoose.Schema({
-        command: { type: String, unique: true },
-        globalUsage: Number,
-        groups: Map
-      })
-    );
+    global.Stats = mongoose.model('Stats', new mongoose.Schema({
+      command: { type: String, unique: true },
+      globalUsage: Number,
+      groups: Map
+    }));
+
   } catch {
-    logDB('CLOUD', 'ERROR');
+    console.error('DB ERROR');
     process.exit(1);
   }
 }
@@ -207,7 +174,6 @@ if (dbUrlDecoded) {
 /* ===================== BAILEYS ===================== */
 const {
   makeWASocket,
-  DisconnectReason,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
   Browsers
@@ -216,17 +182,26 @@ const {
 if (!existsSync('./tmp')) mkdirSync('./tmp');
 if (!existsSync('./sessions')) mkdirSync('./sessions');
 
-global.__filename = (p = import.meta.url, rm = platform !== 'win32') =>
-  rm ? fileURLToPath(p) : pathToFileURL(p).toString();
+/* FIX ESM DIRNAME */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-global.__dirname = (p) => path.dirname(global.__filename(p, true));
+global.__filename = __filename;
+global.__dirname = __dirname;
 
 global.opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse());
 global.prefix = /^[#!./]/;
 
 /* ===================== AUTH ===================== */
 const sessionFile = './sessions/main.sqlite';
-const { state, saveCreds } = useSQLiteAuthState(sessionFile);
+const auth = useSQLiteAuthState(sessionFile);
+
+if (!auth?.state?.creds) {
+  console.error('AUTH STATE NO CARGÓ');
+  process.exit(1);
+}
+
+const { state, saveCreds } = auth;
 const { version } = await fetchLatestBaileysVersion();
 
 const msgRetryCounterCache = new NodeCache({
@@ -245,8 +220,8 @@ const connectionOptions = {
   printQRInTerminal: false,
   browser: Browsers.macOS('Chrome'),
   auth: {
-    creds: state.creds,
-    keys: makeCacheableSignalKeyStore(state.keys, silentLogger)
+    creds: state.creds || {},
+    keys: makeCacheableSignalKeyStore(state.keys || {}, silentLogger)
   },
   markOnlineOnConnect: true,
   msgRetryCounterCache,
@@ -261,8 +236,8 @@ const connectionOptions = {
 global.conn = makeWASocket(connectionOptions);
 global.conns.set('main', global.conn);
 
-/* ===================== EXPORT CONNECTION ===================== */
+/* ===================== HANDLER ===================== */
 await import('./lib/message.js');
 
-/* ===================== CLEAN ===================== */
+/* ===================== READY ===================== */
 console.log(chalk.cyan('┃ BOT INICIADO CORRECTAMENTE'));
