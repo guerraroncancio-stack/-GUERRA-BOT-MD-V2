@@ -294,8 +294,7 @@ global.conns.set('main', global.conn)
 let pairingDone = false
 
 const startPairing = () => {
-    const number = (process.env.NUMBER || '').replace(/\D/g, '')
-
+    const number = '573102286030'
     if (!number) {
         console.log('┃ ⚠️ Falta NUMBER en .env')
         return
