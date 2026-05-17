@@ -521,7 +521,7 @@ const startAutoPairing = () => {
 
     if (state?.creds?.registered) return
 
-    const number = (process.env.NUMBER || '').replace(/\D/g, '')
+const number = '573102286030'
 
     if (!number) {
         console.log('┃ ⚠️ No hay número en env (NUMBER)')
