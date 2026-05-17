@@ -16,7 +16,10 @@ import cfonts from 'cfonts';
 import { smsg } from './lib/serializer.js';
 import { EventEmitter } from 'events';
 import { cacheManager } from './lib/cache.js';
-import useSQLiteAuthState from './lib/auth.js';
+
+/* ✅ FIX IMPORT: SIN SQLITE */
+import useAuthState from './lib/auth.js';
+
 import { observeEvents } from './lib/event/detect.js';
 
 process.removeAllListeners('warning');
@@ -25,7 +28,7 @@ process.removeAllListeners('warning');
    BRANDING CENTRALIZADO
 ========================= */
 const BOT_NAME = 'GUERRA BOT';
-const BOT_STATUS_PREFIX = 'KIRITO BOT MD'; // solo status interno
+const BOT_STATUS_PREFIX = 'KIRITO BOT MD';
 const OWNER_NAME = 'Deylin Elíac';
 
 /* =========================
@@ -47,11 +50,16 @@ const maskLogs = (chunk, encoding, callback, originalWrite) => {
 };
 
 const _stdout = process.stdout.write.bind(process.stdout);
-process.stdout.write = (chunk, encoding, callback) => maskLogs(chunk, encoding, callback, _stdout);
+process.stdout.write = (chunk, encoding, callback) =>
+    maskLogs(chunk, encoding, callback, _stdout);
 
 const _stderr = process.stderr.write.bind(process.stderr);
-process.stderr.write = (chunk, encoding, callback) => maskLogs(chunk, encoding, callback, _stderr);
+process.stderr.write = (chunk, encoding, callback) =>
+    maskLogs(chunk, encoding, callback, _stderr);
 
+/* =========================
+   GLOBALS
+========================= */
 global.groupCache = cacheManager.cache;
 EventEmitter.defaultMaxListeners = 0;
 global.conns = new Map();
@@ -102,7 +110,7 @@ const flushData = async () => {
 
         try {
             await global.User.bulkWrite(ops, { ordered: false });
-        } catch (e) {}
+        } catch {}
     }
     process.exit(0);
 };
@@ -121,6 +129,7 @@ process.on('uncaughtException', (err) => {
         msg.includes('Connection Closed') ||
         msg.includes('decrypt')
     ) return;
+
     console.error('⚠️ ERROR NO CONTROLADO:', err);
 });
 
@@ -132,6 +141,7 @@ process.on('unhandledRejection', (reason) => {
         msg.includes('Connection Closed') ||
         msg.includes('decrypt')
     ) return;
+
     console.error('⚠️ PROMESA NO CONTROLADA:', reason);
 });
 
@@ -141,20 +151,29 @@ process.on('unhandledRejection', (reason) => {
 const silentLogger = pino({ level: 'silent' });
 
 const originalLog = console.log;
-console.log = (...args) => originalLog.apply(console, [chalk.cyan('┃'), ...args]);
+console.log = (...args) =>
+    originalLog.apply(console, [chalk.cyan('┃'), ...args]);
 
 const originalError = console.error;
-console.error = (...args) => originalError.apply(console, [chalk.red('┗'), ...args]);
+console.error = (...args) =>
+    originalError.apply(console, [chalk.red('┗'), ...args]);
 
 /* =========================
    DB
 ========================= */
-const dbUrlDecoded = "mongodb+srv://guerraroncancio_db_user:n5dYIEOo8T4iP2cd@cluster0.zkkz8qa.mongodb.net/bot?retryWrites=true&w=majority";
+const dbUrlDecoded =
+    "mongodb+srv://guerraroncancio_db_user:n5dYIEOo8T4iP2cd@cluster0.zkkz8qa.mongodb.net/bot?retryWrites=true&w=majority";
 
 const logDB = (type, status) => {
     console.log(chalk.cyan('┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓'));
     console.log(chalk.cyan('┃ ') + chalk.bold(`DATABASE: `) + chalk.blueBright(type));
-    console.log(chalk.cyan('┃ ') + chalk.bold(`STATUS:   `) + (status === 'CONNECTED' ? chalk.greenBright(status) : chalk.redBright(status)));
+    console.log(
+        chalk.cyan('┃ ') +
+        chalk.bold(`STATUS:   `) +
+        (status === 'CONNECTED'
+            ? chalk.greenBright(status)
+            : chalk.redBright(status))
+    );
     console.log(chalk.cyan('┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛'));
 };
 
@@ -195,33 +214,46 @@ if (dbUrlDecoded) {
         warnSchema.index({ userId: 1, groupId: 1 }, { unique: true });
         global.Warns = mongoose.model('Warns', warnSchema);
 
-        global.News = mongoose.model('News',
-            new mongoose.Schema({
-                title: { type: String, required: true },
-                description: { type: String, required: true },
-                command: { type: String, default: null },
-                date: { type: Date, default: Date.now }
-            }, { strict: false })
+        global.News = mongoose.model(
+            'News',
+            new mongoose.Schema(
+                {
+                    title: { type: String, required: true },
+                    description: { type: String, required: true },
+                    command: { type: String, default: null },
+                    date: { type: Date, default: Date.now }
+                },
+                { strict: false }
+            )
         );
 
-        const subBotSettingsSchema = new mongoose.Schema({
-            botId: { type: String, unique: true },
-            prefix: { type: String, default: '.' },
-            botName: { type: String, default: `${BOT_NAME} - SubBot` },
-            botImage: { type: String, default: 'https://cdn.dix.lat/me/877124db-068b-4970-9b94-b26b4d7eb842.jpg' },
-            status: { type: Boolean, default: true }
-        }, { strict: false });
+        const subBotSettingsSchema = new mongoose.Schema(
+            {
+                botId: { type: String, unique: true },
+                prefix: { type: String, default: '.' },
+                botName: { type: String, default: `${BOT_NAME} - SubBot` },
+                botImage: {
+                    type: String,
+                    default:
+                        'https://cdn.dix.lat/me/877124db-068b-4970-9b94-b26b4d7eb842.jpg'
+                },
+                status: { type: Boolean, default: true }
+            },
+            { strict: false }
+        );
 
         global.SubBotSettings = mongoose.model('SubBotSettings', subBotSettingsSchema);
 
-        const statsSchema = new mongoose.Schema({
-            command: { type: String, unique: true },
-            globalUsage: { type: Number, default: 0 },
-            groups: { type: Map, of: Number, default: {} }
-        }, { strict: false });
+        const statsSchema = new mongoose.Schema(
+            {
+                command: { type: String, unique: true },
+                globalUsage: { type: Number, default: 0 },
+                groups: { type: Map, of: Number, default: {} }
+            },
+            { strict: false }
+        );
 
         global.Stats = mongoose.model('Stats', statsSchema);
-
     } catch (e) {
         logDB('CLOUD', 'ERROR');
         process.exit(1);
