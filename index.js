@@ -515,60 +515,50 @@ global.conns.set(
    PAIRING CODE FIX REAL
 ========================= */
 
-if (!state?.creds?.registered) {
+if (!state.creds.registered) {
 
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout
     })
 
-    const question = (text) =>
-        new Promise(resolve => rl.question(text, resolve))
+    const question = (t) =>
+        new Promise(r => rl.question(t, r))
 
     const phoneNumber = await question(
-        chalk.cyan('┃ Número: ')
+        chalk.cyan('┃ ') + 'Número: '
     )
 
     rl.close()
 
     const addNumber = phoneNumber.replace(/\D/g, '')
 
-    // 🔥 ESPERAR CONEXIÓN REAL
-    const waitOpen = () =>
-        new Promise((resolve) => {
-            const check = (update) => {
-                if (update.connection === 'open') {
-                    global.conn.ev.off('connection.update', check)
-                    resolve(true)
-                }
+    console.log(chalk.yellow('┃ Esperando conexión con WhatsApp...'))
+
+    // 🔥 ESPERA A QUE EL SOCKET ESTÉ LISTO
+    global.conn.ev.on('connection.update', async (update) => {
+
+        if (update.connection === 'open') {
+
+            try {
+                const codeBot =
+                    await global.conn.requestPairingCode(addNumber)
+
+                console.log(
+                    chalk.cyan('┃ ') +
+                    chalk.bgBlack.white.bold(
+                        ` CÓDIGO: ${
+                            codeBot?.match(/.{1,4}/g)?.join('-') ||
+                            codeBot
+                        } `
+                    )
+                )
+
+            } catch (e) {
+                console.error('Pairing Error:', e.message)
             }
-
-            global.conn.ev.on('connection.update', check)
-        })
-
-    try {
-
-        console.log(chalk.yellow('┃ Conectando WhatsApp...'))
-
-        await waitOpen()
-
-        console.log(chalk.green('┃ Conectado, generando código...'))
-
-        const code = await global.conn.requestPairingCode(addNumber)
-
-        if (!code) throw new Error('No se generó código')
-
-        console.log(
-            chalk.greenBright(
-                `CÓDIGO: ${
-                    code.match(/.{1,4}/g)?.join('-') || code
-                }`
-            )
-        )
-
-    } catch (e) {
-        console.error('PAIRING ERROR:', e.message || e)
-    }
+        }
+    })
 }
 /* =========================
    MESSAGE HANDLER
