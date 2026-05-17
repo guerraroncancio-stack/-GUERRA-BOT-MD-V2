@@ -6,18 +6,13 @@ import { database, User } from './lib/db.js'
 
 import { platform } from 'process'
 import { fileURLToPath, pathToFileURL } from 'url'
-import path, { join, basename } from 'path'
+import path, { join } from 'path'
 
-import fs, {
-    existsSync,
-    mkdirSync,
-    promises as fsP
-} from 'fs'
+import fs, { existsSync, mkdirSync, promises as fsP } from 'fs'
 
 import chalk from 'chalk'
 import pino from 'pino'
 import yargs from 'yargs'
-import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
 import readline from 'readline'
 import cfonts from 'cfonts'
@@ -29,41 +24,34 @@ import useSQLiteAuthState from './lib/auth.js'
 import { observeEvents } from './lib/event/detect.js'
 
 const {
-    makeWASocket,
-    DisconnectReason,
-    fetchLatestBaileysVersion,
-    makeCacheableSignalKeyStore,
-    Browsers
+  makeWASocket,
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+  makeCacheableSignalKeyStore,
+  Browsers
 } = await import('@whiskeysockets/baileys')
 
 /* =========================
    LOG FILTER
 ========================= */
 
-const maskLogs = (chunk, encoding, callback, originalWrite) => {
-    const msg = chunk?.toString?.() || ''
+const maskLogs = (chunk, _, cb, original) => {
+  const msg = chunk?.toString?.() || ''
+  if (
+    msg.includes('Closing session') ||
+    msg.includes('Removing old closed session') ||
+    msg.includes('Bad MAC') ||
+    msg.includes('Failed to decrypt')
+  ) return typeof cb === 'function' ? cb() : true
 
-    if (
-        msg.includes('Closing session') ||
-        msg.includes('Removing old closed session') ||
-        msg.includes('Bad MAC') ||
-        msg.includes('Failed to decrypt')
-    ) {
-        if (typeof encoding === 'function') encoding()
-        else if (typeof callback === 'function') callback()
-        return true
-    }
-
-    return originalWrite(chunk, encoding, callback)
+  return original(chunk, _, cb)
 }
 
-const _stdout = process.stdout.write.bind(process.stdout)
-process.stdout.write = (chunk, encoding, callback) =>
-    maskLogs(chunk, encoding, callback, _stdout)
+const _out = process.stdout.write.bind(process.stdout)
+process.stdout.write = (c, e, cb) => maskLogs(c, e, cb, _out)
 
-const _stderr = process.stderr.write.bind(process.stderr)
-process.stderr.write = (chunk, encoding, callback) =>
-    maskLogs(chunk, encoding, callback, _stderr)
+const _err = process.stderr.write.bind(process.stderr)
+process.stderr.write = (c, e, cb) => maskLogs(c, e, cb, _err)
 
 EventEmitter.defaultMaxListeners = 50
 
@@ -73,7 +61,6 @@ EventEmitter.defaultMaxListeners = 50
 
 global.groupCache = cacheManager.cache
 global.conns = new Map()
-global.subbotConfig = {}
 global.userCache = new Map()
 global.dirtyUsers = new Set()
 
@@ -86,78 +73,38 @@ let messageHandlerMain
    HELPERS
 ========================= */
 
-const sId = (jid = '') => {
-    try {
-        if (!jid) return jid
-        return jid.includes('@')
-            ? jid.split('@')[0].split(':')[0] + '@s.whatsapp.net'
-            : jid.split(':')[0] + '@s.whatsapp.net'
-    } catch {
-        return jid
-    }
-}
-
-global.updateUser = (jid, data = {}) => {
-    const current = global.userCache.get(jid) || {}
-    const updated = { ...current, ...data, id: jid }
-    global.userCache.set(jid, updated)
-    global.dirtyUsers.add(jid)
-    return updated
-}
-
-global.updateSubBotSettings = (botId, data = {}) => {
-    const current = global.subbotConfig[botId] || {}
-    global.subbotConfig[botId] = { ...current, ...data, botId }
-    return global.subbotConfig[botId]
-}
+const sId = (jid = '') =>
+  jid?.includes('@')
+    ? jid.split('@')[0].split(':')[0] + '@s.whatsapp.net'
+    : jid?.split(':')[0] + '@s.whatsapp.net'
 
 /* =========================
    SAVE USERS
 ========================= */
 
-const saveUsers = async () => {
-    try {
-        if (global.dirtyUsers.size < 1 || !global.User) return
+setInterval(async () => {
+  if (!global.User || global.dirtyUsers.size === 0) return
 
-        const users = Array.from(global.dirtyUsers)
-        global.dirtyUsers.clear()
-
-        const ops = users.map(jid => ({
-            updateOne: {
-                filter: { id: jid },
-                update: { $set: global.userCache.get(jid) },
-                upsert: true
-            }
-        }))
-
-        await global.User.bulkWrite(ops, { ordered: false })
-    } catch (e) {
-        console.error('BulkWrite Error:', e.message)
+  const ops = [...global.dirtyUsers].map(jid => ({
+    updateOne: {
+      filter: { id: jid },
+      update: { $set: global.userCache.get(jid) },
+      upsert: true
     }
-}
+  }))
 
-setInterval(saveUsers, 15000)
+  global.dirtyUsers.clear()
 
-/* =========================
-   ERROR HANDLER
-========================= */
-
-process.on('uncaughtException', console.error)
-process.on('unhandledRejection', console.error)
+  try {
+    await global.User.bulkWrite(ops, { ordered: false })
+  } catch {}
+}, 15000)
 
 /* =========================
    LOGGER
 ========================= */
 
-const silentLogger = pino({ level: 'silent' })
-
-const originalLog = console.log
-console.log = (...args) =>
-    originalLog.apply(console, [chalk.cyan('┃'), ...args])
-
-const originalError = console.error
-console.error = (...args) =>
-    originalError.apply(console, [chalk.red('┗'), ...args])
+const logger = pino({ level: 'silent' })
 
 /* =========================
    BANNER
@@ -165,80 +112,52 @@ console.error = (...args) =>
 
 console.clear()
 cfonts.say('GUERRA BOT', {
-    font: 'slick',
-    align: 'center',
-    colors: ['cyan', 'white'],
-    letterSpacing: 1
+  font: 'slick',
+  align: 'center',
+  colors: ['cyan', 'white']
 })
 
 /* =========================
    FOLDERS
 ========================= */
 
-for (const dir of ['./tmp', './sessions', './lib/workers']) {
-    if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true })
-    }
+for (const d of ['./tmp', './sessions', './lib/workers']) {
+  if (!existsSync(d)) mkdirSync(d, { recursive: true })
 }
 
 /* =========================
-   DATABASE
+   DB
 ========================= */
 
 const dbUrl = process.env.MONGO_DB_URI || ''
 
 if (dbUrl) {
-    try {
-        await database.connect(dbUrl)
-
-        console.log(chalk.greenBright('DATABASE CONNECTED'))
-
-        global.db = mongoose.connection.db
-        global.User = User
-    } catch (e) {
-        console.error(e)
-        process.exit(1)
-    }
+  await database.connect(dbUrl)
+  global.db = mongoose.connection.db
+  global.User = User
 }
 
 /* =========================
    PATH HELPERS
 ========================= */
 
-global.__filename = function (pathURL = import.meta.url, rmPrefix = platform !== 'win32') {
-    return rmPrefix
-        ? /file:\/\/\//.test(pathURL)
-            ? fileURLToPath(pathURL)
-            : pathURL
-        : pathToFileURL(pathURL).toString()
-}
+global.__filename = (p = import.meta.url, rm = platform !== 'win32') =>
+  rm ? fileURLToPath(p) : pathToFileURL(p).toString()
 
-global.__dirname = function (pathURL) {
-    return path.dirname(global.__filename(pathURL, true))
-}
+global.__dirname = p => path.dirname(global.__filename(p, true))
 
-global.opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse())
+global.opts = yargs(process.argv.slice(2)).parse()
 global.prefix = /^[#!./]/
 
 /* =========================
    SESSION
 ========================= */
 
-const sessionDir = path.join(process.cwd(), 'sessions')
-const sessionFile = path.join(sessionDir, 'main.sqlite')
+const sessionFile = './sessions/main.sqlite'
+const auth = await useSQLiteAuthState(sessionFile)
 
-if (!existsSync(sessionFile)) {
-    mkdirSync(sessionDir, { recursive: true })
-}
-
-const authState = await useSQLiteAuthState(sessionFile)
-
-const state = authState?.state || {
-    creds: {},
-    keys: { get: async () => ({}), set: async () => {} }
-}
-
-const saveCreds = authState?.saveCreds || (async () => {})
+const state = auth?.state
+const saveCreds = auth?.saveCreds || (async () => {})
 
 /* =========================
    VERSION
@@ -246,23 +165,33 @@ const saveCreds = authState?.saveCreds || (async () => {})
 
 const { version } = await fetchLatestBaileysVersion()
 
-const msgRetryCounterCache = new NodeCache({
-    stdTTL: 3600,
-    checkperiod: 600
-})
-
 /* =========================
-   WORKERS
+   SOCKET OPTIONS
 ========================= */
 
-global.workerMedia = new Worker(new URL('./lib/workers/mediaWorker.js', import.meta.url))
-global.workerText = new Worker(new URL('./lib/workers/textWorker.js', import.meta.url))
+const connectionOptions = {
+  version,
+  logger,
+  printQRInTerminal: false,
+  browser: Browsers.macOS('Chrome'),
 
-global.workerMedia.on('error', console.error)
-global.workerText.on('error', console.error)
+  auth: {
+    creds: state.creds,
+    keys: makeCacheableSignalKeyStore(state.keys, logger)
+  },
+
+  markOnlineOnConnect: true,
+  syncFullHistory: false,
+
+  connectTimeoutMs: 60000,
+  defaultQueryTimeoutMs: 60000,
+  keepAliveIntervalMs: 15000,
+
+  getMessage: async () => undefined
+}
 
 /* =========================
-   SOCKET
+   CONNECT
 ========================= */
 
 global.conn = makeWASocket(connectionOptions)
@@ -272,120 +201,90 @@ global.conns.set('main', global.conn)
    PAIRING FIX REAL
 ========================= */
 
-const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-const startPairingSystem = async () => {
+const startPairing = async () => {
 
-    // 🔴 Si ya está registrado NO pedir código
-    if (state?.creds?.registered) {
-        console.log('┃ ✔ Sesión ya registrada (no pairing necesario)')
-        return
-    }
+  if (state?.creds?.registered) {
+    console.log('┃ ✔ Sesión ya registrada')
+    return
+  }
 
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    })
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  })
 
-    const question = (t) => new Promise(r => rl.question(t, r))
+  const ask = t => new Promise(r => rl.question(t, r))
 
-    const number = (await question('┃ Número: ')).replace(/\D/g, '')
-    rl.close()
+  const number = (await ask('┃ Número: ')).replace(/\D/g, '')
+  rl.close()
 
-    if (!number) {
-        console.log('┃ ❌ Número inválido')
-        return
-    }
+  if (!number) return console.log('┃ ❌ Número inválido')
 
-    // 🔴 Esperar a que el socket esté realmente listo
-    let tries = 0
-    while (!global.conn?.user && tries < 20) {
-        await sleep(1000)
-        tries++
-    }
+  // esperar socket listo
+  let t = 0
+  while (!global.conn?.user && t < 20) {
+    await sleep(1000)
+    t++
+  }
 
-    if (!global.conn?.user) {
-        console.log('┃ ❌ Socket no está listo, no se puede generar código')
-        return
-    }
+  if (!global.conn?.user)
+    return console.log('┃ ❌ Socket no listo')
 
-    try {
-        const code = await global.conn.requestPairingCode(number)
+  try {
+    const code = await global.conn.requestPairingCode(number)
 
-        console.log(
-            '┃ CÓDIGO:',
-            code?.match(/.{1,4}/g)?.join('-') || code
-        )
-
-    } catch (err) {
-        console.error('┃ Error generando pairing:', err?.message || err)
-    }
+    console.log(
+      '┃ CÓDIGO:',
+      code?.match(/.{1,4}/g)?.join('-') || code
+    )
+  } catch (e) {
+    console.log('┃ Error pairing:', e?.message)
+  }
 }
 
-startPairingSystem()
+startPairing()
 
 /* =========================
-   RELOAD
+   RELOAD SAFE
 ========================= */
 
-global.reload = async (restart) => {
-    if (restart) {
-        try {
-            global.conn?.ws?.close()
-        } catch {}
+global.reload = async (restart = false) => {
+  if (restart) {
+    try { global.conn.ws.close() } catch {}
 
-        const newAuth = await useSQLiteAuthState(sessionFile)
+    const fresh = await useSQLiteAuthState(sessionFile)
 
-        global.conn = makeWASocket({
-            ...connectionOptions,
-            auth: {
-                creds: newAuth.state.creds,
-                keys: makeCacheableSignalKeyStore(newAuth.state.keys, silentLogger)
-            }
-        })
-
-        global.conn.ev.on('creds.update', newAuth.saveCreds)
-        global.conns.set('main', global.conn)
-    }
-
-    global.conn.ev.removeAllListeners('messages.upsert')
-    observeEvents(global.conn)
-
-    global.conn.ev.on('messages.upsert', async (chatUpdate) => {
-        try {
-            const msg = chatUpdate.messages?.[0]
-            if (!msg) return
-
-            const m = await smsg(global.conn, msg)
-
-            if (m?.isMedia) {
-                global.workerMedia.postMessage({
-                    sock: 'main',
-                    m: JSON.parse(JSON.stringify(m)),
-                    messages: JSON.parse(JSON.stringify(chatUpdate.messages))
-                })
-                return
-            }
-
-            if (messageHandlerMain && (msg.message || msg.messageStubType)) {
-                await messageHandlerMain.call(global.conn, m, chatUpdate)
-            }
-        } catch (e) {
-            if (!e?.message?.includes('decrypt')) console.error(e)
-        }
+    global.conn = makeWASocket({
+      ...connectionOptions,
+      auth: {
+        creds: fresh.state.creds,
+        keys: makeCacheableSignalKeyStore(fresh.state.keys, logger)
+      }
     })
 
-    global.conn.ev.on('creds.update', saveCreds)
+    global.conn.ev.on('creds.update', fresh.saveCreds)
+    global.conns.set('main', global.conn)
+  }
+
+  global.conn.ev.removeAllListeners('messages.upsert')
+  observeEvents(global.conn)
+
+  global.conn.ev.on('messages.upsert', async (m) => {
+    try {
+      const msg = m.messages?.[0]
+      if (!msg) return
+
+      const data = await smsg(global.conn, msg)
+
+      if (messageHandlerMain) {
+        await messageHandlerMain.call(global.conn, data, m)
+      }
+    } catch {}
+  })
+
+  global.conn.ev.on('creds.update', saveCreds)
 }
 
 await global.reload()
-
-/* =========================
-   SUB HANDLER
-========================= */
-
-global.subHandler = async (...args) => {
-    if (messageHandlerMain) {
-        return await messageHandlerMain.call(...args)
-    }
-}
