@@ -291,73 +291,54 @@ global.conns.set('main', global.conn)
    PAIRING CODE FIX (STABLE)
 ========================= */
 
-if (!state?.creds?.registered) {
+if (!state.creds.registered) {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const question = (t) => new Promise((r) => rl.question(t, r));
 
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    })
+    let phoneNumber = await question(chalk.cyan('┃ ') + `Número: `);
+    let addNumber = phoneNumber.replace(/\D/g, '');
 
-    const question = (t) =>
-        new Promise((r) => rl.question(t, r))
+    rl.close();
 
-    const runPairing = async () => {
-
+    setTimeout(async () => {
         try {
 
-            let phoneNumber = await question(
-                chalk.cyan('┃ ') + 'Número: '
-            )
+            // 🔥 FIX CLAVE: esperar a que el socket exista
+            if (!global.conn || !global.conn.user) {
+                console.log(chalk.red('┃ Socket aún no está listo, reintentando...'))
 
-            rl.close()
-
-            const addNumber = phoneNumber.replace(/\D/g, '')
-
-            if (!addNumber) {
-                console.log('┃ ❌ Número inválido')
-                return
-            }
-
-            console.log('┃ Generando código de vinculación...')
-
-            // espera a que el socket esté listo
-            let tries = 0
-            const maxTries = 10
-
-            const waitSocket = async () => {
-                if (global.conn?.user) {
+                setTimeout(async () => {
                     try {
-                        const code = await global.conn.requestPairingCode(addNumber)
+                        let codeBot = await global.conn.requestPairingCode(addNumber);
 
                         console.log(
-                            chalk.greenBright(
-                                '┃ CÓDIGO:',
-                                code?.match(/.{1,4}/g)?.join('-') || code
+                            chalk.cyan('┃ ') +
+                            chalk.bgBlack.white.bold(
+                                ` CÓDIGO: ${codeBot?.match(/.{1,4}/g)?.join("-") || codeBot} `
                             )
                         )
 
                     } catch (e) {
-                        console.error('┃ Error pairing:', e?.message || e)
+                        console.error(e);
                     }
+                }, 5000);
 
-                } else {
-                    if (tries < maxTries) {
-                        tries++
-                        setTimeout(waitSocket, 2000)
-                    } else {
-                        console.log('┃ ❌ Socket no inicializó a tiempo')
-                    }
-                }
+                return;
             }
 
-            setTimeout(waitSocket, 3000)
+            let codeBot = await global.conn.requestPairingCode(addNumber);
+
+            console.log(
+                chalk.cyan('┃ ') +
+                chalk.bgBlack.white.bold(
+                    ` CÓDIGO: ${codeBot?.match(/.{1,4}/g)?.join("-") || codeBot} `
+                )
+            );
 
         } catch (e) {
-            console.error('┃ Pairing error:', e?.message || e)
+            console.error(e);
         }
-    }
-
-    runPairing()
+    }, 3000);
 }
 /* =========================
    RELOAD
