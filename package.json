@@ -1,7 +1,7 @@
 {
   "name": "guerra-bot-md",
   "version": "7.1.0",
-  "description": "GUERRA BOT MD - Advanced WhatsApp Multi Device Bot with modular systems, AI integration and cyberpunk architecture.",
+  "description": "GUERRA BOT MD - Advanced WhatsApp Multi Device Bot with modular architecture and AI systems.",
   "main": "index.js",
   "type": "module",
   "private": false,
@@ -15,8 +15,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kevin/guerra-bot-md.git"
+    "url": "git+https://github.com/guerraroncancio-stack/-GUERRA-BOT-MD-V2.git"
   },
+  "bugs": {
+    "url": "https://github.com/guerraroncancio-stack/-GUERRA-BOT-MD-V2/issues"
+  },
+  "homepage": "https://github.com/guerraroncancio-stack/-GUERRA-BOT-MD-V2",
   "keywords": [
     "whatsapp",
     "whatsapp-bot",
@@ -25,7 +29,8 @@
     "guerra-bot",
     "multi-device",
     "ai-bot",
-    "cyberpunk"
+    "cyberpunk",
+    "automation"
   ],
   "author": "Kevin Guerra",
   "license": "MIT",
