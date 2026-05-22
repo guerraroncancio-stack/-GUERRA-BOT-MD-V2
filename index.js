@@ -31,7 +31,6 @@ import {
     makeWASocket,
     DisconnectReason,
     fetchLatestBaileysVersion,
-    makeCacheableSignalKeyStore,
     Browsers
 } from '@whiskeysockets/baileys'
 
@@ -76,15 +75,9 @@ const folders = [
 ]
 
 for (const folder of folders) {
-
     if (!existsSync(folder)) {
-
-        mkdirSync(folder, {
-            recursive: true
-        })
-
+        mkdirSync(folder, { recursive: true })
     }
-
 }
 
 /* =========================================
@@ -104,106 +97,13 @@ global.commandCache = new NodeCache({
    🔇 LOGGER
 ========================================= */
 
-const logger = pino({
-    level: 'silent'
-})
+const logger = pino({ level: 'silent' })
 
 /* =========================================
-   🛡️ ERROR HANDLER
+   📲 AUTH (IMPORTANT FIX HERE)
 ========================================= */
 
-process.removeAllListeners('warning')
-
-process.on('uncaughtException', (err) => {
-
-    const msg = String(err)
-
-    if (
-        msg.includes('Connection Closed') ||
-        msg.includes('Timed Out') ||
-        msg.includes('Bad MAC') ||
-        msg.includes('decrypt')
-    ) return
-
-    console.error(err)
-
-})
-
-process.on('unhandledRejection', (reason) => {
-
-    const msg = String(reason)
-
-    if (
-        msg.includes('Connection Closed') ||
-        msg.includes('Timed Out') ||
-        msg.includes('Bad MAC') ||
-        msg.includes('decrypt')
-    ) return
-
-    console.error(reason)
-
-})
-
-/* =========================================
-   🎨 TERMINAL UI
-========================================= */
-
-console.clear()
-
-cfonts.say('GUERRA BOT', {
-    font: 'block',
-    align: 'center',
-    gradient: ['cyan', 'blue']
-})
-
-console.log(
-chalk.cyanBright(`
-╔══════════════════════════════════════╗
-║           ⚔️ GUERRA BOT ⚔️           ║
-╠══════════════════════════════════════╣
-║ OWNER   : ${global.BOT.owner}
-║ VERSION : ${global.BOT.version}
-║ MODE    : ${global.BOT.mode}
-║ PREFIX  : ${global.BOT.prefix}
-╚══════════════════════════════════════╝
-`)
-)
-
-/* =========================================
-   ☁️ DATABASE
-========================================= */
-
-try {
-
-    await database.connect(MONGO_URI)
-
-    global.db = mongoose.connection.db
-    global.User = User
-
-    console.log(
-chalk.greenBright(`
-[ ✓ ] DATABASE CONNECTED
-`)
-    )
-
-} catch (err) {
-
-    console.log(
-chalk.redBright(`
-[ X ] DATABASE ERROR
-`)
-    )
-
-    console.error(err)
-
-}
-
-/* =========================================
-   📲 AUTH
-========================================= */
-
-const sessionFile =
-'./sessions/main.sqlite'
+const sessionFile = './sessions/main.sqlite'
 
 const {
     state,
@@ -219,11 +119,10 @@ const {
 } = await fetchLatestBaileysVersion()
 
 /* =========================================
-   ⚡ CONNECTION OPTIONS
+   ⚡ CONNECTION OPTIONS (FIXED)
 ========================================= */
 
-const msgRetryCounterCache =
-new NodeCache()
+const msgRetryCounterCache = new NodeCache()
 
 const connectionOptions = {
 
@@ -235,13 +134,8 @@ const connectionOptions = {
 
     browser: Browsers.macOS('Chrome'),
 
-    auth: {
-        creds: state.creds,
-        keys: makeCacheableSignalKeyStore(
-            state.keys,
-            logger
-        )
-    },
+    // 🔴 FIX REAL: NO custom key store
+    auth: state,
 
     markOnlineOnConnect: false,
 
@@ -257,129 +151,12 @@ const connectionOptions = {
 }
 
 /* =========================================
-   🔄 RECONNECT CONTROL
+   🔄 CONTROL
 ========================================= */
 
 let isStarting = false
 let reconnectAttempts = 0
 const MAX_RECONNECT = 10
-
-/* =========================================
-   📩 MESSAGE HANDLER
-========================================= */
-
-async function loadHandler() {
-
-    try {
-
-        const file =
-        path.resolve('./lib/message.js')
-
-        const module =
-        await import(
-            pathToFileURL(file).href +
-            `?update=${Date.now()}`
-        )
-
-        global.messageHandler =
-        module.message ||
-        module.default?.message ||
-        module.default
-
-        console.log(
-chalk.greenBright(`
-[ ✓ ] MESSAGE HANDLER LOADED
-`)
-        )
-
-    } catch (err) {
-
-        console.error(err)
-
-    }
-
-}
-
-await loadHandler()
-
-watch(
-    path.resolve('./lib/message.js'),
-    loadHandler
-)
-
-/* =========================================
-   🔌 PLUGINS
-========================================= */
-
-async function readPlugins(folder) {
-
-    const files =
-    await fsP.readdir(folder)
-
-    for (const filename of files) {
-
-        const file =
-        join(folder, filename)
-
-        const stat =
-        await fsP.stat(file)
-
-        if (stat.isDirectory()) {
-
-            await readPlugins(file)
-
-        } else if (filename.endsWith('.js')) {
-
-            try {
-
-                const module =
-                await import(
-                    pathToFileURL(
-                        path.resolve(file)
-                    ).href +
-                    `?update=${Date.now()}`
-                )
-
-                const plugin =
-                module.default || module
-
-                const name =
-                plugin.name ||
-                basename(filename, '.js')
-
-                global.plugins.set(
-                    name,
-                    plugin
-                )
-
-            } catch (err) {
-
-                console.log(
-chalk.redBright(`
-[ X ] ERROR LOADING PLUGIN:
-${filename}
-`)
-                )
-
-                console.error(err)
-
-            }
-
-        }
-
-    }
-
-}
-
-await readPlugins('./plugins')
-
-console.log(
-chalk.magentaBright(`
-╔══════════════════════════════════════╗
-║         SYSTEM INITIALIZED          ║
-╚══════════════════════════════════════╝
-`)
-)
 
 /* =========================================
    🚀 START BOT
@@ -388,267 +165,102 @@ chalk.magentaBright(`
 async function startBot() {
 
     if (isStarting) return
-
     isStarting = true
 
     try {
 
-        global.conn =
-        makeWASocket(connectionOptions)
+        global.conn = makeWASocket(connectionOptions)
 
         /* =========================================
-           🔐 PAIR CODE
+           🔐 PAIRING CODE
         ========================================= */
 
         if (!state.creds.registered) {
 
-            const rl =
-            readline.createInterface({
+            const rl = readline.createInterface({
                 input: process.stdin,
                 output: process.stdout
             })
 
             const ask = (text) =>
-            new Promise((resolve) =>
-                rl.question(text, resolve)
-            )
+                new Promise(resolve => rl.question(text, resolve))
 
-            console.log(
-chalk.yellowBright(`
-╔══════════════════════════════════════╗
-║       WHATSAPP LINK REQUIRED        ║
-╚══════════════════════════════════════╝
-`)
-            )
-
-            let phoneNumber =
-            await ask(
-chalk.cyanBright(`
-┃ ENTER YOUR NUMBER
-┃ Example: 573001112233
-┃ ➤ `)
-            )
-
-            phoneNumber =
-            phoneNumber.replace(/\D/g, '')
-
+            let phoneNumber = await ask('ENTER NUMBER: ')
+            phoneNumber = phoneNumber.replace(/\D/g, '')
             rl.close()
 
-            const code =
-            await global.conn.requestPairingCode(
-                phoneNumber
-            )
+            const code = await global.conn.requestPairingCode(phoneNumber)
 
             console.log(
-chalk.greenBright(`
-╔══════════════════════════════════════╗
-║         LINK CODE READY             ║
-╠══════════════════════════════════════╣
-║  ${code.match(/.{1,4}/g).join('-')}
-╚══════════════════════════════════════╝
-`)
+                code.match(/.{1,4}/g).join('-')
             )
-
         }
 
         /* =========================================
-           💾 SAVE CREDS
+           💾 SAVE CREDS (CRITICAL)
         ========================================= */
 
-        global.conn.ev.on(
-            'creds.update',
-            saveCreds
-        )
+        global.conn.ev.on('creds.update', saveCreds)
 
         /* =========================================
-           💬 MESSAGE EVENT
+           💬 MESSAGES
         ========================================= */
 
-        global.conn.ev.on(
-            'messages.upsert',
-            async (chatUpdate) => {
+        global.conn.ev.on('messages.upsert', async (chatUpdate) => {
 
-                try {
+            const msg = chatUpdate.messages?.[0]
+            if (!msg?.message) return
 
-                    const msg =
-                    chatUpdate.messages?.[0]
+            const m = await smsg(global.conn, msg)
 
-                    if (!msg?.message) return
-
-                    const m =
-                    await smsg(
-                        global.conn,
-                        msg
-                    )
-
-                    if (global.messageHandler) {
-
-                        await global.messageHandler.call(
-                            global.conn,
-                            m,
-                            chatUpdate
-                        )
-
-                    }
-
-                } catch (err) {
-
-                    if (
-                        !String(err)
-                        .includes('decrypt')
-                    ) {
-
-                        console.error(err)
-
-                    }
-
-                }
-
+            if (global.messageHandler) {
+                await global.messageHandler.call(global.conn, m, chatUpdate)
             }
-        )
+        })
 
         /* =========================================
            📡 CONNECTION UPDATE
         ========================================= */
 
-        global.conn.ev.on(
-            'connection.update',
-            async (update) => {
+        global.conn.ev.on('connection.update', async (update) => {
 
-                const {
-                    connection,
-                    lastDisconnect
-                } = update
+            const { connection, lastDisconnect } = update
 
-                if (connection === 'connecting') {
-
-                    console.log(
-chalk.yellowBright(`
-[ ⚡ ] CONNECTING...
-`)
-                    )
-
-                }
-
-                if (connection === 'open') {
-
-                    reconnectAttempts = 0
-
-                    console.log(
-chalk.greenBright(`
-╔══════════════════════════════════════╗
-║        WHATSAPP CONNECTED           ║
-╠══════════════════════════════════════╣
-║ STATUS : ONLINE
-╚══════════════════════════════════════╝
-`)
-                    )
-
-                }
-
-                if (connection === 'close') {
-
-                    const reason =
-                    new Boom(
-                        lastDisconnect?.error
-                    )?.output?.statusCode
-
-                    console.log(
-chalk.redBright(`
-[ X ] CONNECTION CLOSED
-`)
-                    )
-
-                    if (
-                        reason ===
-                        DisconnectReason.loggedOut
-                    ) {
-
-                        console.log(
-chalk.redBright(`
-╔══════════════════════════════════════╗
-║         SESSION EXPIRED             ║
-╠══════════════════════════════════════╣
-║ DELETE:
-║ ./sessions/main.sqlite
-║
-║ THEN RESTART BOT
-╚══════════════════════════════════════╝
-`)
-                        )
-
-                        process.exit(1)
-
-                    }
-
-                    if (
-                        reconnectAttempts >=
-                        MAX_RECONNECT
-                    ) {
-
-                        console.log(
-chalk.redBright(`
-[ X ] MAX RECONNECT LIMIT
-`)
-                        )
-
-                        process.exit(1)
-
-                    }
-
-                    reconnectAttempts++
-
-                    console.log(
-chalk.yellowBright(`
-[ ⚡ ] RECONNECTING...
-`)
-                    )
-
-                    isStarting = false
-
-                    setTimeout(async () => {
-
-                        try {
-
-                            await startBot()
-
-                        } catch (err) {
-
-                            console.error(err)
-
-                        }
-
-                    }, 5000)
-
-                }
-
+            if (connection === 'open') {
+                reconnectAttempts = 0
+                console.log('[ ✓ ] CONNECTED')
             }
-        )
+
+            if (connection === 'close') {
+
+                const reason = new Boom(lastDisconnect?.error)?.output?.statusCode
+
+                if (reason === DisconnectReason.loggedOut) {
+                    console.log('SESSION EXPIRED - DELETE ./sessions/main.sqlite')
+                    process.exit(1)
+                }
+
+                if (reconnectAttempts >= MAX_RECONNECT) {
+                    console.log('MAX RECONNECT REACHED')
+                    process.exit(1)
+                }
+
+                reconnectAttempts++
+                isStarting = false
+
+                setTimeout(() => startBot(), 5000)
+            }
+        })
 
     } catch (err) {
-
         console.error(err)
-
     }
 
     isStarting = false
-
 }
 
 /* =========================================
-   🧵 WORKERS
-========================================= */
-
-global.workerMedia =
-new Worker(
-    new URL(
-        './lib/workers/mediaWorker.js',
-        import.meta.url
-    )
-)
-
-/* =========================================
-   🚀 START
+   🚀 INIT
 ========================================= */
 
 await startBot()
