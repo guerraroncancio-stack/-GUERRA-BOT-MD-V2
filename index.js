@@ -1,20 +1,46 @@
 /* =========================================
-   GUERRA BOT MD — CORE ENGINE
+   GUERRA BOT MD — CORE SYSTEM
    Powered by Kevin Guerra
 ========================================= */
 
-import process from 'process'
-import os from 'os'
-import fs from 'fs'
-import path from 'path'
+import { Worker } from 'worker_threads'
+import mongoose from 'mongoose'
+import path, { join, basename } from 'path'
+import fs, {
+    existsSync,
+    mkdirSync,
+    watch,
+    watchFile,
+    unwatchFile,
+    promises as fsP
+} from 'fs'
+
 import chalk from 'chalk'
+import pino from 'pino'
+import yargs from 'yargs'
+import readline from 'readline'
 import cfonts from 'cfonts'
 import NodeCache from 'node-cache'
-import mongoose from 'mongoose'
-import pino from 'pino'
+
+import { Boom } from '@hapi/boom'
+import { platform } from 'process'
+import { fileURLToPath, pathToFileURL } from 'url'
+import { EventEmitter } from 'events'
+
+import {
+    makeWASocket,
+    DisconnectReason,
+    fetchLatestBaileysVersion,
+    makeCacheableSignalKeyStore,
+    Browsers
+} from '@whiskeysockets/baileys'
+
+import useSQLiteAuthState from './lib/auth.js'
+import { database, User } from './lib/db.js'
+import { smsg } from './lib/serializer.js'
 
 /* =========================================
-   GLOBAL BRANDING
+   BRANDING
 ========================================= */
 
 global.BOT = {
@@ -24,129 +50,95 @@ global.BOT = {
     number: '573000000000',
     prefix: '.',
     mode: 'PUBLIC',
-    status: 'ONLINE',
-    codename: 'WAR-X',
-    started: Date.now()
+    status: 'ONLINE'
 }
 
 /* =========================================
    MONGODB
 ========================================= */
 
-global.MONGO_URI =
+const MONGO_URI =
 'mongodb+srv://guerraroncancio_db_user:n5dYIEOo8T4iP2cd@cluster0.zkkz8qa.mongodb.net/bot?retryWrites=true&w=majority'
+
+/* =========================================
+   CACHE
+========================================= */
+
+global.userCache = new Map()
+global.plugins = new Map()
+global.aliases = new Map()
+global.conns = new Map()
+
+global.commandCache = new NodeCache({
+    stdTTL: 60,
+    checkperiod: 120,
+    useClones: false
+})
 
 /* =========================================
    LOGGER
 ========================================= */
 
-global.logger = pino({
+const logger = pino({
     level: 'silent'
 })
-
-/* =========================================
-   CACHE SYSTEM
-========================================= */
-
-global.cache = {
-    users: new Map(),
-    groups: new NodeCache({
-        stdTTL: 300,
-        checkperiod: 600,
-        useClones: false
-    }),
-
-    commands: new NodeCache({
-        stdTTL: 60,
-        checkperiod: 120,
-        useClones: false
-    }),
-
-    cooldowns: new NodeCache({
-        stdTTL: 5,
-        checkperiod: 10,
-        useClones: false
-    })
-}
-
-/* =========================================
-   SYSTEM INFO
-========================================= */
-
-global.system = {
-    platform: os.platform(),
-    cpu: os.cpus()[0]?.model,
-    memory: `${(os.totalmem() / 1024 / 1024 / 1024).toFixed(2)} GB`,
-    hostname: os.hostname(),
-    node: process.version,
-    uptime: process.uptime()
-}
 
 /* =========================================
    FOLDERS
 ========================================= */
 
 const folders = [
-    './session',
-    './temp',
-    './src',
-    './src/commands',
-    './src/events',
-    './src/system',
-    './src/database',
-    './src/media',
-    './src/logs'
+    './sessions',
+    './tmp',
+    './plugins',
+    './lib',
+    './database'
 ]
 
 for (const folder of folders) {
-    if (!fs.existsSync(folder)) {
-        fs.mkdirSync(folder, { recursive: true })
+    if (!existsSync(folder)) {
+        mkdirSync(folder, { recursive: true })
     }
 }
 
 /* =========================================
-   TERMINAL CLEANER
+   TERMINAL
 ========================================= */
 
 console.clear()
 
-/* =========================================
-   CYBERPUNK BANNER
-========================================= */
-
 cfonts.say(global.BOT.name, {
     font: 'block',
     align: 'center',
-    gradient: ['red', 'magenta'],
-    lineHeight: 1,
-    letterSpacing: 1
+    gradient: ['red', 'magenta']
 })
 
 console.log(
-chalk.hex('#ff004c')(`
-╔══════════════════════════════════════╗
-║           GUERRA BOT MD             ║
-╠══════════════════════════════════════╣
-║ OWNER    : ${global.BOT.owner}
-║ VERSION  : ${global.BOT.version}
-║ MODE     : ${global.BOT.mode}
-║ STATUS   : ${global.BOT.status}
-║ ENGINE   : ${global.BOT.codename}
-╚══════════════════════════════════════╝
+chalk.redBright(`
+╔══════════════════════════════╗
+║        GUERRA BOT MD        ║
+╠══════════════════════════════╣
+║ OWNER  : ${global.BOT.owner}
+║ MODE   : ${global.BOT.mode}
+║ STATUS : ${global.BOT.status}
+╚══════════════════════════════╝
 `)
 )
 
 /* =========================================
-   DATABASE CONNECTION
+   DATABASE CONNECT
 ========================================= */
 
 try {
 
-    await mongoose.connect(global.MONGO_URI)
+    await database.connect(MONGO_URI)
+
+    global.db = mongoose.connection.db
+    global.User = User
 
     console.log(
         chalk.greenBright(`
-[ ✓ ] MONGODB CONNECTED
+[ ✓ ] DATABASE CONNECTED
 `)
     )
 
@@ -163,82 +155,341 @@ try {
 }
 
 /* =========================================
-   MEMORY MONITOR
+   BAILEYS VERSION
 ========================================= */
 
-setInterval(() => {
-
-    const used = process.memoryUsage()
-
-    const ram = {
-        rss: `${(used.rss / 1024 / 1024).toFixed(2)} MB`,
-        heap: `${(used.heapUsed / 1024 / 1024).toFixed(2)} MB`
-    }
-
-    global.system.ram = ram
-
-}, 10000)
+const { version } = await fetchLatestBaileysVersion()
 
 /* =========================================
-   ANTI CRASH
+   AUTH
 ========================================= */
 
-process.removeAllListeners('warning')
-process.setMaxListeners(0)
+const sessionFile = './sessions/main.sqlite'
 
-process.on('multipleResolves', () => {})
+const {
+    state,
+    saveCreds
+} = useSQLiteAuthState(sessionFile)
 
-process.on('uncaughtException', async(err) => {
+/* =========================================
+   SOCKET CONFIG
+========================================= */
 
-    const msg = err?.message || ''
+const msgRetryCounterCache = new NodeCache()
 
-    if (
-        msg.includes('Connection Closed') ||
-        msg.includes('timed out') ||
-        msg.includes('rate-overlimit') ||
-        msg.includes('Bad MAC') ||
-        msg.includes('Connection Failure')
-    ) return
+const connectionOptions = {
 
-    console.log(
-        chalk.redBright(`
-[ CRASH DETECTED ]
-`)
+    version,
+    logger,
+
+    browser: Browsers.macOS('Chrome'),
+
+    printQRInTerminal: false,
+
+    auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(
+            state.keys,
+            logger
+        )
+    },
+
+    connectTimeoutMs: 60000,
+    defaultQueryTimeoutMs: 60000,
+    keepAliveIntervalMs: 15000,
+
+    markOnlineOnConnect: true,
+    syncFullHistory: false,
+
+    msgRetryCounterCache
+
+}
+
+/* =========================================
+   CREATE CONNECTION
+========================================= */
+
+global.conn = makeWASocket(connectionOptions)
+
+global.conns.set('main', global.conn)
+
+/* =========================================
+   REQUEST PAIR CODE
+========================================= */
+
+if (!state.creds.registered) {
+
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    })
+
+    const question = (text) =>
+        new Promise((resolve) =>
+            rl.question(text, resolve)
+        )
+
+    let phoneNumber = await question(
+        chalk.cyanBright(`
+┃ NÚMERO WHATSAPP:
+┃ `)
     )
 
-    console.error(err)
+    phoneNumber = phoneNumber.replace(/\D/g, '')
 
-})
+    rl.close()
 
-process.on('unhandledRejection', async(reason) => {
+    setTimeout(async() => {
 
-    const msg = String(reason?.message || reason || '')
+        try {
 
-    if (
-        msg.includes('Connection Closed') ||
-        msg.includes('timed out') ||
-        msg.includes('rate-overlimit')
-    ) return
+            const code = await global.conn.requestPairingCode(
+                phoneNumber
+            )
 
-    console.log(
-        chalk.yellowBright(`
-[ PROMISE ERROR ]
+            console.log(
+                chalk.greenBright(`
+╔══════════════════════════════╗
+║     CÓDIGO DE VINCULACIÓN    ║
+╠══════════════════════════════╣
+║ ${code.match(/.{1,4}/g).join('-')}
+╚══════════════════════════════╝
 `)
-    )
+            )
 
-    console.error(reason)
+        } catch (err) {
 
-})
+            console.error(err)
+
+        }
+
+    }, 3000)
+
+}
+
+/* =========================================
+   MESSAGE HANDLER
+========================================= */
+
+let messageHandler = null
+
+const loadHandler = async() => {
+
+    try {
+
+        const file =
+        path.join(process.cwd(), 'lib/message.js')
+
+        const module =
+        await import(`file://${file}?update=${Date.now()}`)
+
+        messageHandler =
+        module.message ||
+        module.default?.message ||
+        module.default
+
+    } catch (err) {
+
+        console.error(err)
+
+    }
+
+}
+
+await loadHandler()
+
+watch(
+    path.join(process.cwd(), 'lib/message.js'),
+    loadHandler
+)
+
+/* =========================================
+   CONNECTION EVENTS
+========================================= */
+
+global.conn.ev.on(
+    'connection.update',
+    async(update) => {
+
+        const {
+            connection,
+            lastDisconnect
+        } = update
+
+        if (connection === 'open') {
+
+            console.log(
+                chalk.greenBright(`
+[ ✓ ] WHATSAPP CONNECTED
+`)
+            )
+
+        }
+
+        if (connection === 'close') {
+
+            const reason =
+            new Boom(lastDisconnect?.error)
+            ?.output?.statusCode
+
+            if (
+                reason === DisconnectReason.loggedOut
+            ) {
+
+                console.log(
+                    chalk.redBright(`
+[ X ] SESSION CLOSED
+`)
+                )
+
+                process.exit(1)
+
+            } else {
+
+                console.log(
+                    chalk.yellowBright(`
+[ ! ] RECONNECTING...
+`)
+                )
+
+                setTimeout(() => {
+
+                    global.conn = makeWASocket(
+                        connectionOptions
+                    )
+
+                }, 5000)
+
+            }
+
+        }
+
+    }
+)
+
+/* =========================================
+   MESSAGE EVENTS
+========================================= */
+
+global.conn.ev.on(
+    'messages.upsert',
+    async(chatUpdate) => {
+
+        try {
+
+            const msg =
+            chatUpdate.messages?.[0]
+
+            if (!msg?.message) return
+
+            const m =
+            await smsg(global.conn, msg)
+
+            if (messageHandler) {
+
+                await messageHandler.call(
+                    global.conn,
+                    m,
+                    chatUpdate
+                )
+
+            }
+
+        } catch (err) {
+
+            if (
+                !String(err)
+                .includes('decrypt')
+            ) {
+                console.error(err)
+            }
+
+        }
+
+    }
+)
+
+/* =========================================
+   SAVE CREDS
+========================================= */
+
+global.conn.ev.on(
+    'creds.update',
+    saveCreds
+)
+
+/* =========================================
+   PLUGIN SYSTEM
+========================================= */
+
+async function readPlugins(folder) {
+
+    const files = await fsP.readdir(folder)
+
+    for (const filename of files) {
+
+        const file = join(folder, filename)
+
+        const stat = await fsP.stat(file)
+
+        if (stat.isDirectory()) {
+
+            await readPlugins(file)
+
+        } else if (/\.js$/.test(filename)) {
+
+            try {
+
+                const module =
+                await import(
+                    `file://${file}?update=${Date.now()}`
+                )
+
+                const plugin =
+                module.default || module
+
+                const name =
+                plugin.name ||
+                basename(filename, '.js')
+
+                global.plugins.set(name, plugin)
+
+                if (plugin.alias) {
+
+                    const aliases =
+                    Array.isArray(plugin.alias)
+                    ? plugin.alias
+                    : [plugin.alias]
+
+                    for (const alias of aliases) {
+                        global.aliases.set(alias, name)
+                    }
+
+                }
+
+            } catch (err) {
+
+                console.error(err)
+
+            }
+
+        }
+
+    }
+
+}
+
+await readPlugins(
+    join(process.cwd(), './plugins')
+)
 
 /* =========================================
    HOT RELOAD
 ========================================= */
 
-const file = path.resolve('./index.js')
+watchFile(import.meta.url, async() => {
 
-fs.watchFile(file, () => {
-
-    fs.unwatchFile(file)
+    unwatchFile(import.meta.url)
 
     console.log(
         chalk.cyanBright(`
@@ -246,18 +497,28 @@ fs.watchFile(file, () => {
 `)
     )
 
-    import(`${file}?update=${Date.now()}`)
-
 })
 
 /* =========================================
-   FINAL BOOT
+   WORKERS
+========================================= */
+
+global.workerMedia =
+new Worker(
+    new URL(
+        './lib/workers/mediaWorker.js',
+        import.meta.url
+    )
+)
+
+/* =========================================
+   FINAL
 ========================================= */
 
 console.log(
 chalk.magentaBright(`
-╔══════════════════════════════════════╗
-║        GUERRA BOT INITIALIZED       ║
-╚══════════════════════════════════════╝
+╔══════════════════════════════╗
+║      SYSTEM INITIALIZED      ║
+╚══════════════════════════════╝
 `)
 )
