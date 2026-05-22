@@ -1,5 +1,5 @@
 /* =========================================
-   ⚔️ GUERRA BOT MD — STABLE CORE
+   ⚔️ GUERRA BOT MD — FINAL STABLE CORE
    Powered by Kevin Guerra
 ========================================= */
 
@@ -35,9 +35,11 @@ import {
     Browsers
 } from '@whiskeysockets/baileys'
 
+import { Boom } from '@hapi/boom'
+
 import {
-    Boom
-} from '@hapi/boom'
+    pathToFileURL
+} from 'url'
 
 import useSQLiteAuthState from './lib/auth.js'
 import { database, User } from './lib/db.js'
@@ -50,13 +52,13 @@ import { smsg } from './lib/serializer.js'
 global.BOT = {
     name: 'GUERRA BOT MD',
     owner: 'Kevin Guerra',
-    version: '10.0.0',
+    version: '11.0.0',
     prefix: '.',
     mode: 'PUBLIC'
 }
 
 /* =========================================
-   📦 MONGODB
+   📦 DATABASE
 ========================================= */
 
 const MONGO_URI =
@@ -143,7 +145,7 @@ process.on('unhandledRejection', (reason) => {
 })
 
 /* =========================================
-   🎨 TERMINAL DESIGN
+   🎨 TERMINAL UI
 ========================================= */
 
 console.clear()
@@ -168,7 +170,7 @@ chalk.cyanBright(`
 )
 
 /* =========================================
-   ☁️ DATABASE CONNECT
+   ☁️ DATABASE
 ========================================= */
 
 try {
@@ -197,7 +199,7 @@ chalk.redBright(`
 }
 
 /* =========================================
-   📲 AUTH STATE
+   📲 AUTH
 ========================================= */
 
 const sessionFile =
@@ -249,269 +251,18 @@ const connectionOptions = {
 
     defaultQueryTimeoutMs: 60000,
 
-    keepAliveIntervalMs: 10000,
+    keepAliveIntervalMs: 15000,
 
     msgRetryCounterCache
-
 }
 
 /* =========================================
-   🚀 CREATE CONNECTION
+   🔄 RECONNECT CONTROL
 ========================================= */
 
-let isReconnecting = false
-
-async function startBot() {
-
-    global.conn =
-    makeWASocket(connectionOptions)
-
-    /* =========================================
-       🔐 PAIR CODE
-    ========================================= */
-
-    if (!global.conn.authState?.creds?.registered) {
-
-        const rl =
-        readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-        })
-
-        const ask = (text) =>
-        new Promise((resolve) =>
-            rl.question(text, resolve)
-        )
-
-        console.log(
-chalk.yellowBright(`
-╔══════════════════════════════════════╗
-║        WHATSAPP LINK REQUIRED       ║
-╚══════════════════════════════════════╝
-`)
-        )
-
-        let phoneNumber =
-        await ask(
-chalk.cyanBright(`
-┃ ENTER YOUR NUMBER
-┃ Example: 573001112233
-┃ ➤ `)
-        )
-
-        phoneNumber =
-        phoneNumber.replace(/\D/g, '')
-
-        rl.close()
-
-        if (!phoneNumber) {
-
-            console.log(
-chalk.redBright(`
-[ X ] INVALID NUMBER
-`)
-            )
-
-            process.exit(1)
-
-        }
-
-        setTimeout(async () => {
-
-            try {
-
-                const code =
-                await global.conn.requestPairingCode(
-                    phoneNumber
-                )
-
-                console.log(
-chalk.greenBright(`
-╔══════════════════════════════════════╗
-║          LINK CODE READY            ║
-╠══════════════════════════════════════╣
-║  ${code.match(/.{1,4}/g).join('-')}
-╚══════════════════════════════════════╝
-`)
-                )
-
-            } catch (err) {
-
-                console.log(
-chalk.redBright(`
-[ X ] PAIRING FAILED
-`)
-                )
-
-                console.error(err)
-
-            }
-
-        }, 3000)
-
-    }
-
-    /* =========================================
-       💾 SAVE CREDS
-    ========================================= */
-
-    global.conn.ev.on(
-        'creds.update',
-        saveCreds
-    )
-
-    /* =========================================
-       📡 CONNECTION UPDATE
-    ========================================= */
-
-    global.conn.ev.on(
-        'connection.update',
-        async (update) => {
-
-            const {
-                connection,
-                lastDisconnect
-            } = update
-
-            if (connection === 'connecting') {
-
-                console.log(
-chalk.yellowBright(`
-[ ⚡ ] CONNECTING TO WHATSAPP...
-`)
-                )
-
-            }
-
-            if (connection === 'open') {
-
-                isReconnecting = false
-
-                console.log(
-chalk.greenBright(`
-╔══════════════════════════════════════╗
-║       WHATSAPP CONNECTED            ║
-╠══════════════════════════════════════╣
-║ STATUS : ONLINE
-╚══════════════════════════════════════╝
-`)
-                )
-
-            }
-
-            if (connection === 'close') {
-
-                const reason =
-                new Boom(
-                    lastDisconnect?.error
-                )?.output?.statusCode
-
-                console.log(
-chalk.redBright(`
-[ X ] CONNECTION CLOSED
-`)
-                )
-
-                if (
-                    reason === DisconnectReason.loggedOut
-                ) {
-
-                    console.log(
-chalk.redBright(`
-╔══════════════════════════════════════╗
-║          SESSION EXPIRED            ║
-╠══════════════════════════════════════╣
-║ DELETE:
-║ ./sessions/main.sqlite
-║
-║ THEN RESTART THE BOT
-╚══════════════════════════════════════╝
-`)
-                    )
-
-                    process.exit(1)
-
-                }
-
-                if (!isReconnecting) {
-
-                    isReconnecting = true
-
-                    console.log(
-chalk.yellowBright(`
-[ ⚡ ] RECONNECTING IN 5 SECONDS...
-`)
-                    )
-
-                    setTimeout(async () => {
-
-                        try {
-
-                            await startBot()
-
-                        } catch (err) {
-
-                            console.error(err)
-
-                        }
-
-                    }, 5000)
-
-                }
-
-            }
-
-        }
-    )
-
-    /* =========================================
-       💬 MESSAGE EVENT
-    ========================================= */
-
-    global.conn.ev.on(
-        'messages.upsert',
-        async (chatUpdate) => {
-
-            try {
-
-                const msg =
-                chatUpdate.messages?.[0]
-
-                if (!msg?.message) return
-
-                const m =
-                await smsg(
-                    global.conn,
-                    msg
-                )
-
-                if (global.messageHandler) {
-
-                    await global.messageHandler.call(
-                        global.conn,
-                        m,
-                        chatUpdate
-                    )
-
-                }
-
-            } catch (err) {
-
-                if (
-                    !String(err)
-                    .includes('decrypt')
-                ) {
-
-                    console.error(err)
-
-                }
-
-            }
-
-        }
-    )
-
-}
+let isStarting = false
+let reconnectAttempts = 0
+const MAX_RECONNECT = 10
 
 /* =========================================
    📩 MESSAGE HANDLER
@@ -522,14 +273,12 @@ async function loadHandler() {
     try {
 
         const file =
-        path.join(
-            process.cwd(),
-            'lib/message.js'
-        )
+        path.resolve('./lib/message.js')
 
         const module =
         await import(
-            `file://${file}?update=${Date.now()}`
+            pathToFileURL(file).href +
+            `?update=${Date.now()}`
         )
 
         global.messageHandler =
@@ -538,7 +287,7 @@ async function loadHandler() {
         module.default
 
         console.log(
-chalk.cyanBright(`
+chalk.greenBright(`
 [ ✓ ] MESSAGE HANDLER LOADED
 `)
         )
@@ -554,15 +303,12 @@ chalk.cyanBright(`
 await loadHandler()
 
 watch(
-    path.join(
-        process.cwd(),
-        'lib/message.js'
-    ),
+    path.resolve('./lib/message.js'),
     loadHandler
 )
 
 /* =========================================
-   🔌 LOAD PLUGINS
+   🔌 PLUGINS
 ========================================= */
 
 async function readPlugins(folder) {
@@ -582,13 +328,16 @@ async function readPlugins(folder) {
 
             await readPlugins(file)
 
-        } else if (/\.js$/.test(filename)) {
+        } else if (filename.endsWith('.js')) {
 
             try {
 
                 const module =
                 await import(
-                    `file://${file}?update=${Date.now()}`
+                    pathToFileURL(
+                        path.resolve(file)
+                    ).href +
+                    `?update=${Date.now()}`
                 )
 
                 const plugin =
@@ -604,6 +353,13 @@ async function readPlugins(folder) {
                 )
 
             } catch (err) {
+
+                console.log(
+chalk.redBright(`
+[ X ] ERROR LOADING PLUGIN:
+${filename}
+`)
+                )
 
                 console.error(err)
 
@@ -626,6 +382,260 @@ chalk.magentaBright(`
 )
 
 /* =========================================
+   🚀 START BOT
+========================================= */
+
+async function startBot() {
+
+    if (isStarting) return
+
+    isStarting = true
+
+    try {
+
+        global.conn =
+        makeWASocket(connectionOptions)
+
+        /* =========================================
+           🔐 PAIR CODE
+        ========================================= */
+
+        if (!state.creds.registered) {
+
+            const rl =
+            readline.createInterface({
+                input: process.stdin,
+                output: process.stdout
+            })
+
+            const ask = (text) =>
+            new Promise((resolve) =>
+                rl.question(text, resolve)
+            )
+
+            console.log(
+chalk.yellowBright(`
+╔══════════════════════════════════════╗
+║       WHATSAPP LINK REQUIRED        ║
+╚══════════════════════════════════════╝
+`)
+            )
+
+            let phoneNumber =
+            await ask(
+chalk.cyanBright(`
+┃ ENTER YOUR NUMBER
+┃ Example: 573001112233
+┃ ➤ `)
+            )
+
+            phoneNumber =
+            phoneNumber.replace(/\D/g, '')
+
+            rl.close()
+
+            const code =
+            await global.conn.requestPairingCode(
+                phoneNumber
+            )
+
+            console.log(
+chalk.greenBright(`
+╔══════════════════════════════════════╗
+║         LINK CODE READY             ║
+╠══════════════════════════════════════╣
+║  ${code.match(/.{1,4}/g).join('-')}
+╚══════════════════════════════════════╝
+`)
+            )
+
+        }
+
+        /* =========================================
+           💾 SAVE CREDS
+        ========================================= */
+
+        global.conn.ev.on(
+            'creds.update',
+            saveCreds
+        )
+
+        /* =========================================
+           💬 MESSAGE EVENT
+        ========================================= */
+
+        global.conn.ev.on(
+            'messages.upsert',
+            async (chatUpdate) => {
+
+                try {
+
+                    const msg =
+                    chatUpdate.messages?.[0]
+
+                    if (!msg?.message) return
+
+                    const m =
+                    await smsg(
+                        global.conn,
+                        msg
+                    )
+
+                    if (global.messageHandler) {
+
+                        await global.messageHandler.call(
+                            global.conn,
+                            m,
+                            chatUpdate
+                        )
+
+                    }
+
+                } catch (err) {
+
+                    if (
+                        !String(err)
+                        .includes('decrypt')
+                    ) {
+
+                        console.error(err)
+
+                    }
+
+                }
+
+            }
+        )
+
+        /* =========================================
+           📡 CONNECTION UPDATE
+        ========================================= */
+
+        global.conn.ev.on(
+            'connection.update',
+            async (update) => {
+
+                const {
+                    connection,
+                    lastDisconnect
+                } = update
+
+                if (connection === 'connecting') {
+
+                    console.log(
+chalk.yellowBright(`
+[ ⚡ ] CONNECTING...
+`)
+                    )
+
+                }
+
+                if (connection === 'open') {
+
+                    reconnectAttempts = 0
+
+                    console.log(
+chalk.greenBright(`
+╔══════════════════════════════════════╗
+║        WHATSAPP CONNECTED           ║
+╠══════════════════════════════════════╣
+║ STATUS : ONLINE
+╚══════════════════════════════════════╝
+`)
+                    )
+
+                }
+
+                if (connection === 'close') {
+
+                    const reason =
+                    new Boom(
+                        lastDisconnect?.error
+                    )?.output?.statusCode
+
+                    console.log(
+chalk.redBright(`
+[ X ] CONNECTION CLOSED
+`)
+                    )
+
+                    if (
+                        reason ===
+                        DisconnectReason.loggedOut
+                    ) {
+
+                        console.log(
+chalk.redBright(`
+╔══════════════════════════════════════╗
+║         SESSION EXPIRED             ║
+╠══════════════════════════════════════╣
+║ DELETE:
+║ ./sessions/main.sqlite
+║
+║ THEN RESTART BOT
+╚══════════════════════════════════════╝
+`)
+                        )
+
+                        process.exit(1)
+
+                    }
+
+                    if (
+                        reconnectAttempts >=
+                        MAX_RECONNECT
+                    ) {
+
+                        console.log(
+chalk.redBright(`
+[ X ] MAX RECONNECT LIMIT
+`)
+                        )
+
+                        process.exit(1)
+
+                    }
+
+                    reconnectAttempts++
+
+                    console.log(
+chalk.yellowBright(`
+[ ⚡ ] RECONNECTING...
+`)
+                    )
+
+                    isStarting = false
+
+                    setTimeout(async () => {
+
+                        try {
+
+                            await startBot()
+
+                        } catch (err) {
+
+                            console.error(err)
+
+                        }
+
+                    }, 5000)
+
+                }
+
+            }
+        )
+
+    } catch (err) {
+
+        console.error(err)
+
+    }
+
+    isStarting = false
+
+}
+
+/* =========================================
    🧵 WORKERS
 ========================================= */
 
@@ -638,7 +648,7 @@ new Worker(
 )
 
 /* =========================================
-   🚀 START BOT
+   🚀 START
 ========================================= */
 
 await startBot()
