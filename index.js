@@ -1,43 +1,36 @@
 /* =========================================
-   GUERRA BOT MD — ULTRA CORE
+   ⚔️ GUERRA BOT MD — ULTRA CORE
    Powered by Kevin Guerra
 ========================================= */
 
 import './config.js'
 
-import fs, {
-  existsSync,
-  mkdirSync,
-  watch,
-  promises as fsP
-} from 'fs'
+import { Worker } from 'worker_threads'
+import mongoose from 'mongoose'
 
-import path, {
-  join,
-  basename
-} from 'path'
+import path, { join, basename } from 'path'
+
+import fs, {
+    existsSync,
+    mkdirSync,
+    watch,
+    promises as fsP
+} from 'fs'
 
 import chalk from 'chalk'
 import pino from 'pino'
-import cfonts from 'cfonts'
 import readline from 'readline'
-import mongoose from 'mongoose'
+import cfonts from 'cfonts'
 import NodeCache from 'node-cache'
 
-import {
-  Worker
-} from 'worker_threads'
+import { Boom } from '@hapi/boom'
 
 import {
-  Boom
-} from '@hapi/boom'
-
-import {
-  makeWASocket,
-  DisconnectReason,
-  fetchLatestBaileysVersion,
-  makeCacheableSignalKeyStore,
-  Browsers
+    makeWASocket,
+    DisconnectReason,
+    fetchLatestBaileysVersion,
+    makeCacheableSignalKeyStore,
+    Browsers
 } from '@whiskeysockets/baileys'
 
 import useSQLiteAuthState from './lib/auth.js'
@@ -45,535 +38,579 @@ import { database, User } from './lib/db.js'
 import { smsg } from './lib/serializer.js'
 
 /* =========================================
-   GLOBAL
+   ⚙️ BOT CONFIG
 ========================================= */
 
 global.BOT = {
-  name: 'GUERRA BOT MD',
-  owner: 'Kevin Guerra',
-  version: '8.0.0',
-  prefix: '.',
-  mode: 'PUBLIC'
+    name: 'GUERRA BOT MD',
+    version: '9.0.0',
+    owner: 'Kevin Guerra',
+    prefix: '.',
+    mode: 'PUBLIC'
 }
 
-global.plugins = new Map()
-global.aliases = new Map()
-global.conns = new Map()
-global.userCache = new Map()
-
 /* =========================================
-   CACHE
-========================================= */
-
-global.commandCache = new NodeCache({
-  stdTTL: 60,
-  checkperiod: 120,
-  useClones: false
-})
-
-/* =========================================
-   DATABASE
+   📦 DATABASE
 ========================================= */
 
 const MONGO_URI =
 'mongodb+srv://guerraroncancio_db_user:n5dYIEOo8T4iP2cd@cluster0.zkkz8qa.mongodb.net/bot?retryWrites=true&w=majority'
 
 /* =========================================
-   FOLDERS
+   📁 CREATE FOLDERS
 ========================================= */
 
 const folders = [
-  './sessions',
-  './tmp',
-  './plugins',
-  './lib'
+    './sessions',
+    './tmp',
+    './plugins',
+    './lib'
 ]
 
 for (const folder of folders) {
-  if (!existsSync(folder)) {
-    mkdirSync(folder, { recursive: true })
-  }
+
+    if (!existsSync(folder)) {
+        mkdirSync(folder, {
+            recursive: true
+        })
+    }
+
 }
 
 /* =========================================
-   LOGGER
+   🧠 GLOBAL CACHE
 ========================================= */
 
-const logger = pino({
-  level: 'silent'
+global.plugins = new Map()
+global.aliases = new Map()
+global.conns = new Map()
+
+global.commandCache = new NodeCache({
+    stdTTL: 60,
+    checkperiod: 120,
+    useClones: false
 })
 
 /* =========================================
-   FIX ERRORS
+   🔇 LOGGER
+========================================= */
+
+const logger = pino({
+    level: 'silent'
+})
+
+/* =========================================
+   🛡️ FIX TERMINAL ERRORS
 ========================================= */
 
 process.removeAllListeners('warning')
 
 process.on('uncaughtException', (err) => {
 
-  const msg = err?.message || ''
+    const msg = String(err)
 
-  if (
-    msg.includes('Connection Closed') ||
-    msg.includes('Bad MAC') ||
-    msg.includes('timed out') ||
-    msg.includes('rate-overlimit') ||
-    msg.includes('decrypt')
-  ) return
+    if (
+        msg.includes('Connection Closed') ||
+        msg.includes('Timed Out') ||
+        msg.includes('Bad MAC') ||
+        msg.includes('decrypt')
+    ) return
 
-  console.log(chalk.redBright('[ ERROR ]'), err)
+    console.error(err)
 
 })
 
-process.on('unhandledRejection', (err) => {
+process.on('unhandledRejection', (reason) => {
 
-  const msg = String(err?.message || err || '')
+    const msg = String(reason)
 
-  if (
-    msg.includes('Connection Closed') ||
-    msg.includes('Bad MAC') ||
-    msg.includes('timed out') ||
-    msg.includes('rate-overlimit') ||
-    msg.includes('decrypt')
-  ) return
+    if (
+        msg.includes('Connection Closed') ||
+        msg.includes('Timed Out') ||
+        msg.includes('Bad MAC') ||
+        msg.includes('decrypt')
+    ) return
 
-  console.log(chalk.redBright('[ PROMISE ]'), err)
+    console.error(reason)
 
 })
 
 /* =========================================
-   TERMINAL UI
+   🎨 TERMINAL DESIGN
 ========================================= */
 
 console.clear()
 
 cfonts.say('GUERRA BOT', {
-  font: 'chrome',
-  align: 'center',
-  gradient: ['cyan', 'blue']
+    font: 'block',
+    align: 'center',
+    gradient: ['cyan', 'blue']
 })
 
-console.log(chalk.cyanBright(`
-╔════════════════════════════════════╗
-║         GUERRA BOT MD             ║
-╠════════════════════════════════════╣
-║ OWNER   : ${global.BOT.owner}
-║ VERSION : ${global.BOT.version}
-║ MODE    : ${global.BOT.mode}
-║ PREFIX  : ${global.BOT.prefix}
-╚════════════════════════════════════╝
-`))
+console.log(
+chalk.cyanBright(`
+╔══════════════════════════════════════╗
+║            GUERRA BOT MD            ║
+╠══════════════════════════════════════╣
+║ OWNER    : ${global.BOT.owner}
+║ VERSION  : ${global.BOT.version}
+║ MODE     : ${global.BOT.mode}
+║ PREFIX   : ${global.BOT.prefix}
+╚══════════════════════════════════════╝
+`)
+)
 
 /* =========================================
-   DATABASE CONNECT
+   ☁️ DATABASE CONNECT
 ========================================= */
 
 try {
 
-  await database.connect(MONGO_URI)
+    await database.connect(MONGO_URI)
 
-  global.db = mongoose.connection.db
-  global.User = User
+    global.db = mongoose.connection.db
+    global.User = User
 
-  console.log(
-    chalk.greenBright('[ ✓ ] DATABASE CONNECTED')
-  )
+    console.log(
+        chalk.greenBright(`
+[ ✓ ] DATABASE CONNECTED
+`)
+    )
 
 } catch (err) {
 
-  console.log(
-    chalk.redBright('[ X ] DATABASE ERROR')
-  )
+    console.log(
+        chalk.redBright(`
+[ X ] DATABASE ERROR
+`)
+    )
 
-  console.log(err)
+    console.error(err)
 
 }
 
 /* =========================================
-   AUTH
+   📲 AUTH SESSION
 ========================================= */
 
-const sessionFile = './sessions/main.sqlite'
+const sessionFile =
+'./sessions/main.sqlite'
 
 const {
-  state,
-  saveCreds
+    state,
+    saveCreds
 } = useSQLiteAuthState(sessionFile)
 
 /* =========================================
-   VERSION
+   🔥 BAILEYS VERSION
 ========================================= */
 
-const {
-  version
-} = await fetchLatestBaileysVersion()
+const { version } =
+await fetchLatestBaileysVersion()
 
 /* =========================================
-   CONNECTION OPTIONS
+   ⚡ CONNECTION OPTIONS
 ========================================= */
 
-const msgRetryCounterCache = new NodeCache()
+const msgRetryCounterCache =
+new NodeCache()
 
 const connectionOptions = {
 
-  version,
+    version,
 
-  logger,
+    logger,
 
-  printQRInTerminal: false,
+    printQRInTerminal: false,
 
-  browser: Browsers.macOS('Safari'),
+    browser: Browsers.macOS('Chrome'),
 
-  auth: {
-    creds: state.creds,
-    keys: makeCacheableSignalKeyStore(
-      state.keys,
-      logger
-    )
-  },
+    auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(
+            state.keys,
+            logger
+        )
+    },
 
-  markOnlineOnConnect: true,
+    markOnlineOnConnect: true,
 
-  syncFullHistory: false,
+    syncFullHistory: false,
 
-  connectTimeoutMs: 60000,
+    connectTimeoutMs: 60000,
 
-  defaultQueryTimeoutMs: 60000,
+    defaultQueryTimeoutMs: 60000,
 
-  keepAliveIntervalMs: 10000,
+    keepAliveIntervalMs: 15000,
 
-  msgRetryCounterCache
+    msgRetryCounterCache
 
 }
 
 /* =========================================
-   START CONNECTION
+   🚀 CREATE SOCKET
 ========================================= */
 
-global.conn = makeWASocket(connectionOptions)
+global.conn =
+makeWASocket(connectionOptions)
 
-global.conns.set('main', global.conn)
+global.conns.set(
+    'main',
+    global.conn
+)
 
 /* =========================================
-   PAIR CODE
+   🔐 REQUEST PHONE NUMBER
 ========================================= */
 
 if (!state.creds.registered) {
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  })
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    })
 
-  const question = (text) =>
-    new Promise((resolve) =>
-      rl.question(text, resolve)
+    const ask = (text) =>
+        new Promise((resolve) =>
+            rl.question(text, resolve)
+        )
+
+    console.log(
+chalk.yellowBright(`
+╔══════════════════════════════════════╗
+║       WHATSAPP LINK REQUIRED        ║
+╚══════════════════════════════════════╝
+`)
     )
 
-  let phoneNumber = await question(
-    chalk.yellowBright(`
-╔════════════════════════════════════╗
-║      NÚMERO WHATSAPP              ║
-╚════════════════════════════════════╝
-➤ `)
-  )
+    let phoneNumber =
+    await ask(
+chalk.cyanBright(`
+┃ ENTER YOUR NUMBER:
+┃ Example: 573001112233
+┃ ➤ `)
+    )
 
-  phoneNumber = phoneNumber.replace(/\D/g, '')
+    phoneNumber =
+    phoneNumber.replace(/\D/g, '')
 
-  rl.close()
+    if (!phoneNumber) {
 
-  setTimeout(async () => {
-
-    try {
-
-      const code =
-      await global.conn.requestPairingCode(
-        phoneNumber
-      )
-
-      console.log(
-chalk.greenBright(`
-╔════════════════════════════════════╗
-║       CÓDIGO DE VINCULACIÓN       ║
-╠════════════════════════════════════╣
-║   ${code.match(/.{1,4}/g).join('-')}
-╚════════════════════════════════════╝
+        console.log(
+            chalk.redBright(`
+[ X ] INVALID NUMBER
 `)
-      )
+        )
 
-    } catch (err) {
-
-      console.log(err)
+        process.exit(1)
 
     }
 
-  }, 3000)
+    rl.close()
+
+    setTimeout(async () => {
+
+        try {
+
+            const code =
+            await global.conn.requestPairingCode(
+                phoneNumber
+            )
+
+            console.log(
+chalk.greenBright(`
+╔══════════════════════════════════════╗
+║         LINKING CODE READY          ║
+╠══════════════════════════════════════╣
+║  ${code.match(/.{1,4}/g).join('-')}
+╚══════════════════════════════════════╝
+`)
+            )
+
+        } catch (err) {
+
+            console.log(
+                chalk.redBright(`
+[ X ] PAIR CODE ERROR
+`)
+            )
+
+            console.error(err)
+
+        }
+
+    }, 3000)
 
 }
 
 /* =========================================
-   MESSAGE HANDLER
+   📩 MESSAGE HANDLER
 ========================================= */
 
-let messageHandler = null
+let messageHandler
 
 const loadHandler = async () => {
 
-  try {
+    try {
 
-    const file =
-    path.join(
-      process.cwd(),
-      'lib/message.js'
-    )
+        const file =
+        path.join(
+            process.cwd(),
+            'lib/message.js'
+        )
 
-    const module =
-    await import(
-      `file://${file}?update=${Date.now()}`
-    )
+        const module =
+        await import(
+            `file://${file}?update=${Date.now()}`
+        )
 
-    messageHandler =
-      module.message ||
-      module.default?.message ||
-      module.default
+        messageHandler =
+        module.message ||
+        module.default?.message ||
+        module.default
 
-    console.log(
-      chalk.cyanBright('[ SYSTEM ] MESSAGE UPDATED')
-    )
+    } catch (err) {
 
-  } catch (err) {
+        console.error(err)
 
-    console.log(err)
-
-  }
+    }
 
 }
 
 await loadHandler()
 
 watch(
-  path.join(
-    process.cwd(),
-    'lib/message.js'
-  ),
-  loadHandler
+    path.join(
+        process.cwd(),
+        'lib/message.js'
+    ),
+    loadHandler
 )
 
 /* =========================================
-   CONNECTION EVENTS
+   📡 CONNECTION EVENTS
 ========================================= */
 
 global.conn.ev.on(
-  'connection.update',
-  async (update) => {
+    'connection.update',
+    async (update) => {
 
-    const {
-      connection,
-      lastDisconnect
-    } = update
+        const {
+            connection,
+            lastDisconnect
+        } = update
 
-    if (connection === 'open') {
+        if (connection === 'open') {
 
-      console.log(chalk.greenBright(`
-╔════════════════════════════════════╗
-║        WHATSAPP CONNECTED         ║
-╚════════════════════════════════════╝
-`))
-
-    }
-
-    if (connection === 'close') {
-
-      const reason =
-      new Boom(
-        lastDisconnect?.error
-      )?.output?.statusCode || 0
-
-      if (
-        reason === DisconnectReason.loggedOut
-      ) {
-
-        console.log(
-          chalk.redBright(`
-╔════════════════════════════════════╗
-║        SESSION EXPIRED            ║
-╠════════════════════════════════════╣
-║  DELETE SESSION AND RECONNECT     ║
-╚════════════════════════════════════╝
+            console.log(
+chalk.greenBright(`
+╔══════════════════════════════════════╗
+║         WHATSAPP CONNECTED          ║
+╠══════════════════════════════════════╣
+║ STATUS : ONLINE
+╚══════════════════════════════════════╝
 `)
-        )
+            )
 
-      } else {
+        }
 
-        console.log(
-          chalk.yellowBright(`
-[ SYSTEM ] RECONNECTING...
+        if (connection === 'close') {
+
+            const reason =
+            new Boom(
+                lastDisconnect?.error
+            )?.output?.statusCode
+
+            if (
+                reason === DisconnectReason.loggedOut
+            ) {
+
+                console.log(
+chalk.redBright(`
+╔══════════════════════════════════════╗
+║          SESSION EXPIRED            ║
+╠══════════════════════════════════════╣
+║ DELETE ./sessions/main.sqlite       ║
+║ THEN RESTART THE BOT                ║
+╚══════════════════════════════════════╝
 `)
-        )
+                )
 
-        setTimeout(async () => {
+            } else {
 
-          global.conn =
-          makeWASocket(connectionOptions)
+                console.log(
+chalk.yellowBright(`
+[ ! ] RECONNECTING...
+`)
+                )
 
-        }, 5000)
+                setTimeout(() => {
 
-      }
+                    global.conn =
+                    makeWASocket(connectionOptions)
+
+                }, 5000)
+
+            }
+
+        }
 
     }
-
-  }
 )
 
 /* =========================================
-   MESSAGE EVENTS
+   💬 MESSAGE EVENTS
 ========================================= */
 
 global.conn.ev.on(
-  'messages.upsert',
-  async (chatUpdate) => {
+    'messages.upsert',
+    async (chatUpdate) => {
 
-    try {
+        try {
 
-      const msg =
-      chatUpdate.messages?.[0]
+            const msg =
+            chatUpdate.messages?.[0]
 
-      if (!msg?.message) return
+            if (!msg?.message) return
 
-      const m =
-      await smsg(
-        global.conn,
-        msg
-      )
+            const m =
+            await smsg(
+                global.conn,
+                msg
+            )
 
-      if (messageHandler) {
+            if (messageHandler) {
 
-        await messageHandler.call(
-          global.conn,
-          m,
-          chatUpdate
-        )
+                await messageHandler.call(
+                    global.conn,
+                    m,
+                    chatUpdate
+                )
 
-      }
+            }
 
-    } catch (err) {
+        } catch (err) {
 
-      if (
-        !String(err)
-        .includes('decrypt')
-      ) {
-        console.log(err)
-      }
+            if (
+                !String(err)
+                .includes('decrypt')
+            ) {
+                console.error(err)
+            }
+
+        }
 
     }
-
-  }
 )
 
 /* =========================================
-   SAVE CREDS
+   💾 SAVE CREDS
 ========================================= */
 
 global.conn.ev.on(
-  'creds.update',
-  saveCreds
+    'creds.update',
+    saveCreds
 )
 
 /* =========================================
-   WORKERS
-========================================= */
-
-global.workerMedia =
-new Worker(
-  new URL(
-    './lib/workers/mediaWorker.js',
-    import.meta.url
-  )
-)
-
-/* =========================================
-   PLUGINS
+   🔌 PLUGIN SYSTEM
 ========================================= */
 
 async function readPlugins(folder) {
 
-  const files =
-  await fsP.readdir(folder)
+    const files =
+    await fsP.readdir(folder)
 
-  for (const filename of files) {
+    for (const filename of files) {
 
-    const file =
-    join(folder, filename)
+        const file =
+        join(folder, filename)
 
-    const stat =
-    await fsP.stat(file)
+        const stat =
+        await fsP.stat(file)
 
-    if (stat.isDirectory()) {
+        if (stat.isDirectory()) {
 
-      await readPlugins(file)
+            await readPlugins(file)
 
-    } else if (/\.js$/.test(filename)) {
+        } else if (/\.js$/.test(filename)) {
 
-      try {
+            try {
 
-        const module =
-        await import(
-          `file://${file}?update=${Date.now()}`
-        )
+                const module =
+                await import(
+                    `file://${file}?update=${Date.now()}`
+                )
 
-        const plugin =
-        module.default || module
+                const plugin =
+                module.default || module
 
-        const name =
-        plugin.name ||
-        basename(filename, '.js')
+                const name =
+                plugin.name ||
+                basename(filename, '.js')
 
-        global.plugins.set(
-          name,
-          plugin
-        )
+                global.plugins.set(
+                    name,
+                    plugin
+                )
 
-        if (plugin.alias) {
+                if (plugin.alias) {
 
-          const aliases =
-          Array.isArray(plugin.alias)
-          ? plugin.alias
-          : [plugin.alias]
+                    const aliases =
+                    Array.isArray(plugin.alias)
+                    ? plugin.alias
+                    : [plugin.alias]
 
-          for (const alias of aliases) {
-            global.aliases.set(
-              alias,
-              name
-            )
-          }
+                    for (const alias of aliases) {
+
+                        global.aliases.set(
+                            alias,
+                            name
+                        )
+
+                    }
+
+                }
+
+            } catch (err) {
+
+                console.error(err)
+
+            }
 
         }
 
-      } catch (err) {
-
-        console.log(err)
-
-      }
-
     }
-
-  }
 
 }
 
 await readPlugins(
-  join(
-    process.cwd(),
-    './plugins'
-  )
+    join(
+        process.cwd(),
+        './plugins'
+    )
 )
 
 /* =========================================
-   FINAL
+   🧵 WORKERS
 ========================================= */
 
-console.log(chalk.magentaBright(`
-╔════════════════════════════════════╗
-║        SYSTEM INITIALIZED         ║
-╚════════════════════════════════════╝
-`))
+global.workerMedia =
+new Worker(
+    new URL(
+        './lib/workers/mediaWorker.js',
+        import.meta.url
+    )
+)
+
+/* =========================================
+   ✅ SYSTEM READY
+========================================= */
+
+console.log(
+chalk.magentaBright(`
+╔══════════════════════════════════════╗
+║         SYSTEM INITIALIZED          ║
+╚══════════════════════════════════════╝
+`)
+)
