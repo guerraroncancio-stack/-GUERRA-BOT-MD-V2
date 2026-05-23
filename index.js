@@ -91,14 +91,15 @@ for (const folder of folders) {
    🧠 GLOBALS
 ========================================= */
 
-global.plugins = new Map()
-global.aliases = new Map()
+global.plugins = global.plugins || new Map()
+global.aliases = global.aliases || new Map()
 
 global.commandCache = new NodeCache({
     stdTTL: 60,
     checkperiod: 120,
     useClones: false
 })
+
 
 /* =========================================
    🔇 LOGGER
