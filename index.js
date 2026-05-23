@@ -155,7 +155,7 @@ console.clear()
 cfonts.say('GUERRA BOT', {
     font: 'block',
     align: 'center',
-   gradient: ['#00F5FF', '#7F00FF']
+    gradient: ['#ff3b3b', '#5c0000']
 })
 
 console.log(
