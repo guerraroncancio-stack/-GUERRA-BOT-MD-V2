@@ -155,15 +155,14 @@ console.clear()
 cfonts.say('GUERRA BOT', {
     font: 'tiny',
     align: 'center',
-    colors: ['red']
+    colors: ['yellow', 'cyan']
 })
 
-console.log(chalk.redBright(`
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚔️ GUERRA BOT MD ONLINE
-━━━━━━━━━━━━━━━━━━━━━━━━━━
+console.log(chalk.hex('#FFD700')(`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚔️ GUERRA BOT MD ONLINE ⚔️
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `))
-
 console.log(
 chalk.hex('#00F5FF')(`
 ╔══════════════════════════════════════╗
