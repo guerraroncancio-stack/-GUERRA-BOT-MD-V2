@@ -91,8 +91,8 @@ for (const folder of folders) {
    🧠 GLOBALS
 ========================================= */
 
-global.plugins = global.plugins || new Map()
-global.aliases = global.aliases || new Map()
+global.plugins = new Map()
+global.aliases = new Map()
 
 global.commandCache = new NodeCache({
     stdTTL: 60,
@@ -324,99 +324,108 @@ async function readPlugins(folder) {
         const stat =
         await fsP.stat(file)
 
-        /* =========================
-           📁 SUBFOLDERS
-        ========================= */
-
         if (stat.isDirectory()) {
 
             await readPlugins(file)
-            continue
 
-        }
+        } else if (filename.endsWith('.js')) {
 
-        /* =========================
-           📄 ONLY JS
-        ========================= */
+            try {
 
-        if (!filename.endsWith('.js')) continue
+                const module =
+                await import(
+                    pathToFileURL(
+                        path.resolve(file)
+                    ).href +
+                    `?update=${Date.now()}`
+                )
 
-        try {
+                const imported =
+                module.default || module
 
-            const module =
-            await import(
-                pathToFileURL(
-                    path.resolve(file)
-                ).href +
-                `?update=${Date.now()}`
-            )
+                if (
+                    !imported ||
+                    typeof imported !== 'object'
+                ) continue
 
-            const plugin =
-            module.default || module
+                /* =========================
+                   SAFE CLONE
+                ========================= */
 
-            if (!plugin) continue
+                const plugin = {
+                    ...imported
+                }
 
-            /* =========================
-               🏷️ PLUGIN NAME
-            ========================= */
+                plugin.name =
+                (
+                    plugin.name ||
+                    basename(filename, '.js')
+                ).toLowerCase()
 
-            const name =
-            (
-                plugin.name ||
-                basename(filename, '.js')
-            ).toLowerCase()
+                /* =========================
+                   FIX ALIAS SUPPORT
+                ========================= */
 
-            plugin.name = name
+                if (
+                    plugin.alias &&
+                    !plugin.aliases
+                ) {
 
-            /* =========================
-               💾 SAVE PLUGIN
-            ========================= */
+                    plugin.aliases =
+                    plugin.alias
 
-            global.plugins.set(
-                name,
-                plugin
-            )
+                }
 
-            /* =========================
-               🔥 REGISTER ALIASES
-            ========================= */
+                if (
+                    !Array.isArray(plugin.aliases)
+                ) {
 
-            const aliases =
-            plugin.alias ||
-            plugin.aliases ||
-            []
+                    plugin.aliases = []
 
-            if (Array.isArray(aliases)) {
+                }
 
-                for (const alias of aliases) {
+                /* =========================
+                   SAVE MAIN COMMAND
+                ========================= */
+
+                global.plugins.set(
+                    plugin.name,
+                    plugin
+                )
+
+                /* =========================
+                   SAVE ALIASES
+                ========================= */
+
+                for (const alias of plugin.aliases) {
 
                     if (!alias) continue
 
                     global.aliases.set(
                         alias.toLowerCase(),
-                        name
+                        plugin.name
                     )
 
                 }
 
-            }
+                console.log(
+chalk.greenBright(
+`[ ✓ ] Plugin Loaded -> ${plugin.name}`
+)
+                )
 
-            console.log(
-chalk.greenBright(`
-[ ✓ ] PLUGIN LOADED → ${name}
-`)
-            )
+            } catch (err) {
 
-        } catch (err) {
-
-            console.log(
+                console.log(
 chalk.redBright(`
 [ X ] ERROR LOADING PLUGIN:
 ${filename}
 `)
-            )
+                )
 
-            console.error(err)
+                console.error(err)
+
+            }
 
         }
 
@@ -424,29 +433,7 @@ ${filename}
 
 }
 
-/* =========================
-   🧹 CLEAR CACHE
-========================= */
-
-global.plugins.clear()
-global.aliases.clear()
-
-/* =========================
-   🚀 LOAD PLUGINS
-========================= */
-
 await readPlugins('./plugins')
-
-console.log(
-chalk.cyanBright(`
-╔══════════════════════════════════════╗
-║           PLUGINS LOADED            ║
-╠══════════════════════════════════════╣
-║ PLUGINS : ${global.plugins.size}
-║ ALIASES : ${global.aliases.size}
-╚══════════════════════════════════════╝
-`)
-)
 
 console.log(
 chalk.magentaBright(`
