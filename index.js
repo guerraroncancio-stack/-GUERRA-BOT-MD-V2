@@ -153,10 +153,16 @@ process.on('unhandledRejection', (reason) => {
 console.clear()
 
 cfonts.say('GUERRA BOT', {
-    font: 'slick',
+    font: 'tiny',
     align: 'center',
-    colors: ['cyan']
+    colors: ['red']
 })
+
+console.log(chalk.redBright(`
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚔️ GUERRA BOT MD ONLINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+`))
 
 console.log(
 chalk.hex('#00F5FF')(`
