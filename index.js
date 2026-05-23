@@ -155,22 +155,21 @@ console.clear()
 cfonts.say('GUERRA BOT', {
     font: 'block',
     align: 'center',
-    gradient: ['#00F5FF', '#7F00FF']
+    gradient: ['#FF0000', '#8B0000']
 })
 
 console.log(
-chalk.hex('#00F5FF')(`
-╔══════════════════════════════════════╗
-║           ⚔️ GUERRA BOT ⚔️           ║
-╠══════════════════════════════════════╣
-║ OWNER   : ${global.BOT.owner}
-║ VERSION : ${global.BOT.version}
-║ MODE    : ${global.BOT.mode}
-║ PREFIX  : ${global.BOT.prefix}
-╚══════════════════════════════════════╝
+chalk.hex('#FF2E2E')(`
+╔══════════════════════════════╗
+║        ⚔️ GUERRA BOT ⚔️       ║
+╠══════════════════════════════╣
+║ OWNER  : ${global.BOT.owner}
+║ VERSION: ${global.BOT.version}
+║ MODE   : ${global.BOT.mode}
+║ PREFIX : ${global.BOT.prefix}
+╚══════════════════════════════╝
 `)
 )
-
 /* =========================================
    ☁️ DATABASE
 ========================================= */
