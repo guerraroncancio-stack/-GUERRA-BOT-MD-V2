@@ -11,7 +11,6 @@ const evala = {
     name: 'eval',
     alias: ['await', 'exec'],
     category: 'owner',
-    rowner: true,
     run: async (m, _2) => {
         let { conn, text, args, groupMetadata } = _2
         if (!text) return
