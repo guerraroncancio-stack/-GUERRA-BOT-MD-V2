@@ -153,9 +153,9 @@ process.on('unhandledRejection', (reason) => {
 console.clear()
 
 cfonts.say('GUERRA BOT', {
-    font: 'block',
+    font: 'slick',
     align: 'center',
-    colors: ['magenta']
+    colors: ['cyan']
 })
 
 console.log(
