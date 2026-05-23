@@ -315,8 +315,6 @@ watch(
 
 async function readPlugins(folder, type = 'plugin') {
 
-    if (!existsSync(folder)) return
-
     const files =
     await fsP.readdir(folder)
 
@@ -344,18 +342,8 @@ async function readPlugins(folder, type = 'plugin') {
                     `?update=${Date.now()}`
                 )
 
-                let imported =
+                const imported =
                 module.default || module
-
-                if (
-                    typeof imported === 'function'
-                ) {
-
-                    imported = {
-                        run: imported
-                    }
-
-                }
 
                 if (
                     !imported ||
@@ -372,57 +360,6 @@ async function readPlugins(folder, type = 'plugin') {
                     basename(filename, '.js')
                 ).toLowerCase()
 
-                /* =================================
-                   FIX RUN SUPPORT
-                ================================= */
-
-                plugin.run =
-                plugin.run ||
-                plugin.execute ||
-                plugin.start ||
-                plugin.handler
-
-                if (
-                    typeof plugin.run !==
-                    'function'
-                ) {
-
-                    console.log(
-chalk.redBright(
-`[ X ] INVALID PLUGIN -> ${filename}`
-)
-                    )
-
-                    continue
-
-                }
-
-                /* =================================
-                   FIX COMMAND SUPPORT
-                ================================= */
-
-                if (
-                    plugin.command &&
-                    !Array.isArray(plugin.command)
-                ) {
-
-                    plugin.command =
-                    [plugin.command]
-
-                }
-
-                if (
-                    !plugin.command
-                ) {
-
-                    plugin.command = []
-
-                }
-
-                /* =================================
-                   FIX ALIAS SUPPORT
-                ================================= */
-
                 if (
                     plugin.alias &&
                     !plugin.aliases
@@ -434,26 +371,12 @@ chalk.redBright(
                 }
 
                 if (
-                    plugin.aliases &&
                     !Array.isArray(plugin.aliases)
-                ) {
-
-                    plugin.aliases =
-                    [plugin.aliases]
-
-                }
-
-                if (
-                    !plugin.aliases
                 ) {
 
                     plugin.aliases = []
 
                 }
-
-                /* =================================
-                   SAVE PLUGIN
-                ================================= */
 
                 if (type === 'plugin') {
 
@@ -471,25 +394,6 @@ chalk.redBright(
 
                 }
 
-                /* =================================
-                   SAVE COMMANDS
-                ================================= */
-
-                for (const cmd of plugin.command) {
-
-                    if (!cmd) continue
-
-                    global.aliases.set(
-                        cmd.toLowerCase(),
-                        plugin.name
-                    )
-
-                }
-
-                /* =================================
-                   SAVE ALIASES
-                ================================= */
-
                 for (const alias of plugin.aliases) {
 
                     if (!alias) continue
@@ -500,45 +404,6 @@ chalk.redBright(
                     )
 
                 }
-
-                /* =================================
-                   AUTO RELOAD
-                ================================= */
-
-                watch(file, async () => {
-
-                    console.log(
-chalk.yellowBright(
-`[ UPDATE ] ${plugin.name}`
-)
-                    )
-
-                    global.plugins.delete(
-                        plugin.name
-                    )
-
-                    global.aliases.forEach(
-                        (value, key) => {
-
-                            if (
-                                value === plugin.name
-                            ) {
-
-                                global.aliases.delete(
-                                    key
-                                )
-
-                            }
-
-                        }
-                    )
-
-                    await readPlugins(
-                        folder,
-                        type
-                    )
-
-                })
 
                 console.log(
 chalk.hex('#7F00FF')(
@@ -646,10 +511,18 @@ chalk.hex('#00FFB3')(`
 
         }
 
+        /* =========================================
+           💾 SAVE CREDS
+        ========================================= */
+
         global.conn.ev.on(
             'creds.update',
             saveCreds
         )
+
+        /* =========================================
+           💬 MESSAGE EVENT
+        ========================================= */
 
         global.conn.ev.on(
             'messages.upsert',
@@ -668,9 +541,7 @@ chalk.hex('#00FFB3')(`
                         msg
                     )
 
-                    if (
-                        global.messageHandler
-                    ) {
+                    if (global.messageHandler) {
 
                         await global.messageHandler.call(
                             global.conn,
@@ -682,12 +553,23 @@ chalk.hex('#00FFB3')(`
 
                 } catch (err) {
 
-                    console.error(err)
+                    if (
+                        !String(err)
+                        .includes('decrypt')
+                    ) {
+
+                        console.error(err)
+
+                    }
 
                 }
 
             }
         )
+
+        /* =========================================
+           📡 CONNECTION UPDATE
+        ========================================= */
 
         global.conn.ev.on(
             'connection.update',
@@ -716,6 +598,8 @@ chalk.hex('#FFD700')(`
 chalk.hex('#00FFB3')(`
 ╔══════════════════════════════════════╗
 ║        WHATSAPP CONNECTED           ║
+╠══════════════════════════════════════╣
+║ STATUS : ONLINE
 ╚══════════════════════════════════════╝
 `)
                     )
@@ -729,6 +613,12 @@ chalk.hex('#00FFB3')(`
                         lastDisconnect?.error
                     )?.output?.statusCode
 
+                    console.log(
+chalk.redBright(`
+[ X ] CONNECTION CLOSED
+`)
+                    )
+
                     if (
                         reason ===
                         DisconnectReason.loggedOut
@@ -736,9 +626,29 @@ chalk.hex('#00FFB3')(`
 
                         console.log(
 chalk.redBright(`
-SESSION EXPIRED
-DELETE:
-./sessions/main.sqlite
+╔══════════════════════════════════════╗
+║         SESSION EXPIRED             ║
+╠══════════════════════════════════════╣
+║ DELETE:
+║ ./sessions/main.sqlite
+║
+║ THEN RESTART BOT
+╚══════════════════════════════════════╝
+`)
+                        )
+
+                        process.exit(1)
+
+                    }
+
+                    if (
+                        reconnectAttempts >=
+                        MAX_RECONNECT
+                    ) {
+
+                        console.log(
+chalk.redBright(`
+[ X ] MAX RECONNECT LIMIT
 `)
                         )
 
@@ -748,21 +658,27 @@ DELETE:
 
                     reconnectAttempts++
 
-                    if (
-                        reconnectAttempts >=
-                        MAX_RECONNECT
-                    ) {
-
-                        process.exit(1)
-
-                    }
+                    console.log(
+chalk.hex('#FFD700')(`
+[ ⚡ ] RECONNECTING...
+`)
+                    )
 
                     isStarting = false
 
-                    setTimeout(
-                        startBot,
-                        5000
-                    )
+                    setTimeout(async () => {
+
+                        try {
+
+                            await startBot()
+
+                        } catch (err) {
+
+                            console.error(err)
+
+                        }
+
+                    }, 5000)
 
                 }
 
