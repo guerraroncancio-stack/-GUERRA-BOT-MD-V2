@@ -100,7 +100,6 @@ global.commandCache = new NodeCache({
     useClones: false
 })
 
-
 /* =========================================
    🔇 LOGGER
 ========================================= */
@@ -325,46 +324,99 @@ async function readPlugins(folder) {
         const stat =
         await fsP.stat(file)
 
+        /* =========================
+           📁 SUBFOLDERS
+        ========================= */
+
         if (stat.isDirectory()) {
 
             await readPlugins(file)
+            continue
 
-        } else if (filename.endsWith('.js')) {
+        }
 
-            try {
+        /* =========================
+           📄 ONLY JS
+        ========================= */
 
-                const module =
-                await import(
-                    pathToFileURL(
-                        path.resolve(file)
-                    ).href +
-                    `?update=${Date.now()}`
-                )
+        if (!filename.endsWith('.js')) continue
 
-                const plugin =
-                module.default || module
+        try {
 
-                const name =
+            const module =
+            await import(
+                pathToFileURL(
+                    path.resolve(file)
+                ).href +
+                `?update=${Date.now()}`
+            )
+
+            const plugin =
+            module.default || module
+
+            if (!plugin) continue
+
+            /* =========================
+               🏷️ PLUGIN NAME
+            ========================= */
+
+            const name =
+            (
                 plugin.name ||
                 basename(filename, '.js')
+            ).toLowerCase()
 
-                global.plugins.set(
-                    name,
-                    plugin
-                )
+            plugin.name = name
 
-            } catch (err) {
+            /* =========================
+               💾 SAVE PLUGIN
+            ========================= */
 
-                console.log(
+            global.plugins.set(
+                name,
+                plugin
+            )
+
+            /* =========================
+               🔥 REGISTER ALIASES
+            ========================= */
+
+            const aliases =
+            plugin.alias ||
+            plugin.aliases ||
+            []
+
+            if (Array.isArray(aliases)) {
+
+                for (const alias of aliases) {
+
+                    if (!alias) continue
+
+                    global.aliases.set(
+                        alias.toLowerCase(),
+                        name
+                    )
+
+                }
+
+            }
+
+            console.log(
+chalk.greenBright(`
+[ ✓ ] PLUGIN LOADED → ${name}
+`)
+            )
+
+        } catch (err) {
+
+            console.log(
 chalk.redBright(`
 [ X ] ERROR LOADING PLUGIN:
 ${filename}
 `)
-                )
+            )
 
-                console.error(err)
-
-            }
+            console.error(err)
 
         }
 
@@ -372,7 +424,29 @@ ${filename}
 
 }
 
+/* =========================
+   🧹 CLEAR CACHE
+========================= */
+
+global.plugins.clear()
+global.aliases.clear()
+
+/* =========================
+   🚀 LOAD PLUGINS
+========================= */
+
 await readPlugins('./plugins')
+
+console.log(
+chalk.cyanBright(`
+╔══════════════════════════════════════╗
+║           PLUGINS LOADED            ║
+╠══════════════════════════════════════╣
+║ PLUGINS : ${global.plugins.size}
+║ ALIASES : ${global.aliases.size}
+╚══════════════════════════════════════╝
+`)
+)
 
 console.log(
 chalk.magentaBright(`
