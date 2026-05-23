@@ -20,7 +20,6 @@ import path, {
 import readline from 'readline'
 
 import chalk from 'chalk'
-import gradient from 'gradient-string'
 import pino from 'pino'
 import cfonts from 'cfonts'
 import mongoose from 'mongoose'
@@ -59,17 +58,6 @@ global.BOT = {
 }
 
 /* =========================================
-   🎨 PREMIUM COLORS
-========================================= */
-
-const premium = gradient([
-    '#00F5FF',
-    '#00A2FF',
-    '#7B2CFF',
-    '#FF00EA'
-])
-
-/* =========================================
    📦 DATABASE
 ========================================= */
 
@@ -84,7 +72,7 @@ const folders = [
     './sessions',
     './tmp',
     './plugins',
-    './handlers',
+    './handler',
     './lib'
 ]
 
@@ -104,10 +92,9 @@ for (const folder of folders) {
    🧠 GLOBALS
 ========================================= */
 
-global.plugins = global.plugins || new Map()
-global.aliases = global.aliases || new Map()
-
-global.handlers = global.handlers || []
+global.plugins = new Map()
+global.aliases = new Map()
+global.handlers = new Map()
 
 global.commandCache = new NodeCache({
     stdTTL: 60,
@@ -140,10 +127,7 @@ process.on('uncaughtException', (err) => {
         msg.includes('decrypt')
     ) return
 
-    console.error(
-        chalk.redBright('[ ERROR ]'),
-        err
-    )
+    console.error(chalk.redBright(err))
 
 })
 
@@ -158,10 +142,7 @@ process.on('unhandledRejection', (reason) => {
         msg.includes('decrypt')
     ) return
 
-    console.error(
-        chalk.redBright('[ REJECTION ]'),
-        reason
-    )
+    console.error(chalk.redBright(reason))
 
 })
 
@@ -174,13 +155,13 @@ console.clear()
 cfonts.say('GUERRA BOT', {
     font: 'block',
     align: 'center',
-    gradient: ['#00F5FF', '#7B2CFF']
+    gradient: ['#00F5FF', '#7F00FF']
 })
 
 console.log(
-premium.multiline(`
+chalk.hex('#00F5FF')(`
 ╔══════════════════════════════════════╗
-║         ⚔️ GUERRA BOT MD ⚔️         ║
+║           ⚔️ GUERRA BOT ⚔️           ║
 ╠══════════════════════════════════════╣
 ║ OWNER   : ${global.BOT.owner}
 ║ VERSION : ${global.BOT.version}
@@ -202,17 +183,17 @@ try {
     global.User = User
 
     console.log(
-        chalk.hex('#00FFB7')(
-            '[ ✓ ] DATABASE CONNECTED'
-        )
+chalk.hex('#00FFB3')(`
+[ ✓ ] DATABASE CONNECTED
+`)
     )
 
 } catch (err) {
 
     console.log(
-        chalk.redBright(
-            '[ X ] DATABASE ERROR'
-        )
+chalk.redBright(`
+[ X ] DATABASE ERROR
+`)
     )
 
     console.error(err)
@@ -264,7 +245,7 @@ const connectionOptions = {
         )
     },
 
-    markOnlineOnConnect: false,
+    markOnlineOnConnect: true,
 
     syncFullHistory: false,
 
@@ -308,9 +289,9 @@ async function loadHandler() {
         module.default
 
         console.log(
-            chalk.hex('#00FFD5')(
-                '[ ✓ ] MESSAGE HANDLER LOADED'
-            )
+chalk.hex('#00FFB3')(`
+[ ✓ ] MESSAGE HANDLER LOADED
+`)
         )
 
     } catch (err) {
@@ -329,10 +310,10 @@ watch(
 )
 
 /* =========================================
-   🔌 PLUGIN SYSTEM
+   🔌 LOAD PLUGINS
 ========================================= */
 
-async function readPlugins(folder) {
+async function readPlugins(folder, type = 'plugin') {
 
     const files =
     await fsP.readdir(folder)
@@ -347,7 +328,7 @@ async function readPlugins(folder) {
 
         if (stat.isDirectory()) {
 
-            await readPlugins(file)
+            await readPlugins(file, type)
 
         } else if (filename.endsWith('.js')) {
 
@@ -397,10 +378,21 @@ async function readPlugins(folder) {
 
                 }
 
-                global.plugins.set(
-                    plugin.name,
-                    plugin
-                )
+                if (type === 'plugin') {
+
+                    global.plugins.set(
+                        plugin.name,
+                        plugin
+                    )
+
+                } else {
+
+                    global.handlers.set(
+                        plugin.name,
+                        plugin
+                    )
+
+                }
 
                 for (const alias of plugin.aliases) {
 
@@ -414,17 +406,18 @@ async function readPlugins(folder) {
                 }
 
                 console.log(
-                    chalk.hex('#8A2BE2')(
-                        `[ ✓ ] Plugin -> ${plugin.name}`
-                    )
+chalk.hex('#7F00FF')(
+`[ ✓ ] ${type.toUpperCase()} LOADED -> ${plugin.name}`
+)
                 )
 
             } catch (err) {
 
                 console.log(
-                    chalk.redBright(
-                        `[ X ] ERROR PLUGIN -> ${filename}`
-                    )
+chalk.redBright(`
+[ X ] ERROR LOADING:
+${filename}
+`)
                 )
 
                 console.error(err)
@@ -437,73 +430,11 @@ async function readPlugins(folder) {
 
 }
 
-/* =========================================
-   ⚔️ HANDLER SYSTEM
-========================================= */
-
-async function loadHandlers(folder = './handlers') {
-
-    if (!existsSync(folder)) return
-
-    const files =
-    await fsP.readdir(folder)
-
-    global.handlers = []
-
-    for (const file of files) {
-
-        if (!file.endsWith('.js')) continue
-
-        try {
-
-            const module =
-            await import(
-                pathToFileURL(
-                    path.resolve(
-                        join(folder, file)
-                    )
-                ).href +
-                `?update=${Date.now()}`
-            )
-
-            const handler =
-            module.default || module
-
-            if (
-                typeof handler === 'function'
-            ) {
-
-                global.handlers.push(handler)
-
-                console.log(
-                    chalk.hex('#FF00EA')(
-                        `[ ✓ ] Handler -> ${file}`
-                    )
-                )
-
-            }
-
-        } catch (err) {
-
-            console.log(
-                chalk.redBright(
-                    `[ X ] ERROR HANDLER -> ${file}`
-                )
-            )
-
-            console.error(err)
-
-        }
-
-    }
-
-}
-
-await readPlugins('./plugins')
-await loadHandlers('./handlers')
+await readPlugins('./plugins', 'plugin')
+await readPlugins('./handler', 'handler')
 
 console.log(
-premium.multiline(`
+chalk.hex('#00F5FF')(`
 ╔══════════════════════════════════════╗
 ║         SYSTEM INITIALIZED          ║
 ╚══════════════════════════════════════╝
@@ -543,16 +474,19 @@ async function startBot() {
             )
 
             console.log(
-                chalk.hex('#FFD700')(
-                    '\n[ ⚡ ] WHATSAPP LINK REQUIRED\n'
-                )
+chalk.hex('#FFD700')(`
+╔══════════════════════════════════════╗
+║       WHATSAPP LINK REQUIRED        ║
+╚══════════════════════════════════════╝
+`)
             )
 
             let phoneNumber =
             await ask(
-                chalk.hex('#00F5FF')(
-                    '┃ ENTER YOUR NUMBER\n┃ ➤ '
-                )
+chalk.hex('#00F5FF')(`
+┃ ENTER YOUR NUMBER
+┃ Example: 573001112233
+┃ ➤ `)
             )
 
             phoneNumber =
@@ -566,9 +500,13 @@ async function startBot() {
             )
 
             console.log(
-                chalk.hex('#00FF7F')(
-                    `\n[ ✓ ] CODE -> ${code.match(/.{1,4}/g).join('-')}\n`
-                )
+chalk.hex('#00FFB3')(`
+╔══════════════════════════════════════╗
+║         LINK CODE READY             ║
+╠══════════════════════════════════════╣
+║  ${code.match(/.{1,4}/g).join('-')}
+╚══════════════════════════════════════╝
+`)
             )
 
         }
@@ -645,9 +583,9 @@ async function startBot() {
                 if (connection === 'connecting') {
 
                     console.log(
-                        chalk.hex('#00BFFF')(
-                            '[ ⚡ ] CONNECTING...'
-                        )
+chalk.hex('#FFD700')(`
+[ ⚡ ] CONNECTING...
+`)
                     )
 
                 }
@@ -657,9 +595,13 @@ async function startBot() {
                     reconnectAttempts = 0
 
                     console.log(
-                        chalk.hex('#00FF99')(
-                            '\n[ ✓ ] WHATSAPP CONNECTED\n'
-                        )
+chalk.hex('#00FFB3')(`
+╔══════════════════════════════════════╗
+║        WHATSAPP CONNECTED           ║
+╠══════════════════════════════════════╣
+║ STATUS : ONLINE
+╚══════════════════════════════════════╝
+`)
                     )
 
                 }
@@ -672,9 +614,9 @@ async function startBot() {
                     )?.output?.statusCode
 
                     console.log(
-                        chalk.redBright(
-                            '[ X ] CONNECTION CLOSED'
-                        )
+chalk.redBright(`
+[ X ] CONNECTION CLOSED
+`)
                     )
 
                     if (
@@ -683,9 +625,16 @@ async function startBot() {
                     ) {
 
                         console.log(
-                            chalk.redBright(
-                                '\nDELETE ./sessions/main.sqlite\n'
-                            )
+chalk.redBright(`
+╔══════════════════════════════════════╗
+║         SESSION EXPIRED             ║
+╠══════════════════════════════════════╣
+║ DELETE:
+║ ./sessions/main.sqlite
+║
+║ THEN RESTART BOT
+╚══════════════════════════════════════╝
+`)
                         )
 
                         process.exit(1)
@@ -698,9 +647,9 @@ async function startBot() {
                     ) {
 
                         console.log(
-                            chalk.redBright(
-                                '[ X ] MAX RECONNECT'
-                            )
+chalk.redBright(`
+[ X ] MAX RECONNECT LIMIT
+`)
                         )
 
                         process.exit(1)
@@ -710,9 +659,9 @@ async function startBot() {
                     reconnectAttempts++
 
                     console.log(
-                        chalk.yellowBright(
-                            '[ ⚡ ] RECONNECTING...'
-                        )
+chalk.hex('#FFD700')(`
+[ ⚡ ] RECONNECTING...
+`)
                     )
 
                     isStarting = false
@@ -750,13 +699,25 @@ async function startBot() {
    🧵 WORKERS
 ========================================= */
 
-global.workerMedia =
-new Worker(
-    new URL(
-        './lib/workers/mediaWorker.js',
-        import.meta.url
+try {
+
+    global.workerMedia =
+    new Worker(
+        new URL(
+            './lib/workers/mediaWorker.js',
+            import.meta.url
+        )
     )
+
+} catch {
+
+    console.log(
+chalk.yellowBright(
+'[ ⚠️ ] MEDIA WORKER NOT FOUND'
 )
+    )
+
+}
 
 /* =========================================
    🚀 START
