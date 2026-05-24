@@ -3,7 +3,6 @@ const OWNER_JID = `${OWNER_NUMBER}@s.whatsapp.net`
 
 let cachedPP = 'https://api.dix.lat/media2/1777604199636.jpg'
 
-// 🔥 precarga en segundo plano (NO bloquea el comando)
 async function refreshPP(conn) {
   try {
     const url = await conn.profilePictureUrl(OWNER_JID, 'image')
@@ -11,34 +10,39 @@ async function refreshPP(conn) {
   } catch {}
 }
 
-// 🔥 actualiza cada 5 minutos sin frenar el bot
 setInterval(() => {
   refreshPP(global.conn).catch(() => {})
 }, 5 * 60 * 1000)
 
 async function run(m, { conn }) {
 
-  // 🔥 intenta refrescar sin bloquear respuesta
   refreshPP(conn).catch(() => {})
 
   const text = `
-👑 *CONTACTO OFICIAL DEL OWNER*
+👑 𝗢𝗙𝗜𝗖𝗜𝗔𝗟 𝗢𝗪𝗡𝗘𝗥 𝗖𝗢𝗡𝗧𝗔𝗖𝗧
 
-📩 WhatsApp directo:
+━━━━━━━━━━━━━━
+💼 Desarrollo de bots personalizados
+⚙️ Configuración de sistemas WhatsApp MD
+🚀 Automatización / optimización de bots
+🤝 Soporte técnico y colaboraciones
+━━━━━━━━━━━━━━
+
+📩 Contacto directo:
 wa.me/${OWNER_NUMBER}
 
-⚡ Soporte / compras / configuración de bot
+⚡ Respuesta rápida y atención personalizada
+🔒 Servicio privado y seguro
 `
 
   const vcard = `
 BEGIN:VCARD
 VERSION:3.0
-FN:👑 Owner del Bot
+FN:👑 Owner GUERRA BOT
 TEL;type=CELL;type=VOICE;waid=${OWNER_NUMBER}:${OWNER_NUMBER}
 END:VCARD
 `.trim()
 
-  // 🔥 RESPUESTA INMEDIATA (sin await de foto)
   await conn.sendMessage(m.chat, {
     image: { url: cachedPP },
     caption: text,
@@ -51,7 +55,7 @@ END:VCARD
 
 export default {
   name: 'owner',
-  command: ['owner', 'creador', 'contacto'],
+  command: ['owner', 'creador', 'contacto', 'dev'],
   group: false,
   admin: false,
   run
