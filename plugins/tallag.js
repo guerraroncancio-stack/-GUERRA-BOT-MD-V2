@@ -2,7 +2,7 @@ const MAX_MENTIONS = 40
 const DELAY_MS = 1500
 
 const sleep = ms =>
-  new Promise(resolve => setTimeout(resolve, ms))
+  new Promise(res => setTimeout(res, ms))
 
 async function run(m, { conn, groupMetadata, text }) {
 
@@ -19,17 +19,14 @@ async function run(m, { conn, groupMetadata, text }) {
     const participants =
       metadata?.participants || []
 
+    // 🔥 extracción robusta multi-fork
     const users = participants
-      .map(p => p.id || p.jid)
-      .filter(jid =>
-        jid && jid.endsWith('@s.whatsapp.net')
-      )
+      .map(p => p.id || p.jid || p.participant)
+      .filter(Boolean)
 
     if (!users.length) {
-      return m.reply('❌ No se encontraron miembros')
+      return m.reply('❌ No se encontraron miembros del grupo')
     }
-
-    const total = users.length
 
     const groupName =
       metadata.subject || 'Grupo'
@@ -37,19 +34,15 @@ async function run(m, { conn, groupMetadata, text }) {
     const mensaje =
       text?.trim() || '⚠️ Atención general'
 
+    const total = users.length
+
     const chunks = []
 
     for (let i = 0; i < users.length; i += MAX_MENTIONS) {
       chunks.push(users.slice(i, i + MAX_MENTIONS))
     }
 
-    for (let i = 0; i < chunks.length; i++) {
-
-      const chunk = chunks[i]
-
-      if (!chunk.length) continue
-
-      let teks = `
+    const header = (i, totalChunks) => `
 ╭━━━〔 ⚡ LLAMADO GLOBAL ⚡ 〕━━━⬣
 ┃ 🛸 Grupo: ${groupName}
 ┃ 👥 Miembros: ${total}
@@ -60,15 +53,24 @@ async function run(m, { conn, groupMetadata, text }) {
 ┏━━━〔 🔥 INVOCADOS 🔥 〕━━━⬣
 `
 
-      for (const user of chunk) {
-        teks += `┃ ⚔️ @${user.split('@')[0]}\n`
-      }
+    const footer = (i, totalChunks) => `
+┗━━━━━━━━━━━━━━━━⬣
 
-      teks += `┗━━━━━━━━━━━━━━━━⬣
-
-📋 Parte ${i + 1}/${chunks.length}
+📦 Parte ${i + 1}/${totalChunks}
 👑 GUERRA BOT • ACTIVADO
 `
+
+    for (let i = 0; i < chunks.length; i++) {
+
+      const chunk = chunks[i]
+
+      let teks = header(i, chunks.length)
+
+      teks += chunk
+        .map(u => `┃ ⚔️ @${u.split('@')[0]}`)
+        .join('\n')
+
+      teks += footer(i, chunks.length)
 
       const msg = {
         mentions: chunk
@@ -109,9 +111,14 @@ async function run(m, { conn, groupMetadata, text }) {
 export default {
 
   name: 'tagall',
+
   aliases: ['todos', 'invocar'],
+
   tags: ['group'],
+
   command: ['tagall', 'todos', 'invocar'],
+
   group: true,
+
   run
 }
