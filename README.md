@@ -1,39 +1,69 @@
-<!-- Banner -->
-<h1 align="center">
-  <img src="https://api.dix.lat/media2/1777604199636.jpg" width="700" alt="GUERRA 𝐁𝐎𝐓👑"/>
-  <br>
-  👑 GUERRA 𝐁𝐎𝐓 👑
-</h1>
+<!-- ========================= -->
+<!-- 🚩 GUERRA BOT MD -->
+<!-- ========================= -->
 
-# GUERRA 𝑩𝑶𝑻
+<p align="center"><img src="https://api.dix.lat/media2/1777604199636.jpg" width="800" /></p>
 
-¡Bienvenido a GUERRA 𝑩𝑶𝑻!
+<h1 align="center">👑 GUERRA BOT MD 👑</h1>
 
-👑 𝐁𝐎𝐓 𝐏𝐑𝐄𝐌𝐈𝐔𝐌 𝐃𝐄 𝐖𝐇𝐀𝐓𝐒𝐀𝐏𝐏 👑
+<p align="center"><b>Automatización avanzada de WhatsApp Multi-Device</b><br>Estilo • Poder • Exclusividad • Rendimiento</p>
 
-╔════👑════╗
-   👑 𝙂𝙐𝙀𝙍𝙍𝘼  -  𝘽𝙊𝙏 👑
-╚════👑════╝
-         ▄︻デ══━一⁠
+<p align="center">━━━━━━━━━━━━━━━━━━━━━━━</p>
 
-## Características principales
+## 🚀 INTRODUCCIÓN
 
-- ✧ 𝑀𝑒𝑛𝑢 𝑑𝑖𝑠𝑒ñ𝑜 𝑒𝑠𝑡𝑒𝑡𝑖𝑐𝑜
-- ✧ 𝐶𝑜𝑚𝑎𝑛𝑑𝑜𝑠 𝑑𝑒 𝑔𝑟𝑢𝑝𝑜
-- ✧ 𝐷𝑒𝑠𝑐𝑎𝑟𝑔𝑎𝑠 𝑑𝑒 𝑚𝑢𝑠𝑖𝑐𝑎
-- ✧ 𝐴𝑑𝑚𝑖𝑛 𝑎𝑢𝑡𝑜𝑚á𝑡𝑖𝑐𝑜
-- ✧ 𝑆𝑡𝑖𝑐𝑘𝑒𝑟𝑠 𝑝𝑒𝑟𝑠𝑜𝑛𝑎𝑙𝑖𝑧𝑎𝑑𝑜𝑠
+> ⚔️ GUERRA BOT MD es un sistema de automatización para WhatsApp basado en Baileys Multi-Device, diseñado para alto rendimiento, arquitectura modular, escalabilidad y personalización total. Este proyecto integra herramientas modernas para la gestión de grupos, multimedia, inteligencia artificial y automatización avanzada de chats.
 
-## Instalación
+## 💎 ESTADO DEL PROYECTO
 
-1. Clona el repositorio
-2. Instala dependencias
-3. Configura tu bot
+- 🔄 Desarrollo activo  
+- ⚙️ Mejoras constantes  
+- 🧠 Arquitectura modular ESM  
+- 🔐 Compatible con DB local y MongoDB  
+- 🚀 Optimización continua  
+- 🧩 Sistema de plugins dinámico  
 
-## Contacto y soporte
+## ✨ CARACTERÍSTICAS
 
-- 𝐃𝐞𝐬𝐚𝐫𝐫𝐨𝐥𝐥𝐚𝐝𝐨𝐫: 𝑱𝒖𝒂𝒏
+- ⚡ Menú premium interactivo  
+- 👥 Gestión avanzada de grupos  
+- 📥 Descargas multimedia  
+- 🎭 Stickers personalizados  
+- 🤖 IA integrada  
+- 🔔 Bienvenida automática  
+- 🛡️ Admin tools  
+- 🔄 Auto reconexión  
+- 📊 Estadísticas  
+- 🧩 Plugins dinámicos  
 
----
+## 🧠 ARQUITECTURA
 
-𝙂𝙐𝙀𝙍𝙍𝘼 𝘽𝙊𝙏👑 — 𝐄𝐬𝐭𝐢𝐥𝐨, 𝐏𝐨𝐝𝐞𝐫 𝐲 𝐄𝐱𝐜𝐥𝐮𝐬𝐢𝐯𝐢𝐝𝐚𝐝.
+⚙️ Node.js LTS • ⚡ Baileys Multi-Device • 🧩 ESM Modules • 🗄️ MongoDB / Local DB fallback • 🔄 Workers paralelos • 📡 WebSockets persistentes  
+
+## 📦 INSTALACIÓN
+
+git clone https://github.com/TU-USUARIO/guerra-bot-md && cd guerra-bot-md && npm install && npm start  
+
+## ⚙️ REQUISITOS
+
+Node.js 18+ • Git • VPS o Termux • Internet estable • 1GB RAM mínimo  
+
+## 📱 TERMUX
+
+pkg update && pkg upgrade -y && pkg install git nodejs-lts ffmpeg imagemagick -y && git clone https://github.com/TU-USUARIO/guerra-bot-md && cd guerra-bot-md && npm install && npm start  
+
+## 🖥️ VPS
+
+npm install -g pm2 && pm2 start index.js --name GUERRA-BOT && pm2 save && pm2 logs  
+
+## 📞 DESARROLLADOR
+
+👑 Guerra — contacto privado para soporte, personalización y colaboración  
+
+## ⚠️ AVISO
+
+Este proyecto es de uso educativo y personal. El uso indebido o redistribución sin autorización es responsabilidad del usuario.
+
+## 👑 CIERRE
+
+━━━━━━━━━━━━━━━━━━━━━━━ GUERRA BOT MD — Estilo • Poder • Exclusividad ━━━━━━━━━━━━━━━━━━━━━━━
