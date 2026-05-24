@@ -4,7 +4,7 @@ const DELAY_MS = 1500
 const sleep = ms =>
   new Promise(resolve => setTimeout(resolve, ms))
 
-async function handler(m, {
+async function run(m, {
   conn,
   participants,
   groupMetadata,
@@ -21,7 +21,7 @@ async function handler(m, {
 
     if (!participants || !Array.isArray(participants)) {
       return m.reply(
-        '❌ No se pudieron obtener los participantes'
+        '❌ No se pudieron obtener participantes'
       )
     }
 
@@ -85,7 +85,8 @@ async function handler(m, {
 `
 
       for (const user of chunk) {
-        teks += `┃ ⚔️ @${user.split('@')[0]}\n`
+        teks +=
+          `┃ ⚔️ @${user.split('@')[0]}\n`
       }
 
       teks += `┗━━━━━━━━━━━━━━━━⬣
@@ -94,27 +95,38 @@ async function handler(m, {
 👑 GUERRA BOT • ACTIVADO
 `
 
-      const msg = {
-        text: teks.slice(0, 4096),
-        mentions: chunk
-      }
-
       if (i === 0) {
 
-        msg.image = {
-          url: 'https://api.dix.lat/media2/1777431085383.jpg'
-        }
+        await conn.sendMessage(
+          m.chat,
+          {
+            image: {
+              url: 'https://api.dix.lat/media2/1777431085383.jpg'
+            },
 
-        msg.caption = teks.slice(0, 4096)
+            caption: teks.slice(0, 4096),
 
-        delete msg.text
+            mentions: chunk
+          },
+          {
+            quoted: m
+          }
+        )
+
+      } else {
+
+        await conn.sendMessage(
+          m.chat,
+          {
+            text: teks.slice(0, 4096),
+
+            mentions: chunk
+          },
+          {
+            quoted: m
+          }
+        )
       }
-
-      await conn.sendMessage(
-        m.chat,
-        msg,
-        { quoted: m }
-      )
 
       if (i !== chunks.length - 1) {
         await sleep(DELAY_MS)
@@ -126,19 +138,29 @@ async function handler(m, {
     console.log(e)
 
     m.reply(
-      '❌ Error al ejecutar el tagall'
+      '❌ Error al ejecutar el comando'
     )
   }
 }
 
-handler.command = [
-  'todos',
-  'tagall',
-  'invocar'
-]
+export default {
 
-handler.tags = ['group']
+  name: 'tagall',
 
-handler.group = true
+  aliases: [
+    'todos',
+    'invocar'
+  ],
 
-export default handler
+  tags: ['group'],
+
+  command: [
+    'tagall',
+    'todos',
+    'invocar'
+  ],
+
+  group: true,
+
+  run
+}
