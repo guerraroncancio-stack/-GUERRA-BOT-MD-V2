@@ -4,44 +4,67 @@ const DELAY_MS = 1500
 const sleep = ms =>
   new Promise(resolve => setTimeout(resolve, ms))
 
-async function run(m, { conn, groupMetadata, text }) {
+async function run(m, {
+  conn,
+  participants,
+  groupMetadata,
+  text
+}) {
 
   try {
 
     if (!m.isGroup) {
-      return m.reply('❌ Este comando solo funciona en grupos')
+      return m.reply(
+        '❌ Este comando solo funciona en grupos'
+      )
     }
 
-    // 🔥 FIX REAL: obtener miembros desde metadata (NO participants del handler)
-    const metadata =
-      groupMetadata ||
-      await conn.groupMetadata(m.chat)
-
-    const participants =
-      metadata?.participants || []
+    if (!participants || !Array.isArray(participants)) {
+      return m.reply(
+        '❌ No se pudieron obtener participantes'
+      )
+    }
 
     const users = participants
-      .map(p => p.id)
+      .map(p =>
+        p.id ||
+        ''
+      )
       .filter(jid =>
-        jid && jid.endsWith('@s.whatsapp.net')
+        jid &&
+        jid.endsWith('@s.whatsapp.net')
       )
 
     if (!users.length) {
-      return m.reply('❌ No se encontraron miembros del grupo')
+      return m.reply(
+        '❌ No se encontraron miembros'
+      )
     }
 
-    const total = users.length
+    const total =
+      users.length
 
     const groupName =
-      metadata.subject || 'Grupo'
+      groupMetadata?.subject ||
+      'Grupo'
 
     const mensaje =
-      text?.trim() || '⚠️ Atención general'
+      text?.trim() ||
+      '⚠️ Atención general'
 
     const chunks = []
 
-    for (let i = 0; i < users.length; i += MAX_MENTIONS) {
-      chunks.push(users.slice(i, i + MAX_MENTIONS))
+    for (
+      let i = 0;
+      i < users.length;
+      i += MAX_MENTIONS
+    ) {
+      chunks.push(
+        users.slice(
+          i,
+          i + MAX_MENTIONS
+        )
+      )
     }
 
     for (let i = 0; i < chunks.length; i++) {
@@ -60,7 +83,8 @@ async function run(m, { conn, groupMetadata, text }) {
 `
 
       for (const user of chunk) {
-        teks += `┃ ⚔️ @${user.split('@')[0]}\n`
+        teks +=
+          ┃ ⚔️ @${user.split('@')[0]}\n
       }
 
       teks += `┗━━━━━━━━━━━━━━━━⬣
@@ -69,20 +93,38 @@ async function run(m, { conn, groupMetadata, text }) {
 👑 GUERRA BOT • ACTIVADO
 `
 
-      const msg = {
-        mentions: chunk
-      }
-
       if (i === 0) {
-        msg.image = {
-          url: 'https://api.dix.lat/media2/1777431085383.jpg'
-        }
-        msg.caption = teks.slice(0, 4096)
-      } else {
-        msg.text = teks.slice(0, 4096)
-      }
 
-      await conn.sendMessage(m.chat, msg, { quoted: m })
+        await conn.sendMessage(
+          m.chat,
+          {
+            image: {
+              url: 'https://api.dix.lat/media2/1777431085383.jpg'
+            },
+
+            caption: teks.slice(0, 4096),
+
+            mentions: chunk
+          },
+          {
+            quoted: m
+          }
+        )
+
+      } else {
+
+        await conn.sendMessage(
+          m.chat,
+          {
+            text: teks.slice(0, 4096),
+
+            mentions: chunk
+          },
+          {
+            quoted: m
+          }
+        )
+      }
 
       if (i !== chunks.length - 1) {
         await sleep(DELAY_MS)
@@ -90,17 +132,33 @@ async function run(m, { conn, groupMetadata, text }) {
     }
 
   } catch (e) {
+
     console.log(e)
-    m.reply('❌ Error al ejecutar el comando')
+
+    m.reply(
+      '❌ Error al ejecutar el comando'
+    )
   }
 }
 
 export default {
 
   name: 'tagall',
-  aliases: ['todos', 'invocar'],
+
+  aliases: [
+    'todos',
+    'invocar'
+  ],
+
   tags: ['group'],
-  command: ['tagall', 'todos', 'invocar'],
+
+  command: [
+    'tagall',
+    'todos',
+    'invocar'
+  ],
+
   group: true,
+
   run
 }
