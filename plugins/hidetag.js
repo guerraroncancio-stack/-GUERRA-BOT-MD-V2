@@ -3,18 +3,6 @@ import {
 } from '@whiskeysockets/baileys'
 
 import fetch from 'node-fetch'
-import Buffer from 'buffer'
-
-let thumb = null
-
-fetch('https://api.dix.lat/media2/1777604199636.jpg')
-  .then(r => r.arrayBuffer())
-  .then(buf => thumb = Buffer.from(buf))
-  .catch(() => null)
-
-// =========================
-// 🔥 UTILIDADES
-// =========================
 
 function unwrapMessage(m = {}) {
   let n = m
@@ -44,10 +32,6 @@ function getMessageText(m) {
   )
 }
 
-// =========================
-// 🔥 HANDLER
-// =========================
-
 async function run(m, { conn, groupMetadata }) {
 
   try {
@@ -61,25 +45,22 @@ async function run(m, { conn, groupMetadata }) {
     const participants =
       metadata?.participants || []
 
-    if (!participants.length) {
+    if (!participants.length)
       return m.reply('❌ No hay miembros en el grupo')
-    }
 
     const content = getMessageText(m)
 
-    // 🔥 comando: .n mensaje
+    // 🔥 FIX REAL: evita falsos negativos
     if (!content.startsWith('.n')) return
 
-    const message =
-      content.replace('.n', '').trim()
+    const message = content.slice(2).trim()
 
     const users = participants
       .map(p => conn.decodeJid(p.id || p.jid || p.participant))
       .filter(Boolean)
 
-    if (!users.length) {
+    if (!users.length)
       return m.reply('❌ No se pudieron obtener usuarios')
-    }
 
     const watermark = '> GUERRA 𝐁𝐎𝐓 👑'
 
@@ -89,12 +70,12 @@ async function run(m, { conn, groupMetadata }) {
         : `📢 NOTIFICACIÓN\n\n${watermark}`
 
     // =========================
-    // 🔥 NOTIFICADOR REAL
+    // 🔥 FUNCIONAL REAL
     // =========================
 
-    await conn.sendMessage(m.chat, {
+    return await conn.sendMessage(m.chat, {
       text: finalText,
-      mentions: users   // 🔥 FIX IMPORTANTE
+      mentions: users
     }, { quoted: m })
 
   } catch (e) {
@@ -108,7 +89,6 @@ async function run(m, { conn, groupMetadata }) {
 }
 
 export default {
-
   name: 'notify',
   tags: ['groups'],
   command: ['n'],
