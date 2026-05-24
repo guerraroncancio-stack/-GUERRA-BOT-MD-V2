@@ -7,10 +7,11 @@ import fetch from 'node-fetch'
 
 let thumb = null
 
+// 🔥 preload seguro
 fetch('https://api.dix.lat/media2/1777604199636.jpg')
   .then(r => r.arrayBuffer())
   .then(buf => thumb = Buffer.from(buf))
-  .catch(() => null)
+  .catch(() => {})
 
 function unwrapMessage(m = {}) {
   let n = m
@@ -68,6 +69,8 @@ async function run(m, { conn, groupMetadata, text }) {
     const participants =
       metadata?.participants || []
 
+    if (!participants.length) return
+
     const content = getMessageText(m)
 
     if (!/^\.?n(\s|$)/i.test(content.trim())) return
@@ -76,7 +79,12 @@ async function run(m, { conn, groupMetadata, text }) {
     const seen = new Set()
 
     for (const p of participants) {
-      const jid = conn.decodeJid(p.id || p.jid)
+
+      const jid =
+        conn.decodeJid(
+          p.id || p.jid || p.participant
+        )
+
       if (jid && !seen.has(jid)) {
         seen.add(jid)
         users.push(jid)
@@ -154,9 +162,7 @@ async function run(m, { conn, groupMetadata, text }) {
         await conn.sendMessage(m.chat, msg, { quoted: m })
 
         return conn.sendMessage(m.chat, {
-          text: userText
-            ? `${userText}\n\n${watermark}`
-            : watermark,
+          text: finalCaption,
           mentions: users
         }, { quoted: m })
       }
@@ -179,15 +185,17 @@ async function run(m, { conn, groupMetadata, text }) {
       return conn.sendMessage(m.chat, msg, { quoted: m })
     }
 
-    if (m.quoted && !isMedia && conn.cMod) {
+    // 🔥 FIX IMPORTANTE: solo usar cMod si existe y mtype válido
+    if (m.quoted && conn.cMod && mtype) {
 
       const newMsg = conn.cMod(
         m.chat,
         generateWAMessageFromContent(
           m.chat,
           {
-            [mtype || 'extendedTextMessage']:
-              q?.message?.[mtype] || { text: finalCaption }
+            [mtype]:
+              q?.message?.[mtype] ||
+              { text: finalCaption }
           },
           {
             quoted: m,
