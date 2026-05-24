@@ -1,40 +1,33 @@
 const OWNER_NUMBER = '573102286030'
 const OWNER_JID = `${OWNER_NUMBER}@s.whatsapp.net`
 
-// 🔥 CACHE en memoria
-let cachedPP = null
-let lastFetch = 0
+let cachedPP = 'https://api.dix.lat/media2/1777604199636.jpg'
 
-async function getOwnerPP(conn) {
-  const now = Date.now()
-
-  // cache válido por 10 minutos
-  if (cachedPP && now - lastFetch < 10 * 60 * 1000) {
-    return cachedPP
-  }
-
+// 🔥 precarga en segundo plano (NO bloquea el comando)
+async function refreshPP(conn) {
   try {
     const url = await conn.profilePictureUrl(OWNER_JID, 'image')
-    cachedPP = url
-    lastFetch = now
-    return url
-  } catch {
-    cachedPP = 'https://api.dix.lat/media2/1777604199636.jpg'
-    lastFetch = now
-    return cachedPP
-  }
+    if (url) cachedPP = url
+  } catch {}
 }
+
+// 🔥 actualiza cada 5 minutos sin frenar el bot
+setInterval(() => {
+  refreshPP(global.conn).catch(() => {})
+}, 5 * 60 * 1000)
 
 async function run(m, { conn }) {
 
-  const pp = await getOwnerPP(conn)
+  // 🔥 intenta refrescar sin bloquear respuesta
+  refreshPP(conn).catch(() => {})
 
   const text = `
 👑 *CONTACTO OFICIAL DEL OWNER*
 
-📩 Compra / soporte / configuración / bots personalizados
+📩 WhatsApp directo:
+wa.me/${OWNER_NUMBER}
 
-⚡ Respuesta rápida
+⚡ Soporte / compras / configuración de bot
 `
 
   const vcard = `
@@ -45,8 +38,9 @@ TEL;type=CELL;type=VOICE;waid=${OWNER_NUMBER}:${OWNER_NUMBER}
 END:VCARD
 `.trim()
 
+  // 🔥 RESPUESTA INMEDIATA (sin await de foto)
   await conn.sendMessage(m.chat, {
-    image: { url: pp },
+    image: { url: cachedPP },
     caption: text,
     contacts: {
       displayName: '👑 Owner GUERRA BOT',
