@@ -49,7 +49,11 @@ const deleteCommand = {
                 return await m.react('🗑️');
             }
 
-            return conn.reply(m.chat, '> ✎ Responde a un mensaje para borrarlo.', m);
+            return conn.reply(m.chat, '
+╭─❍ COMANDO DELETE ❍─╮
+│ ✦ Responde a un mensaje
+│ ✦ para eliminarlo correctamente
+╰───────────────────╯', m);
 
         } catch (e) {
             
