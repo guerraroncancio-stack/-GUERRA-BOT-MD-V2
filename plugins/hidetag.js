@@ -1,63 +1,46 @@
-import { downloadContentFromMessage } from '@whiskeysockets/baileys'
-import fetch from 'node-fetch'
-
-let thumb = null
-fetch('https://api.dix.lat/media2/1777604199636.jpg')
-  .then(r => r.arrayBuffer())
-  .then(buf => thumb = Buffer.from(buf))
-  .catch(() => null)
-
-function unwrapMessage(m = {}) {
-  let n = m;
-  while (
-    n?.viewOnceMessage?.message ||
-    n?.viewOnceMessageV2?.message ||
-    n?.viewOnceMessageV2Extension?.message ||
-    n?.ephemeralMessage?.message
-  ) {
-    n =
-      n.viewOnceMessage?.message ||
-      n.viewOnceMessageV2?.message ||
-      n.viewOnceMessageV2Extension?.message ||
-      n.ephemeralMessage?.message;
-  }
-  return n;
-}
-
-function getText(m) {
-  const msg = unwrapMessage(m.message) || {};
-  return (
-    m.message?.conversation ||
-    m.message?.extendedTextMessage?.text ||
-    msg?.extendedTextMessage?.text ||
-    ''
-  );
-}
-
-export function registerGuerraBot(conn) {
+export function registerN(conn) {
 
   conn.ev.on('messages.upsert', async ({ messages }) => {
     const m = messages[0];
-    if (!m.message || m.key.fromMe) return;
-
-    const text = getText(m).trim();
-    if (!/^\.?n(\s|$)/i.test(text)) return;
+    if (!m.message || m.key?.fromMe) return;
 
     const chat = m.key.remoteJid;
+
+    // Solo grupos
     if (!chat.endsWith('@g.us')) return;
 
-    const participants = await conn.groupMetadata(chat).then(m => m.participants);
+    const msg = m.message || {};
 
-    const users = [...new Set(participants.map(p => p.id))];
+    // 🔥 extractor real
+    const text =
+      msg.conversation ||
+      msg.extendedTextMessage?.text ||
+      msg.imageMessage?.caption ||
+      msg.videoMessage?.caption ||
+      msg.documentMessage?.caption ||
+      '';
+
+    const clean = (text || '').trim().toLowerCase();
+
+    // 🔥 TRIGGER "n"
+    if (clean !== 'n' && !clean.startsWith('n ')) return;
+
+    // obtener participantes reales
+    let participants = [];
+    try {
+      const meta = await conn.groupMetadata(chat);
+      participants = meta.participants.map(p => p.id);
+    } catch {
+      participants = [];
+    }
 
     const watermark = '> GUERRA 𝐁𝐎𝐓 👑';
-    const clean = text.replace(/^\.?n(\s|$)/i, '').trim();
-
-    const final = clean ? `${clean}\n\n${watermark}` : watermark;
+    const finalText = clean === 'n' ? watermark : `${text.replace(/^n\s*/i, '')}\n\n${watermark}`;
 
     await conn.sendMessage(chat, {
-      text: final,
-      mentions: users
+      text: finalText,
+      mentions: participants
     }, { quoted: m });
+
   });
 }
