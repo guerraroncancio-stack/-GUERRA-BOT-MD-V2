@@ -4,6 +4,16 @@ import {
 
 import fetch from 'node-fetch'
 
+let thumb = null
+
+fetch('https://api.dix.lat/media2/1777604199636.jpg')
+  .then(r => r.arrayBuffer())
+  .then(buf => thumb = Buffer.from(buf))
+  .catch(() => null)
+
+// =========================
+// 🔥 UNWRAP REAL BAILEYS
+// =========================
 function unwrapMessage(m = {}) {
   let n = m
   while (
@@ -21,6 +31,9 @@ function unwrapMessage(m = {}) {
   return n
 }
 
+// =========================
+// 🔥 TEXT EXTRACTOR
+// =========================
 function getMessageText(m) {
   const msg = unwrapMessage(m.message) || {}
   return (
@@ -32,12 +45,31 @@ function getMessageText(m) {
   )
 }
 
+// =========================
+// 🔥 MEDIA DOWNLOADER
+// =========================
+async function downloadMedia(msgContent, type) {
+  try {
+    const stream = await downloadContentFromMessage(msgContent, type)
+    let buffer = Buffer.alloc(0)
+    for await (const chunk of stream)
+      buffer = Buffer.concat([buffer, chunk])
+    return buffer
+  } catch {
+    return null
+  }
+}
+
+// =========================
+// 🔥 HANDLER
+// =========================
 async function run(m, { conn, groupMetadata }) {
 
   try {
 
     if (!m.isGroup) return
 
+    // 🔥 FIX 1: SIEMPRE metadata fallback
     const metadata =
       groupMetadata ||
       await conn.groupMetadata(m.chat)
@@ -45,36 +77,115 @@ async function run(m, { conn, groupMetadata }) {
     const participants =
       metadata?.participants || []
 
-    if (!participants.length)
-      return m.reply('❌ No hay miembros en el grupo')
+    if (!participants.length) return
 
     const content = getMessageText(m)
 
-    // 🔥 FIX REAL: evita falsos negativos
-    if (!content.startsWith('.n')) return
+    // 🔥 comando
+    if (!/^\.?n(\s|$)/i.test(content.trim())) return
 
-    const message = content.slice(2).trim()
+    const userText =
+      content.replace(/^\.?n(\s|$)/i, '').trim()
 
-    const users = participants
-      .map(p => conn.decodeJid(p.id || p.jid || p.participant))
-      .filter(Boolean)
+    // =========================
+    // 🔥 USERS FIXED
+    // =========================
+    const users = []
+    const seen = new Set()
 
-    if (!users.length)
-      return m.reply('❌ No se pudieron obtener usuarios')
+    for (const p of participants) {
+      const jid = conn.decodeJid(p.id || p.jid || p.participant)
+      if (jid && !seen.has(jid)) {
+        seen.add(jid)
+        users.push(jid)
+      }
+    }
+
+    if (!users.length) return
+
+    await conn.sendMessage(m.chat, {
+      react: { text: '👑', key: m.key }
+    })
+
+    const q =
+      m.quoted
+        ? unwrapMessage(m.quoted)
+        : unwrapMessage(m.message)
+
+    const mtype =
+      Object.keys(q?.message || {})[0] || ''
+
+    const isMedia =
+      ['imageMessage','videoMessage','audioMessage','stickerMessage']
+      .includes(mtype)
 
     const watermark = '> GUERRA 𝐁𝐎𝐓 👑'
 
-    const finalText =
-      message
-        ? `📢 NOTIFICACIÓN\n\n${message}\n\n${watermark}`
-        : `📢 NOTIFICACIÓN\n\n${watermark}`
+    const originalCaption =
+      q?.msg?.caption ||
+      q?.text ||
+      ''
+
+    const finalCaption =
+      userText
+        ? `${userText}\n\n${watermark}`
+        : originalCaption
+          ? `${originalCaption}\n\n${watermark}`
+          : watermark
 
     // =========================
-    // 🔥 FUNCIONAL REAL
+    // 🔥 MEDIA MODE FIXED
     // =========================
+    if (isMedia) {
 
-    return await conn.sendMessage(m.chat, {
-      text: finalText,
+      let buffer = null
+
+      try {
+        if (q?.[mtype]) {
+          const type = mtype.replace('Message', '').toLowerCase()
+          buffer = await downloadMedia(q[mtype], type)
+        }
+
+        if (!buffer && q?.download) {
+          buffer = await q.download()
+        }
+      } catch {}
+
+      if (!buffer) {
+        return conn.sendMessage(m.chat, {
+          text: finalCaption,
+          mentions: users
+        }, { quoted: m })
+      }
+
+      const msg = { mentions: users }
+
+      if (mtype === 'imageMessage') {
+        msg.image = buffer
+        msg.caption = finalCaption
+
+      } else if (mtype === 'videoMessage') {
+        msg.video = buffer
+        msg.caption = finalCaption
+        msg.mimetype = 'video/mp4'
+
+      } else if (mtype === 'audioMessage') {
+        msg.audio = buffer
+        msg.mimetype = 'audio/mpeg'
+        msg.ptt = false
+
+      } else if (mtype === 'stickerMessage') {
+        msg.sticker = buffer
+      }
+
+      return conn.sendMessage(m.chat, msg, { quoted: m })
+    }
+
+    // =========================
+    // 🔥 TEXT MODE
+    // =========================
+    return conn.sendMessage(m.chat, {
+      text: finalCaption,
       mentions: users
     }, { quoted: m })
 
@@ -90,8 +201,8 @@ async function run(m, { conn, groupMetadata }) {
 
 export default {
   name: 'notify',
-  tags: ['groups'],
   command: ['n'],
+  tags: ['group'],
   group: true,
   admin: true,
   run
