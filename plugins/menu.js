@@ -7,7 +7,7 @@ async function makeFkontak() {
 
     const res =
     await fetch(
-      'https://cdn.dix.lat/me/1777431468205.jpg'
+      ' https://cdn.dix.lat/me/0e8b184d-c3d0-491e-a56e-98f06d6907e9.jpg'
     )
 
     const thumb =
@@ -148,7 +148,7 @@ const menu = `
     m.chat,
     {
       image: {
-        url: 'https://cdn.dix.lat/me/1777431468205.jpg'
+        url: ' https://cdn.dix.lat/me/0e8b184d-c3d0-491e-a56e-98f06d6907e9.jpg'
       },
 
       caption: menu
