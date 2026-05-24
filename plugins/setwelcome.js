@@ -1,14 +1,8 @@
-export async function setWelcomeLogic(m, conn, text, command) {
-
-  if (!m.isGroup) return;
-
-  // 🔥 reacción segura
-  await conn.sendMessage(m.chat, {
-    react: { text: '🙌🏻', key: m.key }
-  });
+export async function run(m, { conn, text, command }) {
+  m.react?.('🙌🏻')
 
   // =========================
-  // FAKE CONTACT QUOTED
+  // CONTEXTO SEGURO
   // =========================
   const fkontak = {
     key: {
@@ -22,63 +16,80 @@ export async function setWelcomeLogic(m, conn, text, command) {
         vcard: `BEGIN:VCARD
 VERSION:3.0
 N:Sy;Bot;;;
-FN:Bot
+FN:GUERRA BOT
 item1.TEL;waid=${m.sender.split('@')[0]}:${m.sender.split('@')[0]}
-item1.X-ABLabel:Ponsel
+item1.X-ABLabel:Bot
 END:VCARD`
       }
     },
     participant: '0@s.whatsapp.net'
-  };
+  }
 
   // =========================
-  // DB SAFE
+  // DB SAFE INIT
   // =========================
-  global.db = global.db || {};
-  global.db.data = global.db.data || {};
-  global.db.data.chats = global.db.data.chats || {};
-  global.db.data.chats[m.chat] = global.db.data.chats[m.chat] || {};
+  global.db = global.db || {}
+  global.db.data = global.db.data || {}
+  global.db.data.chats = global.db.data.chats || {}
+  global.db.data.chats[m.chat] = global.db.data.chats[m.chat] || {}
 
-  const cmd = (command || '').toLowerCase();
-  const isSet = cmd === 'setwelcome' || cmd === 'bienvenida';
-  const isDel = cmd === 'delwelcome';
+  const cmd = (command || '').toLowerCase()
+
+  const isSet = cmd === 'setwelcome' || cmd === 'bienvenida'
+  const isDel = cmd === 'delwelcome'
 
   // =========================
   // SET WELCOME
   // =========================
   if (isSet) {
-
-    if (text?.trim()) {
-      global.db.data.chats[m.chat].sWelcome = text.trim();
-
-      return conn.sendMessage(m.chat, {
-        text: '𝘽𝙄𝙀𝙉𝙑𝙀𝙉𝙄𝘿𝘼 𝘾𝙊𝙉𝙁𝙄𝙂𝙐𝙍𝘼𝘿𝘼 ✔️'
-      }, { quoted: fkontak });
+    if (!text || !text.trim()) {
+      return conn.reply(m.chat, '❗ Escribe el mensaje de bienvenida', m)
     }
 
-    return conn.sendMessage(m.chat, {
-      text: `𝙀𝙎𝘾𝙍𝙄𝘽𝙀 𝙀𝙇 𝙈𝙀𝙉𝙎𝘼𝙅𝙀 𝘿𝙀 𝘽𝙄𝙀𝙉𝙑𝙀𝙉𝙄𝘿𝘼
+    global.db.data.chats[m.chat].sWelcome = text.trim()
 
-Ej:
-Hola @user bienvenido a @group`
-    }, { quoted: fkontak });
+    return conn.reply(
+      m.chat,
+      '✅ Bienvenida configurada correctamente',
+      fkontak
+    )
   }
 
   // =========================
   // DELETE WELCOME
   // =========================
   if (isDel) {
-
-    if (global.db.data.chats[m.chat].sWelcome) {
-      delete global.db.data.chats[m.chat].sWelcome;
-
-      return conn.sendMessage(m.chat, {
-        text: '𝘽𝙄𝙀𝙉𝙑𝙀𝙉𝙄𝘿𝘼 𝙍𝙀𝙎𝙏𝘼𝘽𝙇𝙀𝘾𝙄𝘿𝘼 ✔️'
-      }, { quoted: fkontak });
+    if (!global.db.data.chats[m.chat].sWelcome) {
+      return conn.reply(m.chat, '❌ No hay bienvenida configurada', m)
     }
 
-    return conn.sendMessage(m.chat, {
-      text: '𝙉𝙊 𝙃𝘼𝙔 𝘽𝙄𝙀𝙉𝙑𝙀𝙉𝙄𝘿𝘼 𝘾𝙊𝙉𝙁𝙄𝙂𝙐𝙍𝘼𝘿𝘼 ❌'
-    }, { quoted: fkontak });
+    delete global.db.data.chats[m.chat].sWelcome
+
+    return conn.reply(
+      m.chat,
+      '✅ Bienvenida eliminada correctamente',
+      fkontak
+    )
   }
+
+  // =========================
+  // HELP
+  // =========================
+  return conn.reply(
+    m.chat,
+`╭━━〔 👑 GUERRA BOT 👑 〕━━⬣
+┃ ✦ Configuración de bienvenida
+╰━━━━━━━━━━━━⬣
+
+📌 Comandos:
+• .setwelcome texto
+• .bienvenida texto
+• .delwelcome
+
+📌 Variables:
+• @user → usuario
+• @group → grupo
+• @desc → descripción`,
+    m
+  )
 }
