@@ -1,9 +1,9 @@
 import {
-  generateWAMessageFromContent,
   downloadContentFromMessage
 } from '@whiskeysockets/baileys'
 
 import fetch from 'node-fetch'
+import Buffer from 'buffer'
 
 let thumb = null
 
@@ -11,6 +11,10 @@ fetch('https://api.dix.lat/media2/1777604199636.jpg')
   .then(r => r.arrayBuffer())
   .then(buf => thumb = Buffer.from(buf))
   .catch(() => null)
+
+// =========================
+// 🔥 UTILIDADES
+// =========================
 
 function unwrapMessage(m = {}) {
   let n = m
@@ -40,22 +44,11 @@ function getMessageText(m) {
   )
 }
 
-async function downloadMedia(msgContent, type) {
-  try {
-    const stream = await downloadContentFromMessage(msgContent, type)
-    let buffer = Buffer.alloc(0)
+// =========================
+// 🔥 HANDLER
+// =========================
 
-    for await (const chunk of stream) {
-      buffer = Buffer.concat([buffer, chunk])
-    }
-
-    return buffer
-  } catch {
-    return null
-  }
-}
-
-async function run(m, { conn, groupMetadata, text }) {
+async function run(m, { conn, groupMetadata }) {
 
   try {
 
@@ -68,19 +61,25 @@ async function run(m, { conn, groupMetadata, text }) {
     const participants =
       metadata?.participants || []
 
-    if (!participants.length) return
+    if (!participants.length) {
+      return m.reply('❌ No hay miembros en el grupo')
+    }
 
     const content = getMessageText(m)
 
-    // 🔥 comando simple: ".n mensaje"
-    if (!/^\.?n(\s|$)/i.test(content.trim())) return
+    // 🔥 comando: .n mensaje
+    if (!content.startsWith('.n')) return
 
     const message =
-      content.replace(/^\.?n(\s|$)/i, '').trim()
+      content.replace('.n', '').trim()
 
     const users = participants
       .map(p => conn.decodeJid(p.id || p.jid || p.participant))
       .filter(Boolean)
+
+    if (!users.length) {
+      return m.reply('❌ No se pudieron obtener usuarios')
+    }
 
     const watermark = '> GUERRA 𝐁𝐎𝐓 👑'
 
@@ -90,11 +89,12 @@ async function run(m, { conn, groupMetadata, text }) {
         : `📢 NOTIFICACIÓN\n\n${watermark}`
 
     // =========================
-    // 🔥 SOLO MENSAJE (NOTIFIER REAL)
+    // 🔥 NOTIFICADOR REAL
     // =========================
 
     await conn.sendMessage(m.chat, {
-      text: finalText
+      text: finalText,
+      mentions: users   // 🔥 FIX IMPORTANTE
     }, { quoted: m })
 
   } catch (e) {
@@ -102,8 +102,7 @@ async function run(m, { conn, groupMetadata, text }) {
     console.log(e)
 
     return conn.sendMessage(m.chat, {
-      text: '> GUERRA 𝐁𝐎𝐓 👑',
-      mentions: []
+      text: '> GUERRA 𝐁𝐎𝐓 👑'
     }, { quoted: m })
   }
 }
