@@ -1,29 +1,27 @@
-async function run(m, { conn, usedPrefix }) {
+async function run(m, { conn }) {
 
   try {
 
-    if (!m.isGroup) {
+    if (!m.isGroup)
       return m.reply('❌ Solo funciona en grupos')
-    }
 
-    // =========================
-    // 🔥 OBTENER USUARIO
-    // =========================
     const user =
       m.mentionedJid?.[0] ||
       m.quoted?.sender ||
       null
 
-    if (!user) {
+    if (!user)
       return conn.reply(
         m.chat,
         '> ➤ MENCIONA O RESPONDE A UN USUARIO PARA EXPULSARLO 🌟',
         m
       )
-    }
 
     const metadata =
       await conn.groupMetadata(m.chat)
+
+    const participants =
+      metadata?.participants || []
 
     const ownerGroup =
       metadata?.owner ||
@@ -35,8 +33,21 @@ async function run(m, { conn, usedPrefix }) {
         : null
 
     // =========================
+    // 🔥 BUSCAR PARTICIPANTE
+    // =========================
+    const target =
+      participants.find(p =>
+        conn.decodeJid(p.id || p.jid || p.participant) === user
+      )
+
+    const isAdmin =
+      target?.admin === 'admin' ||
+      target?.admin === 'superadmin'
+
+    // =========================
     // 🔥 VALIDACIONES
     // =========================
+
     if (user === conn.user.jid)
       return m.reply('🚫 No puedo expulsar al bot')
 
@@ -45,6 +56,10 @@ async function run(m, { conn, usedPrefix }) {
 
     if (ownerBot && user === ownerBot)
       return m.reply('🚫 No puedo expulsar al owner del bot')
+
+    // 🔥 PROTECCIÓN ADMIN
+    if (isAdmin)
+      return m.reply('🚫 No puedo expulsar a un administrador del grupo')
 
     // =========================
     // 🔥 KICK REAL
@@ -57,7 +72,7 @@ async function run(m, { conn, usedPrefix }) {
 
     return conn.reply(
       m.chat,
-      `✅ Usuario expulsado correctamente`,
+      '✅ Usuario expulsado correctamente',
       m
     )
 
