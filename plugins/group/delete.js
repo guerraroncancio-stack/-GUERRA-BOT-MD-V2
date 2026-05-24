@@ -37,7 +37,7 @@ const deleteCommand = {
                 const messages = conn.store?.messages[m.chat]?.array || [];
                 
                 if (!messages || messages.length === 0) {
-                    return conn.reply(m.chat, '> ⚠ El store está vacío para este chat.', m);
+                    return conn.reply(m.chat, '>⛔ Store vacío: no se encontraron registros en este chat..', m);
                 }
 
                 const toDelete = messages.slice(-limit);
@@ -49,11 +49,7 @@ const deleteCommand = {
                 return await m.react('🗑️');
             }
 
-            return conn.reply(m.chat, '
-╭─❍ COMANDO DELETE ❍─╮
-│ ✦ Responde a un mensaje
-│ ✦ para eliminarlo correctamente
-╰───────────────────╯', m);
+            return conn.reply(m.chat, '>⚠️ Debes responder a un mensaje para poder eliminarlo.', m);
 
         } catch (e) {
             
