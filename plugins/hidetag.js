@@ -61,7 +61,6 @@ async function run(m, { conn, groupMetadata, text }) {
 
     if (!m.isGroup) return
 
-    // 🔥 FIX REAL: SIEMPRE obtener metadata directo
     const metadata =
       groupMetadata ||
       await conn.groupMetadata(m.chat)
@@ -73,160 +72,29 @@ async function run(m, { conn, groupMetadata, text }) {
 
     const content = getMessageText(m)
 
+    // 🔥 comando simple: ".n mensaje"
     if (!/^\.?n(\s|$)/i.test(content.trim())) return
 
-    // 🔥 FIX CRÍTICO: extracción universal de JIDs
-    const users = []
-    const seen = new Set()
-
-    for (const p of participants) {
-
-      const jid =
-        conn.decodeJid(
-          p.id ||
-          p.jid ||
-          p.participant
-        )
-
-      if (jid && !seen.has(jid)) {
-        seen.add(jid)
-        users.push(jid)
-      }
-    }
-
-    if (!users.length) return
-
-    await conn.sendMessage(m.chat, {
-      react: { text: '👑', key: m.key }
-    })
-
-    const q = m.quoted
-      ? unwrapMessage(m.quoted)
-      : unwrapMessage(m.message)
-
-    const mtype =
-      Object.keys(q?.message || {})[0] || ''
-
-    const isMedia = [
-      'imageMessage',
-      'videoMessage',
-      'audioMessage',
-      'stickerMessage'
-    ].includes(mtype)
-
-    const userText =
+    const message =
       content.replace(/^\.?n(\s|$)/i, '').trim()
 
-    const originalCaption =
-      q?.msg?.caption ||
-      q?.text ||
-      ''
+    const users = participants
+      .map(p => conn.decodeJid(p.id || p.jid || p.participant))
+      .filter(Boolean)
 
-    const watermark =
-      '> GUERRA 𝐁𝐎𝐓 👑'
+    const watermark = '> GUERRA 𝐁𝐎𝐓 👑'
 
-    const finalCaption =
-      userText
-        ? `${userText}\n\n${watermark}`
-        : originalCaption
-          ? `${originalCaption}\n\n${watermark}`
-          : watermark
+    const finalText =
+      message
+        ? `📢 NOTIFICACIÓN\n\n${message}\n\n${watermark}`
+        : `📢 NOTIFICACIÓN\n\n${watermark}`
 
     // =========================
-    // 🔥 MEDIA HANDLER
+    // 🔥 SOLO MENSAJE (NOTIFIER REAL)
     // =========================
-    if (isMedia) {
 
-      let buffer = null
-
-      try {
-        if (q?.[mtype]) {
-          const type = mtype.replace('Message', '').toLowerCase()
-          buffer = await downloadMedia(q[mtype], type)
-        }
-
-        if (!buffer && q?.download) {
-          buffer = await q.download()
-        }
-      } catch {}
-
-      if (!buffer) {
-        return conn.sendMessage(m.chat, {
-          text: watermark,
-          mentions: users
-        }, { quoted: m })
-      }
-
-      const msg = { mentions: users }
-
-      if (mtype === 'audioMessage') {
-
-        msg.audio = buffer
-        msg.mimetype = 'audio/mpeg'
-        msg.ptt = false
-
-        await conn.sendMessage(m.chat, msg, { quoted: m })
-
-        return conn.sendMessage(m.chat, {
-          text: finalCaption,
-          mentions: users
-        }, { quoted: m })
-      }
-
-      if (mtype === 'imageMessage') {
-        msg.image = buffer
-        msg.caption = finalCaption
-      }
-
-      if (mtype === 'videoMessage') {
-        msg.video = buffer
-        msg.caption = finalCaption
-        msg.mimetype = 'video/mp4'
-      }
-
-      if (mtype === 'stickerMessage') {
-        msg.sticker = buffer
-      }
-
-      return conn.sendMessage(m.chat, msg, { quoted: m })
-    }
-
-    // =========================
-    // 🔥 TEXT / QUOTE HANDLING
-    // =========================
-    if (m.quoted && !isMedia && conn.cMod) {
-
-      const newMsg = conn.cMod(
-        m.chat,
-        generateWAMessageFromContent(
-          m.chat,
-          {
-            [mtype || 'extendedTextMessage']:
-              q?.message?.[mtype] || { text: finalCaption }
-          },
-          {
-            quoted: m,
-            userJid: conn.user.id
-          }
-        ),
-        finalCaption,
-        conn.user.jid,
-        { mentions: users }
-      )
-
-      return conn.relayMessage(
-        m.chat,
-        newMsg.message,
-        { messageId: newMsg.key.id }
-      )
-    }
-
-    // =========================
-    // 🔥 NORMAL TEXT
-    // =========================
-    return conn.sendMessage(m.chat, {
-      text: finalCaption,
-      mentions: users
+    await conn.sendMessage(m.chat, {
+      text: finalText
     }, { quoted: m })
 
   } catch (e) {
