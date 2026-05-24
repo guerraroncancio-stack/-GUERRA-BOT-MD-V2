@@ -46,21 +46,98 @@ async function run(m, { conn, usedPrefix }) {
   const uptime =
   clockString(process.uptime() * 1000)
 
-  const menu = `
+const menu = `
 ╭━━〔 👑 GUERRA BOT 👑 〕━━⬣
 ┃ ✦ Usuario: ${name}
 ┃ ✦ Uptime: ${uptime}
+┃ ✦ Prefijo: ${usedPrefix}
 ╰━━━━━━━━━━━━⬣
 
-╭━━〔 📥 COMANDOS 〕━━⬣
+╭━━〔 📥 MAIN 〕━━⬣
 ┃ ✦ ${usedPrefix}menu
+┃ ✦ ${usedPrefix}code
+┃ ✦ ${usedPrefix}stop
+┃ ✦ ${usedPrefix}bots
+┃ ✦ ${usedPrefix}report / bug
+┃ ✦ ${usedPrefix}sugerencia
+┃ ✦ ${usedPrefix}topcmd
+╰━━━━━━━━━━━━⬣
+
+╭━━〔 🎮 FUN 〕━━⬣
+┃ ✦ ${usedPrefix}gay
+┃ ✦ ${usedPrefix}top
+┃ ✦ ${usedPrefix}parejas
+┃ ✦ ${usedPrefix}poema
+┃ ✦ ${usedPrefix}reflexion
+┃ ✦ ${usedPrefix}meme
+┃ ✦ ${usedPrefix}consejo
+╰━━━━━━━━━━━━⬣
+
+╭━━〔 👥 SOCIAL 〕━━⬣
+┃ ✦ ${usedPrefix}perfil
+┃ ✦ ${usedPrefix}setdesc
+┃ ✦ ${usedPrefix}setage
+┃ ✦ ${usedPrefix}setgenero
+┃ ✦ ${usedPrefix}setorientacion
+┃ ✦ ${usedPrefix}marry
+╰━━━━━━━━━━━━⬣
+
+╭━━〔 📥 DOWNLOAD 〕━━⬣
 ┃ ✦ ${usedPrefix}play
-┃ ✦ ${usedPrefix}sticker
+┃ ✦ ${usedPrefix}play2
+┃ ✦ ${usedPrefix}spotify
+┃ ✦ ${usedPrefix}tiktok
+┃ ✦ ${usedPrefix}instagram
+┃ ✦ ${usedPrefix}mediafire
+╰━━━━━━━━━━━━⬣
+
+╭━━〔 💰 RPG 〕━━⬣
+┃ ✦ ${usedPrefix}balance
+┃ ✦ ${usedPrefix}ruleta
+┃ ✦ ${usedPrefix}loteria
+┃ ✦ ${usedPrefix}pay
+┃ ✦ ${usedPrefix}robar
+┃ ✦ ${usedPrefix}trabajar
+╰━━━━━━━━━━━━⬣
+
+╭━━〔 👑 GROUP 〕━━⬣
 ┃ ✦ ${usedPrefix}kick
+┃ ✦ ${usedPrefix}promote
+┃ ✦ ${usedPrefix}demote
+┃ ✦ ${usedPrefix}tagall
 ┃ ✦ ${usedPrefix}open
 ┃ ✦ ${usedPrefix}close
-┃ ✦ ${usedPrefix}tagall
-┃ ✦ ${usedPrefix}ping
+┃ ✦ ${usedPrefix}hidetag
+╰━━━━━━━━━━━━⬣
+
+╭━━〔 🤖 AI 〕━━⬣
+┃ ✦ ${usedPrefix}ia
+┃ ✦ ${usedPrefix}chatgpt
+┃ ✦ ${usedPrefix}gemini
+┃ ✦ ${usedPrefix}copilot
+┃ ✦ ${usedPrefix}imgg
+┃ ✦ ${usedPrefix}tts
+╰━━━━━━━━━━━━⬣
+
+╭━━〔 ⚙️ TOOLS 〕━━⬣
+┃ ✦ ${usedPrefix}qr
+┃ ✦ ${usedPrefix}tourl
+┃ ✦ ${usedPrefix}traducir
+┃ ✦ ${usedPrefix}acortar
+┃ ✦ ${usedPrefix}ssweb
+╰━━━━━━━━━━━━⬣
+
+╭━━〔 🔥 OWNER 〕━━⬣
+┃ ✦ ${usedPrefix}restart
+┃ ✦ ${usedPrefix}up
+┃ ✦ ${usedPrefix}autoadmin
+┃ ✦ ${usedPrefix}ds
+╰━━━━━━━━━━━━⬣
+
+╭━━〔 📊 ESTADO 〕━━⬣
+┃ ✦ Bot activo 100%
+┃ ✦ Sistema estable
+┃ ✦ Latencia OK
 ╰━━━━━━━━━━━━⬣
 `
 
