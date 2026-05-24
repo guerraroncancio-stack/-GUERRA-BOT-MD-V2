@@ -23,7 +23,7 @@ const wallpaperCommand = {
 
             await conn.sendMessage(m.chat, { 
                 image: { url: image.largeImageURL }, 
-                caption: `*── 「 WALLPAPER HD 」 ──*\n\n> 👤 *Autor:* ${image.user}\n> 🏷️ *Tags:* ${image.tags}\n\n*❯ Proveedor:* Pixabay` 
+                caption: `*── 「 WALLPAPER HD 」 ──*\n\n> 👤 *Autor:* ${image.user}\n> 🏷️ *Tags:* ${image.tags}\n\n*❯ Proveedor:* Guerra` 
             }, { quoted: m });
 
             m.react('✅');
