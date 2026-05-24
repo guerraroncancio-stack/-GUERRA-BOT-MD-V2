@@ -1,4 +1,4 @@
-const OWNER_NUMBER = '573001234567'
+const OWNER_NUMBER = '573102286030'
 const OWNER_JID = `${OWNER_NUMBER}@s.whatsapp.net`
 
 // 🔥 CACHE en memoria
