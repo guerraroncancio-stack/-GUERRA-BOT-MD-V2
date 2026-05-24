@@ -9,33 +9,29 @@ fetch('https://api.dix.lat/media2/1777604199636.jpg')
 
 async function handler(m, { conn, text }) {
 
-  let user = null
-
-  // =========================
-  // 🔥 DETECCIÓN DE USUARIO
-  // =========================
-  if (m.quoted?.sender) {
-    user = m.quoted.sender
-
-  } else if (m.mentionedJid?.length) {
-    user = m.mentionedJid[0]
-
-  } else if (text) {
-    const number = text.replace(/[^0-9]/g, '')
-    if (number.length >= 11 && number.length <= 13) {
-      user = number + '@s.whatsapp.net'
-    }
-  }
-
-  if (!user) {
-    return conn.reply(
-      m.chat,
-      '> ➤ MENCIONA O RESPONDE A UN ADMIN PARA DEGRADARLO 🍭',
-      m
-    )
-  }
-
   try {
+
+    if (!m.isGroup)
+      return m.reply('❌ Solo funciona en grupos')
+
+    let user =
+      m.quoted?.sender ||
+      m.mentionedJid?.[0] ||
+      null
+
+    if (!user && text) {
+      const num = text.replace(/[^0-9]/g, '')
+      if (num.length >= 10) {
+        user = num + '@s.whatsapp.net'
+      }
+    }
+
+    if (!user)
+      return conn.reply(
+        m.chat,
+        '> ➤ MENCIONA O RESPONDE A UN ADMIN PARA DEGRADARLO 🍭',
+        m
+      )
 
     const metadata =
       await conn.groupMetadata(m.chat)
@@ -43,25 +39,39 @@ async function handler(m, { conn, text }) {
     const participants =
       metadata?.participants || []
 
+    // =========================
+    // 🔥 BUSCAR USUARIO REAL
+    // =========================
     const target =
       participants.find(p =>
         conn.decodeJid(p.id || p.jid || p.participant) === user
       )
 
-    // =========================
-    // 🔥 VALIDACIONES
-    // =========================
-    if (!target?.admin) {
-      return conn.reply(
-        m.chat,
-        '❌ Este usuario no es admin',
-        m
-      )
-    }
+    if (!target)
+      return m.reply('❌ Usuario no encontrado en el grupo')
 
-    if (user === conn.user.jid) {
+    // =========================
+    // 🔥 DETECTAR ADMIN REAL (FIX IMPORTANTE)
+    // =========================
+    const isAdmin =
+      target?.admin === 'admin' ||
+      target?.admin === 'superadmin'
+
+    if (!isAdmin)
+      return m.reply('❌ Este usuario NO es admin')
+
+    // =========================
+    // 🔥 PROTECCIONES
+    // =========================
+    if (user === conn.user.jid)
       return m.reply('🚫 No puedo degradar al bot')
-    }
+
+    const ownerGroup =
+      metadata.owner ||
+      m.chat.split`-`[0] + '@s.whatsapp.net'
+
+    if (user === ownerGroup)
+      return m.reply('🚫 No puedo degradar al owner del grupo')
 
     // =========================
     // 🔥 DEMOTE REAL
@@ -72,12 +82,9 @@ async function handler(m, { conn, text }) {
       'demote'
     )
 
-    // =========================
-    // 🔥 RESPUESTA CON ESTILO
-    // =========================
     return conn.sendMessage(m.chat, {
       image: thumb || undefined,
-      caption: `> ➤『 USUARIO DEGRADADO CON ÉXITO 🍭 』\n\n👤 @${user.split('@')[0]}`,
+      caption: `> ➤ USUARIO DEGRADADO CON ÉXITO 🍭\n\n👤 @${user.split('@')[0]}`,
       mentions: [user]
     }, { quoted: m })
 
