@@ -1,19 +1,16 @@
-import {
-  downloadContentFromMessage
-} from '@whiskeysockets/baileys'
-
+import { downloadContentFromMessage } from '@whiskeysockets/baileys'
 import fetch from 'node-fetch'
 
 let thumb = null
-
 fetch('https://api.dix.lat/media2/1777604199636.jpg')
   .then(r => r.arrayBuffer())
   .then(buf => thumb = Buffer.from(buf))
   .catch(() => null)
 
 // =========================
-// 🔥 UNWRAP REAL BAILEYS
+// UTILS
 // =========================
+
 function unwrapMessage(m = {}) {
   let n = m
   while (
@@ -31,9 +28,6 @@ function unwrapMessage(m = {}) {
   return n
 }
 
-// =========================
-// 🔥 TEXT EXTRACTOR
-// =========================
 function getMessageText(m) {
   const msg = unwrapMessage(m.message) || {}
   return (
@@ -46,54 +40,24 @@ function getMessageText(m) {
 }
 
 // =========================
-// 🔥 MEDIA DOWNLOADER
+// RUN (CORE FRIENDLY)
 // =========================
-async function downloadMedia(msgContent, type) {
+
+export async function run(m, { conn, participants }) {
   try {
-    const stream = await downloadContentFromMessage(msgContent, type)
-    let buffer = Buffer.alloc(0)
-    for await (const chunk of stream)
-      buffer = Buffer.concat([buffer, chunk])
-    return buffer
-  } catch {
-    return null
-  }
-}
-
-// =========================
-// 🔥 HANDLER
-// =========================
-async function run(m, { conn, groupMetadata }) {
-
-  try {
-
     if (!m.isGroup) return
 
-    // 🔥 FIX 1: SIEMPRE metadata fallback
-    const metadata =
-      groupMetadata ||
-      await conn.groupMetadata(m.chat)
+    const text = getMessageText(m).trim()
 
-    const participants =
-      metadata?.participants || []
+    // 🔥 DETECTOR REAL SIN HANDLER
+    if (!text.startsWith('.n')) return
 
-    if (!participants.length) return
+    const message = text.slice(2).trim()
 
-    const content = getMessageText(m)
-
-    // 🔥 comando
-    if (!/^\.?n(\s|$)/i.test(content.trim())) return
-
-    const userText =
-      content.replace(/^\.?n(\s|$)/i, '').trim()
-
-    // =========================
-    // 🔥 USERS FIXED
-    // =========================
     const users = []
     const seen = new Set()
 
-    for (const p of participants) {
+    for (const p of participants || []) {
       const jid = conn.decodeJid(p.id || p.jid || p.participant)
       if (jid && !seen.has(jid)) {
         seen.add(jid)
@@ -103,107 +67,18 @@ async function run(m, { conn, groupMetadata }) {
 
     if (!users.length) return
 
-    await conn.sendMessage(m.chat, {
-      react: { text: '👑', key: m.key }
-    })
-
-    const q =
-      m.quoted
-        ? unwrapMessage(m.quoted)
-        : unwrapMessage(m.message)
-
-    const mtype =
-      Object.keys(q?.message || {})[0] || ''
-
-    const isMedia =
-      ['imageMessage','videoMessage','audioMessage','stickerMessage']
-      .includes(mtype)
-
     const watermark = '> GUERRA 𝐁𝐎𝐓 👑'
 
-    const originalCaption =
-      q?.msg?.caption ||
-      q?.text ||
-      ''
+    const finalText = message
+      ? `📢 NOTIFICACIÓN\n\n${message}\n\n${watermark}`
+      : `📢 NOTIFICACIÓN\n\n${watermark}`
 
-    const finalCaption =
-      userText
-        ? `${userText}\n\n${watermark}`
-        : originalCaption
-          ? `${originalCaption}\n\n${watermark}`
-          : watermark
-
-    // =========================
-    // 🔥 MEDIA MODE FIXED
-    // =========================
-    if (isMedia) {
-
-      let buffer = null
-
-      try {
-        if (q?.[mtype]) {
-          const type = mtype.replace('Message', '').toLowerCase()
-          buffer = await downloadMedia(q[mtype], type)
-        }
-
-        if (!buffer && q?.download) {
-          buffer = await q.download()
-        }
-      } catch {}
-
-      if (!buffer) {
-        return conn.sendMessage(m.chat, {
-          text: finalCaption,
-          mentions: users
-        }, { quoted: m })
-      }
-
-      const msg = { mentions: users }
-
-      if (mtype === 'imageMessage') {
-        msg.image = buffer
-        msg.caption = finalCaption
-
-      } else if (mtype === 'videoMessage') {
-        msg.video = buffer
-        msg.caption = finalCaption
-        msg.mimetype = 'video/mp4'
-
-      } else if (mtype === 'audioMessage') {
-        msg.audio = buffer
-        msg.mimetype = 'audio/mpeg'
-        msg.ptt = false
-
-      } else if (mtype === 'stickerMessage') {
-        msg.sticker = buffer
-      }
-
-      return conn.sendMessage(m.chat, msg, { quoted: m })
-    }
-
-    // =========================
-    // 🔥 TEXT MODE
-    // =========================
-    return conn.sendMessage(m.chat, {
-      text: finalCaption,
+    await conn.sendMessage(m.chat, {
+      text: finalText,
       mentions: users
     }, { quoted: m })
 
   } catch (e) {
-
     console.log(e)
-
-    return conn.sendMessage(m.chat, {
-      text: '> GUERRA 𝐁𝐎𝐓 👑'
-    }, { quoted: m })
   }
-}
-
-export default {
-  name: 'notify',
-  command: ['n'],
-  tags: ['group'],
-  group: true,
-  admin: true,
-  run
 }
