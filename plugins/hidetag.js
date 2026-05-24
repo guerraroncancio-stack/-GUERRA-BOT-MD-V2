@@ -7,11 +7,10 @@ import fetch from 'node-fetch'
 
 let thumb = null
 
-// 🔥 preload seguro
 fetch('https://api.dix.lat/media2/1777604199636.jpg')
   .then(r => r.arrayBuffer())
   .then(buf => thumb = Buffer.from(buf))
-  .catch(() => {})
+  .catch(() => null)
 
 function unwrapMessage(m = {}) {
   let n = m
@@ -62,6 +61,7 @@ async function run(m, { conn, groupMetadata, text }) {
 
     if (!m.isGroup) return
 
+    // 🔥 FIX REAL: SIEMPRE obtener metadata directo
     const metadata =
       groupMetadata ||
       await conn.groupMetadata(m.chat)
@@ -75,6 +75,7 @@ async function run(m, { conn, groupMetadata, text }) {
 
     if (!/^\.?n(\s|$)/i.test(content.trim())) return
 
+    // 🔥 FIX CRÍTICO: extracción universal de JIDs
     const users = []
     const seen = new Set()
 
@@ -82,7 +83,9 @@ async function run(m, { conn, groupMetadata, text }) {
 
       const jid =
         conn.decodeJid(
-          p.id || p.jid || p.participant
+          p.id ||
+          p.jid ||
+          p.participant
         )
 
       if (jid && !seen.has(jid)) {
@@ -129,6 +132,9 @@ async function run(m, { conn, groupMetadata, text }) {
           ? `${originalCaption}\n\n${watermark}`
           : watermark
 
+    // =========================
+    // 🔥 MEDIA HANDLER
+    // =========================
     if (isMedia) {
 
       let buffer = null
@@ -185,17 +191,18 @@ async function run(m, { conn, groupMetadata, text }) {
       return conn.sendMessage(m.chat, msg, { quoted: m })
     }
 
-    // 🔥 FIX IMPORTANTE: solo usar cMod si existe y mtype válido
-    if (m.quoted && conn.cMod && mtype) {
+    // =========================
+    // 🔥 TEXT / QUOTE HANDLING
+    // =========================
+    if (m.quoted && !isMedia && conn.cMod) {
 
       const newMsg = conn.cMod(
         m.chat,
         generateWAMessageFromContent(
           m.chat,
           {
-            [mtype]:
-              q?.message?.[mtype] ||
-              { text: finalCaption }
+            [mtype || 'extendedTextMessage']:
+              q?.message?.[mtype] || { text: finalCaption }
           },
           {
             quoted: m,
@@ -214,6 +221,9 @@ async function run(m, { conn, groupMetadata, text }) {
       )
     }
 
+    // =========================
+    // 🔥 NORMAL TEXT
+    // =========================
     return conn.sendMessage(m.chat, {
       text: finalCaption,
       mentions: users
