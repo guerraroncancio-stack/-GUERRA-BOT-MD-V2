@@ -1,95 +1,39 @@
-const readme = `
-[!IMPORTANT]
-Bienvenido al repositorio oficial de **GUERRA BOT MD** — un sistema avanzado de automatización para WhatsApp basado en Baileys Multi-Device.
+<!-- Banner -->
+<h1 align="center">
+  <img src="https://api.dix.lat/media2/1777604199636.jpg" width="700" alt="GUERRA 𝐁𝐎𝐓👑"/>
+  <br>
+  👑 GUERRA 𝐁𝐎𝐓 👑
+</h1>
 
-Este proyecto representa una arquitectura modular optimizada para estabilidad, rendimiento y escalabilidad en entornos reales.
+# GUERRA 𝑩𝑶𝑻
 
-Mantente actualizado desde el canal oficial:
-https://whatsapp.com/channel/120363427020147321
+¡Bienvenido a GUERRA 𝑩𝑶𝑻!
 
-<p align="center">
-  <img src="https://api.dix.lat/me/92dbd94f-eb3d-40d8-ac61-fd42f95c73ff.jpg" width="380" />
-</p>
+👑 𝐁𝐎𝐓 𝐏𝐑𝐄𝐌𝐈𝐔𝐌 𝐃𝐄 𝐖𝐇𝐀𝐓𝐒𝐀𝐏𝐏 👑
 
-<h1 align="center">⚔️ GUERRA BOT MD ⚔️</h1>
+╔════👑════╗
+   👑 𝙂𝙐𝙀𝙍𝙍𝘼  -  𝘽𝙊𝙏 👑
+╚════👑════╝
+         ▄︻デ══━一⁠
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Version-1.0.0-00ff88?style=for-the-badge">
-  <img src="https://img.shields.io/badge/Engine-Baileys-25D366?style=for-the-badge">
-  <img src="https://img.shields.io/badge/Runtime-Node.js-339933?style=for-the-badge">
-  <img src="https://img.shields.io/badge/Status-Active-success?style=for-the-badge">
-</p>
+## Características principales
 
----
+- ✧ 𝑀𝑒𝑛𝑢 𝑑𝑖𝑠𝑒ñ𝑜 𝑒𝑠𝑡𝑒𝑡𝑖𝑐𝑜
+- ✧ 𝐶𝑜𝑚𝑎𝑛𝑑𝑜𝑠 𝑑𝑒 𝑔𝑟𝑢𝑝𝑜
+- ✧ 𝐷𝑒𝑠𝑐𝑎𝑟𝑔𝑎𝑠 𝑑𝑒 𝑚𝑢𝑠𝑖𝑐𝑎
+- ✧ 𝐴𝑑𝑚𝑖𝑛 𝑎𝑢𝑡𝑜𝑚á𝑡𝑖𝑐𝑜
+- ✧ 𝑆𝑡𝑖𝑐𝑘𝑒𝑟𝑠 𝑝𝑒𝑟𝑠𝑜𝑛𝑎𝑙𝑖𝑧𝑎𝑑𝑜𝑠
 
-> [!IMPORTANT]
-> **GUERRA BOT MD** está construido bajo una arquitectura modular híbrida con sistema de eventos en tiempo real, carga dinámica de plugins y manejo inteligente de memoria.
+## Instalación
 
----
+1. Clona el repositorio
+2. Instala dependencias
+3. Configura tu bot
 
-> [!TIP]
-> El sistema puede operar con almacenamiento local o base de datos externa sin afectar su funcionamiento principal.
+## Contacto y soporte
 
----
-
-> [!WARNING]
-> Proyecto en constante desarrollo. Algunas funciones pueden cambiar o ser optimizadas sin previo aviso.
-
----
-
-# 🧠 Arquitectura
-
-- Sistema modular por plugins
-- Eventos globales optimizados
-- Manejo avanzado de sesiones Multi-Device
-- Control de errores silencioso
-- Sistema de reconexión automática
-- Compatibilidad con SubBots
+- 𝐃𝐞𝐬𝐚𝐫𝐫𝐨𝐥𝐥𝐚𝐝𝐨𝐫: 𝑱𝒖𝒂𝒏
 
 ---
 
-# ⚡ Características
-
-- Multi-Device WhatsApp
-- Sistema de bienvenida y despedida
-- Anti-spam y anti-link
-- Sistema de economía
-- Juegos RPG integrados
-- Descargas multimedia
-- Stickers avanzados
-- IA integrada
-- Panel dinámico de comandos
-
----
-
-# 👑 Desarrollador
-
-<p align="center">
-  <img src="https://api.dix.lat/me/92dbd94f-eb3d-40d8-ac61-fd42f95c73ff.jpg" width="140" />
-</p>
-
-<p align="center">
-  <b>Kevin Santiago Roncancio Guerra</b><br>
-  Desarrollador principal de GUERRA BOT MD
-</p>
-
----
-
-# 📢 Canal Oficial
-
-https://whatsapp.com/channel/120363427020147321
-
----
-
-# ⚖️ Licencia
-
-MIT License — uso libre con atribución recomendada.
-
----
-
-<p align="center">
-  GUERRA BOT MD © 2026
-</p>
-`;
-
-export default readme;
+𝙂𝙐𝙀𝙍𝙍𝘼 𝘽𝙊𝙏👑 — 𝐄𝐬𝐭𝐢𝐥𝐨, 𝐏𝐨𝐝𝐞𝐫 𝐲 𝐄𝐱𝐜𝐥𝐮𝐬𝐢𝐯𝐢𝐝𝐚𝐝.
