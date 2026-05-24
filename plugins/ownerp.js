@@ -22,17 +22,16 @@ async function run(m, { conn }) {
 👑 𝗢𝗙𝗜𝗖𝗜𝗔𝗟 𝗢𝗪𝗡𝗘𝗥 𝗖𝗢𝗡𝗧𝗔𝗖𝗧
 
 ━━━━━━━━━━━━━━
-💼 Desarrollo de bots personalizados
-⚙️ Configuración de sistemas WhatsApp MD
-🚀 Automatización / optimización de bots
-🤝 Soporte técnico y colaboraciones
+💼 Bots personalizados WhatsApp MD
+⚙️ Configuración y soporte técnico
+🚀 Automatización avanzada
+🤝 Colaboraciones privadas
 ━━━━━━━━━━━━━━
 
-📩 Contacto directo:
-wa.me/${OWNER_NUMBER}
+📩 wa.me/${OWNER_NUMBER}
 
-⚡ Respuesta rápida y atención personalizada
-🔒 Servicio privado y seguro
+⚡ Respuesta rápida y atención directa
+🔒 Servicio seguro y privado
 `
 
   const vcard = `
@@ -43,9 +42,14 @@ TEL;type=CELL;type=VOICE;waid=${OWNER_NUMBER}:${OWNER_NUMBER}
 END:VCARD
 `.trim()
 
+  // 🔥 1. Primero manda imagen con texto (ESTO asegura que se vea)
   await conn.sendMessage(m.chat, {
     image: { url: cachedPP },
-    caption: text,
+    caption: text
+  }, { quoted: m })
+
+  // 🔥 2. Luego manda contacto separado (más compatible)
+  await conn.sendMessage(m.chat, {
     contacts: {
       displayName: '👑 Owner GUERRA BOT',
       contacts: [{ vcard }]
