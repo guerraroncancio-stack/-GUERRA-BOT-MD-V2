@@ -99,7 +99,7 @@ const youtubeCommand = {
                                 isForwarded: true,
                                 forwardedNewsletterMessageInfo: {
                                     newsletterJid: global.ch || '',
-                                    newsletterName: 'Kirito ♕ — Official Channel ™'
+                                    newsletterName: 'GUERRA ♕ — Official Channel ™'
                                 }
                             },
                             annotations: [{
@@ -109,7 +109,7 @@ const youtubeCommand = {
                                     embeddedMusic: {
                                         musicContentMediaId: instagramShortcode,
                                         songId: instagramShortcode,
-                                        author: videoSearchResult.author?.name || 'Deylin Tech',
+                                        author: videoSearchResult.author?.name || 'kevin Tech',
                                         title: videoSearchResult.title || 'KIRITO MUSIC',
                                         artistAttribution: `https://www.instagram.com/p/${instagramShortcode}/`,
                                         artworkDirectPath: uploadedArt.imageMessage.directPath,
