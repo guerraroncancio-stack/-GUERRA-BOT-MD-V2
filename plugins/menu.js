@@ -45,100 +45,113 @@ async function run(m, { conn, usedPrefix }) {
   clockString(process.uptime() * 1000)
 
 const menu = `
-╭━━〔 👑 GUERRA BOT 👑 〕━━⬣
-┃ ✦ Usuario: ${name}
-┃ ✦ Uptime: ${uptime}
-┃ ✦ Prefijo: ${usedPrefix}
-╰━━━━━━━━━━━━⬣
+╭═〔 ⚔️ GUERRA BOT MD ⚔️ 〕═⬣
+┃ ◈ Usuario » ${name}
+┃ ◈ Tiempo » ${uptime}
+┃ ◈ Prefijo » ${usedPrefix}
+┃ ◈ Modo » Public
+╰════════════════⬣
 
-╭━━〔 📥 MAIN 〕━━⬣
-┃ ✦ ${usedPrefix}menu
-┃ ✦ ${usedPrefix}code
-┃ ✦ ${usedPrefix}stop
-┃ ✦ ${usedPrefix}bots
-┃ ✦ ${usedPrefix}report / bug
-┃ ✦ ${usedPrefix}sugerencia
-┃ ✦ ${usedPrefix}topcmd
-╰━━━━━━━━━━━━⬣
+╭═〔 🌌 CORE 〕═⬣
+┃ ⬡ ${usedPrefix}menu
+┃ ⬡ ${usedPrefix}allmenu
+┃ ⬡ ${usedPrefix}runtime
+┃ ⬡ ${usedPrefix}owner
+┃ ⬡ ${usedPrefix}script
+┃ ⬡ ${usedPrefix}ping
+┃ ⬡ ${usedPrefix}dashboard
+╰════════════════⬣
 
-╭━━〔 🎮 FUN 〕━━⬣
-┃ ✦ ${usedPrefix}gay
-┃ ✦ ${usedPrefix}top
-┃ ✦ ${usedPrefix}parejas
-┃ ✦ ${usedPrefix}poema
-┃ ✦ ${usedPrefix}reflexion
-┃ ✦ ${usedPrefix}meme
-┃ ✦ ${usedPrefix}consejo
-╰━━━━━━━━━━━━⬣
+╭═〔 🎭 COMMUNITY 〕═⬣
+┃ ⬡ ${usedPrefix}confesar
+┃ ⬡ ${usedPrefix}ship
+┃ ⬡ ${usedPrefix}duelo
+┃ ⬡ ${usedPrefix}fakechat
+┃ ⬡ ${usedPrefix}topglobal
+┃ ⬡ ${usedPrefix}amistad
+┃ ⬡ ${usedPrefix}crush
+╰════════════════⬣
 
-╭━━〔 👥 SOCIAL 〕━━⬣
-┃ ✦ ${usedPrefix}perfil
-┃ ✦ ${usedPrefix}setdesc
-┃ ✦ ${usedPrefix}setage
-┃ ✦ ${usedPrefix}setgenero
-┃ ✦ ${usedPrefix}setorientacion
-┃ ✦ ${usedPrefix}marry
-╰━━━━━━━━━━━━⬣
+╭═〔 📦 MEDIA 〕═⬣
+┃ ⬡ ${usedPrefix}play
+┃ ⬡ ${usedPrefix}ytmp3
+┃ ⬡ ${usedPrefix}ytmp4
+┃ ⬡ ${usedPrefix}apkmod
+┃ ⬡ ${usedPrefix}pinterest
+┃ ⬡ ${usedPrefix}ttimg
+┃ ⬡ ${usedPrefix}mega
+╰════════════════⬣
 
-╭━━〔 📥 DOWNLOAD 〕━━⬣
-┃ ✦ ${usedPrefix}play
-┃ ✦ ${usedPrefix}play2
-┃ ✦ ${usedPrefix}spotify
-┃ ✦ ${usedPrefix}tiktok
-┃ ✦ ${usedPrefix}instagram
-┃ ✦ ${usedPrefix}mediafire
-╰━━━━━━━━━━━━⬣
+╭═〔 🧠 INTELIGENCIA IA 〕═⬣
+┃ ⬡ ${usedPrefix}gpt
+┃ ⬡ ${usedPrefix}flux
+┃ ⬡ ${usedPrefix}bard
+┃ ⬡ ${usedPrefix}imagine
+┃ ⬡ ${usedPrefix}vision
+┃ ⬡ ${usedPrefix}voiceai
+┃ ⬡ ${usedPrefix}codeai
+╰════════════════⬣
 
-╭━━〔 💰 RPG 〕━━⬣
-┃ ✦ ${usedPrefix}balance
-┃ ✦ ${usedPrefix}ruleta
-┃ ✦ ${usedPrefix}loteria
-┃ ✦ ${usedPrefix}pay
-┃ ✦ ${usedPrefix}robar
-┃ ✦ ${usedPrefix}trabajar
-╰━━━━━━━━━━━━⬣
+╭═〔 ⚒️ UTILIDADES 〕═⬣
+┃ ⬡ ${usedPrefix}hd
+┃ ⬡ ${usedPrefix}remini
+┃ ⬡ ${usedPrefix}tourl
+┃ ⬡ ${usedPrefix}readqr
+┃ ⬡ ${usedPrefix}clima
+┃ ⬡ ${usedPrefix}traducir
+┃ ⬡ ${usedPrefix}tinyurl
+╰════════════════⬣
 
-╭━━〔 👑 GROUP 〕━━⬣
-┃ ✦ ${usedPrefix}kick
-┃ ✦ ${usedPrefix}promote
-┃ ✦ ${usedPrefix}demote
-┃ ✦ ${usedPrefix}tagall
-┃ ✦ ${usedPrefix}open
-┃ ✦ ${usedPrefix}close
-┃ ✦ ${usedPrefix}hidetag
-╰━━━━━━━━━━━━⬣
+╭═〔 👑 ADMIN PANEL 〕═⬣
+┃ ⬡ ${usedPrefix}kick
+┃ ⬡ ${usedPrefix}ban
+┃ ⬡ ${usedPrefix}promote
+┃ ⬡ ${usedPrefix}demote
+┃ ⬡ ${usedPrefix}grupo abrir
+┃ ⬡ ${usedPrefix}grupo cerrar
+┃ ⬡ ${usedPrefix}invocar
+╰════════════════⬣
 
-╭━━〔 🤖 AI 〕━━⬣
-┃ ✦ ${usedPrefix}ia
-┃ ✦ ${usedPrefix}chatgpt
-┃ ✦ ${usedPrefix}gemini
-┃ ✦ ${usedPrefix}copilot
-┃ ✦ ${usedPrefix}imgg
-┃ ✦ ${usedPrefix}tts
-╰━━━━━━━━━━━━⬣
+╭═〔 🎮 GAMING 〕═⬣
+┃ ⬡ ${usedPrefix}ffstats
+┃ ⬡ ${usedPrefix}scrim
+┃ ⬡ ${usedPrefix}vs
+┃ ⬡ ${usedPrefix}topfire
+┃ ⬡ ${usedPrefix}registrarclan
+┃ ⬡ ${usedPrefix}mapas
+┃ ⬡ ${usedPrefix}rangos
+╰════════════════⬣
 
-╭━━〔 ⚙️ TOOLS 〕━━⬣
-┃ ✦ ${usedPrefix}qr
-┃ ✦ ${usedPrefix}tourl
-┃ ✦ ${usedPrefix}traducir
-┃ ✦ ${usedPrefix}acortar
-┃ ✦ ${usedPrefix}ssweb
-╰━━━━━━━━━━━━⬣
+╭═〔 💎 ECONOMY 〕═⬣
+┃ ⬡ ${usedPrefix}wallet
+┃ ⬡ ${usedPrefix}bank
+┃ ⬡ ${usedPrefix}crime
+┃ ⬡ ${usedPrefix}work
+┃ ⬡ ${usedPrefix}coins
+┃ ⬡ ${usedPrefix}daily
+┃ ⬡ ${usedPrefix}transfer
+╰════════════════⬣
 
-╭━━〔 🔥 OWNER 〕━━⬣
-┃ ✦ ${usedPrefix}restart
-┃ ✦ ${usedPrefix}up
-┃ ✦ ${usedPrefix}autoadmin
-┃ ✦ ${usedPrefix}ds
-╰━━━━━━━━━━━━⬣
+╭═〔 🛰️ OWNER SYSTEM 〕═⬣
+┃ ⬡ ${usedPrefix}restart
+┃ ⬡ ${usedPrefix}setppbot
+┃ ⬡ ${usedPrefix}mode
+┃ ⬡ ${usedPrefix}broadcast
+┃ ⬡ ${usedPrefix}cleartmp
+┃ ⬡ ${usedPrefix}plugins
+┃ ⬡ ${usedPrefix}update
+╰════════════════⬣
 
-╭━━〔 📊 ESTADO 〕━━⬣
-┃ ✦ Bot activo 100%
-┃ ✦ Sistema estable
-┃ ✦ Latencia OK
-╰━━━━━━━━━━━━⬣
+╭═〔 📡 STATUS 〕═⬣
+┃ ◈ Engine » Online
+┃ ◈ Database » Connected
+┃ ◈ Response » Fast
+┃ ◈ Security » Stable
+╰════════════════⬣
+
+> ⚡ Powered By Kevin Guerra
+> 🚀 GUERRA BOT MD - Ultimate Edition
 `
-
   const fkontak =
   await makeFkontak()
 
