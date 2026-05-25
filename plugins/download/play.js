@@ -9,7 +9,7 @@ const youtubeCommand = {
     alias: ['play', 'audio', 'mp3', 'video', 'mp4', 'play2', 'playaudio', 'playvideo'],
     category: 'download',
     run: async (m, { conn, text, command, usedPrefix }) => {
-        if (!text?.trim()) return conn.reply(m.chat, `ᰔᩚ   *KIRITO DOWNLOAD* ᥫᩣ\n\n*Uso:* ${usedPrefix + command} <búsqueda>`, m);
+        if (!text?.trim()) return conn.reply(m.chat, `ᰔᩚ   *GUERRA DOWNLOAD* ᥫᩣ\n\n*Uso:* ${usedPrefix + command} <búsqueda>`, m);
 
         const isAudio = /play$|audio$|mp3|ytmp3|playaudio/i.test(command);
         const isDocument = /play$|play2$/i.test(command);
