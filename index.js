@@ -114,13 +114,7 @@ global.commandCache = new NodeCache({
 ========================================= */
 
 const logger = pino({
-    level: 'silent',
-    transport: {
-        target: 'pino-pretty',
-        options: {
-            colorize: true
-        }
-    }
+    level: 'silent'
 })
 
 /* =========================================
