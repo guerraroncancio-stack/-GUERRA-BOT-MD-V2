@@ -1,5 +1,4 @@
 import {
-  generateWAMessageFromContent,
   downloadContentFromMessage
 } from '@whiskeysockets/baileys'
 
@@ -9,47 +8,18 @@ let thumb = null
 
 fetch('https://api.dix.lat/media2/1777604199636.jpg')
   .then(r => r.arrayBuffer())
-  .then(buf => thumb = Buffer.from(buf))
+  .then(buf => {
+    thumb = Buffer.from(buf)
+  })
   .catch(() => null)
 
-function unwrapMessage(m = {}) {
-  let n = m
-
-  while (
-    n?.viewOnceMessage?.message ||
-    n?.viewOnceMessageV2?.message ||
-    n?.viewOnceMessageV2Extension?.message ||
-    n?.ephemeralMessage?.message
-  ) {
-
-    n =
-      n.viewOnceMessage?.message ||
-      n.viewOnceMessageV2?.message ||
-      n.viewOnceMessageV2Extension?.message ||
-      n.ephemeralMessage?.message
-
-  }
-
-  return n
-}
-
-function getText(m) {
-
-  const msg = unwrapMessage(m.message) || {}
-
-  return (
-    m.text ||
-    m.body ||
-    msg?.conversation ||
-    msg?.extendedTextMessage?.text ||
-    ''
-  )
-}
-
-async function downloadMedia(msg, type) {
+async function downloadMedia(message, type) {
 
   const stream =
-    await downloadContentFromMessage(msg, type)
+    await downloadContentFromMessage(
+      message,
+      type
+    )
 
   let buffer = Buffer.alloc(0)
 
@@ -64,64 +34,25 @@ export default {
 
   name: 'hidetag',
 
-  async execute(m, { conn }) {
+  alias: ['n', 'tagall'],
+
+  group: true,
+
+  admin: true,
+
+  botAdmin: true,
+
+  async run(m, { conn, text }) {
 
     try {
-
-      if (!m.isGroup) return
-
-      const text = getText(m).trim()
-
-      if (!text.startsWith('.n')) return
 
       const metadata =
         await conn.groupMetadata(m.chat)
 
-      const participants =
-        metadata.participants || []
-
       const users =
-        participants.map(v => v.id)
-
-      const bot =
-        metadata.participants.find(
-          p => p.id === conn.user.id
+        metadata.participants.map(
+          p => p.id
         )
-
-      const sender =
-        metadata.participants.find(
-          p => p.id === m.sender
-        )
-
-      if (!bot?.admin) {
-
-        return conn.sendMessage(
-          m.chat,
-          {
-            text: '❌ El bot necesita admin.'
-          },
-          { quoted: m }
-        )
-
-      }
-
-      if (!sender?.admin) {
-
-        return conn.sendMessage(
-          m.chat,
-          {
-            text: '❌ Solo admins.'
-          },
-          { quoted: m }
-        )
-
-      }
-
-      const quoted =
-        m.quoted ? unwrapMessage(m.quoted) : null
-
-      const userText =
-        text.replace('.n', '').trim()
 
       const fkontak = {
         key: {
@@ -138,36 +69,25 @@ export default {
         participant: '0@s.whatsapp.net'
       }
 
-      if (!quoted) {
+      /* =======================
+         IMAGE
+      ======================= */
 
-        return conn.sendMessage(
-          m.chat,
-          {
-            text: userText || '‎',
-            mentions: users
-          },
-          { quoted: fkontak }
-        )
+      if (
+        m.quoted?.mtype === 'imageMessage'
+      ) {
 
-      }
-
-      const mtype =
-        quoted.mtype ||
-        Object.keys(quoted.message || {})[0]
-
-      if (mtype === 'imageMessage') {
-
-        const buffer =
+        const media =
           await downloadMedia(
-            quoted.imageMessage,
+            m.quoted.message.imageMessage,
             'image'
           )
 
-        return conn.sendMessage(
+        return await conn.sendMessage(
           m.chat,
           {
-            image: buffer,
-            caption: userText || '',
+            image: media,
+            caption: text || '',
             mentions: users
           },
           { quoted: fkontak }
@@ -175,19 +95,25 @@ export default {
 
       }
 
-      if (mtype === 'videoMessage') {
+      /* =======================
+         VIDEO
+      ======================= */
 
-        const buffer =
+      if (
+        m.quoted?.mtype === 'videoMessage'
+      ) {
+
+        const media =
           await downloadMedia(
-            quoted.videoMessage,
+            m.quoted.message.videoMessage,
             'video'
           )
 
-        return conn.sendMessage(
+        return await conn.sendMessage(
           m.chat,
           {
-            video: buffer,
-            caption: userText || '',
+            video: media,
+            caption: text || '',
             mentions: users
           },
           { quoted: fkontak }
@@ -195,18 +121,24 @@ export default {
 
       }
 
-      if (mtype === 'audioMessage') {
+      /* =======================
+         AUDIO
+      ======================= */
 
-        const buffer =
+      if (
+        m.quoted?.mtype === 'audioMessage'
+      ) {
+
+        const media =
           await downloadMedia(
-            quoted.audioMessage,
+            m.quoted.message.audioMessage,
             'audio'
           )
 
-        return conn.sendMessage(
+        return await conn.sendMessage(
           m.chat,
           {
-            audio: buffer,
+            audio: media,
             mimetype: 'audio/mpeg',
             ptt: false,
             mentions: users
@@ -216,33 +148,49 @@ export default {
 
       }
 
-      const msg = generateWAMessageFromContent(
-        m.chat,
-        {
-          extendedTextMessage: {
-            text:
-              userText ||
-              quoted.text ||
-              ''
-          }
-        },
-        {
-          quoted: fkontak,
-          userJid: conn.user.id
-        }
-      )
+      /* =======================
+         STICKER
+      ======================= */
 
-      await conn.relayMessage(
+      if (
+        m.quoted?.mtype === 'stickerMessage'
+      ) {
+
+        const media =
+          await downloadMedia(
+            m.quoted.message.stickerMessage,
+            'sticker'
+          )
+
+        return await conn.sendMessage(
+          m.chat,
+          {
+            sticker: media,
+            mentions: users
+          },
+          { quoted: fkontak }
+        )
+
+      }
+
+      /* =======================
+         TEXT
+      ======================= */
+
+      return await conn.sendMessage(
         m.chat,
-        msg.message,
-        { messageId: msg.key.id }
+        {
+          text: text || '‎',
+          mentions: users
+        },
+        { quoted: fkontak }
       )
 
     } catch (e) {
 
       console.log(e)
 
-      await conn.sendMessage(
+      return conn.sendMessage(
         m.chat,
         {
           text: '❌ Error en hidetag.'
@@ -253,4 +201,5 @@ export default {
     }
 
   }
+
 }
