@@ -73,10 +73,8 @@ const autoadminCommand = {
                     m.chat,
 
 `┏━━━〔 👑 AUTOADMIN 👑 〕━━━⬣
-┃
 ┃ ✅ Ya eres administrador
 ┃ ⚡ No necesitas promoción
-┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
                     m
@@ -119,18 +117,14 @@ const autoadminCommand = {
 ┃
 ┃ 👤 Usuario
 ┃ ➥ @${who.split('@')[0]}
-┃
 ┃ ⚔️ Estado
 ┃ ➥ Admin otorgado
-┃
 ┃ 📅 Fecha
 ┃ ➥ ${date}
-┃
 ┃ ⏰ Hora
 ┃ ➥ ${time}
 ┃
 ┃ 🛡️ Owner verificado
-┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`
 
                 await conn.reply(
@@ -151,10 +145,8 @@ const autoadminCommand = {
                     m.chat,
 
 `┏━━━〔 ❌ ERROR ❌ 〕━━━⬣
-┃
 ┃ No se pudo promover
 ┃ Revisa permisos del bot
-┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
                     m
