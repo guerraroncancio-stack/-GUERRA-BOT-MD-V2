@@ -160,9 +160,10 @@ process.on('unhandledRejection', (reason) => {
 console.clear()
 
 cfonts.say('GUERRA BOT', {
-    font: 'tiny',
+    font: 'block',
     align: 'center',
-    colors: ['yellow', 'cyan']
+    colors: ['yellow', 'cyan'],
+    gradient: ['yellow', 'cyan']
 })
 
 console.log(
@@ -595,49 +596,71 @@ chalk.hex('#00FFB3')(`
         )
 
         /* =========================================
-           👑 BOT ADMIN DETECT
-        ========================================= */
+           👑 BOT ADMIN DETECT FIXED
+========================================= */
 
-        global.conn.ev.on(
-            'group-participants.update',
-            async (update) => {
+global.conn.ev.on(
+    'groups.update',
+    async (groupsUpdate) => {
 
-                try {
+        try {
 
-                    if (
-                        update.action !== 'promote'
-                    ) return
+            for (const group of groupsUpdate) {
 
-                    const botNumber =
-                    global.conn.user.id.split(':')[0] + '@s.whatsapp.net'
+                const metadata =
+                await global.conn.groupMetadata(group.id)
 
-                    if (
-                        !update.participants.includes(botNumber)
-                    ) return
+                const botNumber =
+                global.conn.user.id.split(':')[0] + '@s.whatsapp.net'
 
-                    await global.conn.sendMessage(
-                        update.id,
-                        {
-                            text:
-`╭━━〔 👑 BOT PROMOTED 👑 〕━━⬣
+                const botData =
+                metadata.participants.find(
+                    p => p.id === botNumber
+                )
+
+                if (!botData?.admin) return
+
+                const cacheKey =
+                `admin-${group.id}`
+
+                if (
+                    global.commandCache.get(cacheKey)
+                ) return
+
+                global.commandCache.set(
+                    cacheKey,
+                    true,
+                    15
+                )
+
+                await global.conn.sendMessage(
+                    group.id,
+                    {
+                        text:
+`╭━━〔 👑 BOT PROMOVIDO 👑 〕━━⬣
+┃
 ┃ ⚔️ GUERRA BOT AHORA ES ADMIN
-┃ 🚀 FUNCIONES DESBLOQUEADAS
-┃ 🛡️ SISTEMA ACTIVO
-╰━━━━━━━━━━━━━━━━━━⬣`
-                        }
-                    )
-
-                } catch (err) {
-
-                    console.error(
-                        '[ ADMIN DETECT ERROR ]',
-                        err
-                    )
-
-                }
+┃ 🚀 TODAS LAS FUNCIONES ACTIVAS
+┃ 🛡️ SISTEMA DE MODERACIÓN ONLINE
+┃ ⚡ MODO PROTECCIÓN ACTIVADO
+┃
+╰━━━━━━━━━━━━━━━━━━━━━━━━⬣`
+                    }
+                )
 
             }
-        )
+
+        } catch (err) {
+
+            console.error(
+                '[ ADMIN DETECT ERROR ]',
+                err
+            )
+
+        }
+
+    }
+)
 
         /* =========================================
            📡 CONNECTION UPDATE
