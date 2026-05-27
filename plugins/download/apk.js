@@ -1,6 +1,16 @@
 import axios from 'axios'
 import fetch from 'node-fetch'
 
+async function safeGet(url, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            return await axios.get(url, { timeout: 20000 })
+        } catch (e) {
+            if (i === retries - 1) throw e
+        }
+    }
+}
+
 const apkCommand = {
     name: 'apk',
     alias: ['modapk', 'fdroid'],
@@ -11,19 +21,22 @@ const apkCommand = {
 
         if (!text) {
             return conn.sendMessage(m.chat, {
-                text: `╭━━〔 ⚠️ ERROR 〕━━⬣
-┃ ➤ Debes ingresar el nombre de la APK
+                text: `╭━━〔 ⚠️ APK SEARCH 〕━━⬣
+┃ ➤ Ingresa el nombre de la APK
 ┃ ➤ Ejemplo: .apk whatsapp
-╰━━━━━━━━━━━━━━⬣`
+╰━━━━━━━━━━━━━━━━⬣`
             }, { quoted: m })
         }
 
         try {
             await m.react('⏳')
 
-            const search = await axios.get(
-                `https://sylphy.xyz/search/fdroid?q=${encodeURIComponent(text)}&api_key=sylphy-Lg4rAtj`,
-                { timeout: 15000 }
+            // pequeña pausa anti-rate limit
+            await new Promise(r => setTimeout(r, 1200))
+
+            // 🔎 SEARCH
+            const search = await safeGet(
+                `https://sylphy.xyz/search/fdroid?q=${encodeURIComponent(text)}&api_key=sylphy-Lg4rAtj`
             )
 
             const results = search?.data?.result
@@ -33,15 +46,15 @@ const apkCommand = {
                 return conn.sendMessage(m.chat, {
                     text: `╭━━〔 APK SEARCH 〕━━⬣
 ┃ ➤ No se encontraron resultados
-╰━━━━━━━━━━━━━━⬣`
+╰━━━━━━━━━━━━━━━━⬣`
                 }, { quoted: m })
             }
 
             const targetUrl = results[0].url
 
-            const download = await axios.get(
-                `https://sylphy.xyz/download/fdroid?url=${encodeURIComponent(targetUrl)}&api_key=sylphy-Lg4rAtj`,
-                { timeout: 15000 }
+            // 🔽 DOWNLOAD INFO
+            const download = await safeGet(
+                `https://sylphy.xyz/download/fdroid?url=${encodeURIComponent(targetUrl)}&api_key=sylphy-Lg4rAtj`
             )
 
             const data = download?.data?.result
@@ -49,35 +62,33 @@ const apkCommand = {
             if (!data || !data.apkUrl) {
                 await m.react('❌')
                 return conn.sendMessage(m.chat, {
-                    text: `╭━━〔 ERROR 〕━━⬣
+                    text: `╭━━〔 ERROR APK 〕━━⬣
 ┃ ➤ No se pudo obtener el APK
-╰━━━━━━━━━━━━━━⬣`
+╰━━━━━━━━━━━━━━━━⬣`
                 }, { quoted: m })
             }
 
-            const apkUrl = data.apkUrl
-
             // validar link real
-            const check = await fetch(apkUrl, { method: 'HEAD' }).catch(() => null)
+            const check = await fetch(data.apkUrl, { method: 'HEAD' }).catch(() => null)
 
             if (!check || !check.ok) {
                 await m.react('❌')
                 return conn.sendMessage(m.chat, {
-                    text: `╭━━〔 LINK BLOQUEADO 〕━━⬣
+                    text: `╭━━〔 LINK INVALIDO 〕━━⬣
 ┃ ➤ El APK no es descargable
-┃ ➤ Fuente protegida o expirada
-╰━━━━━━━━━━━━━━⬣`
+┃ ➤ Fuente bloqueada o expirada
+╰━━━━━━━━━━━━━━━━⬣`
                 }, { quoted: m })
             }
 
-            let txt = `╭━━〔 📦 APK DOWNLOADER 〕━━⬣
+            const txt = `╭━━〔 📦 APK DOWNLOADER 〕━━⬣
 ┃ ✦ Nombre: ${data.name}
 ┃ ✦ Versión: ${data.version}
 ┃ ✦ Info: ${data.summary}
-╰━━━━━━━━━━━━━━━━━━━━⬣`
+╰━━━━━━━━━━━━━━━━━━⬣`
 
             await conn.sendMessage(m.chat, {
-                document: { url: apkUrl },
+                document: { url: data.apkUrl },
                 mimetype: 'application/vnd.android.package-archive',
                 fileName: `${data.name}.apk`,
                 caption: txt
@@ -90,9 +101,10 @@ const apkCommand = {
             await m.react('❌')
 
             return conn.sendMessage(m.chat, {
-                text: `╭━━〔 ERROR FATAL 〕━━⬣
+                text: `╭━━〔 ERROR API 〕━━⬣
 ┃ ➤ ${e.message}
-╰━━━━━━━━━━━━━━⬣`
+┃ ➤ Intenta más tarde
+╰━━━━━━━━━━━━━━━━⬣`
             }, { quoted: m })
         }
     }
