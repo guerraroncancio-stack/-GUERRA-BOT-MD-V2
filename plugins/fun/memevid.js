@@ -4,6 +4,7 @@ const memeApiCommand = {
     name: 'memevid',
     alias: ['meme2', 'dixmeme'],
     category: 'fun',
+
     run: async (m, { conn }) => {
         await m.react('⏳');
 
@@ -13,21 +14,17 @@ const memeApiCommand = {
             const url = data?.url;
             if (!url) throw new Error('API sin URL');
 
-            // validar que el video exista antes de enviarlo
-            const head = await axios.head(url).catch(() => null);
-            if (!head) throw new Error('Video expirado o caído');
-
             const caption =
 `🎬 *MEME ALEATORIO*
 ────────────────
-😂 Disfruta este video
-⚡ Humor rápido
+😂 Disfruta el video
+⚡ Humor instantáneo
 ────────────────`;
 
             await m.react('🎥');
 
             await conn.sendMessage(m.chat, {
-                video: { url },
+                video: { url },   // Baileys maneja stream directo
                 caption
             }, { quoted: m });
 
@@ -35,14 +32,15 @@ const memeApiCommand = {
 
         } catch (err) {
             console.error(err);
-            await m.react('🚫');
+
+            await m.react('❌');
 
             await conn.sendMessage(m.chat, {
                 text:
-`❌ *ERROR MEME*
+`❌ *ERROR MEMEVID*
 ────────────────
-⚠️ No se pudo cargar el video
-🔁 Intenta de nuevo`
+⚠️ No se pudo enviar el video
+🔁 Intenta nuevamente`
             }, { quoted: m });
         }
     }
