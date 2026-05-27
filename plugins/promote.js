@@ -9,29 +9,11 @@ fetch('https://api.dix.lat/media2/1777604199636.jpg')
   })
   .catch(() => null)
 
-function unwrapMessage(m = {}) {
-  let n = m
-
-  while (
-    n?.viewOnceMessage?.message ||
-    n?.viewOnceMessageV2?.message ||
-    n?.viewOnceMessageV2Extension?.message ||
-    n?.ephemeralMessage?.message
-  ) {
-    n =
-      n.viewOnceMessage?.message ||
-      n.viewOnceMessageV2?.message ||
-      n.viewOnceMessageV2Extension?.message ||
-      n.ephemeralMessage?.message
-  }
-
-  return n
-}
-
 export default {
 
   name: 'promote',
-  alias: ['admin', 'daradmin', 'promover'],
+  command: ['promote', 'admin'],
+  tags: ['group'],
   group: true,
   admin: true,
   botAdmin: true,
@@ -40,9 +22,12 @@ export default {
 
     try {
 
-      if (!m.isGroup) return m.reply('❌ Solo funciona en grupos')
+      if (!m.isGroup) {
+        return m.reply('❌ Solo funciona en grupos')
+      }
 
       const metadata = await conn.groupMetadata(m.chat)
+      const participants = metadata.participants || []
 
       const fkontak = {
         key: {
@@ -52,13 +37,16 @@ export default {
         },
         message: {
           locationMessage: {
-            name: '👑 GUERRA BOT - PROMOTE SYSTEM',
+            name: '👑 GUERRA BOT - PROMOTE',
             jpegThumbnail: thumb
           }
         },
         participant: '0@s.whatsapp.net'
       }
 
+      // =========================
+      // 🔥 OBTENER USUARIO
+      // =========================
       let user =
         m.mentionedJid?.[0] ||
         m.quoted?.sender ||
@@ -82,45 +70,27 @@ export default {
 
       if (!user) {
         return conn.sendMessage(m.chat, {
-          text: '➤ Menciona o responde a un usuario para promoverlo 👑'
+          text: '> ➤ Menciona o responde a un usuario para promoverlo 👑'
         }, { quoted: fkontak })
       }
 
       user = conn.decodeJid(user)
 
       // =========================
-      // 🔍 VERIFICACIÓN WHATSAPP (FIX REAL)
+      // 🔥 VALIDACIÓN EN GRUPO (SIN ONWHATSAPP = SIN BUG)
       // =========================
-      let existsWa = false
-
-      try {
-        const result = await conn.onWhatsApp(user)
-        existsWa = Array.isArray(result) && result.length > 0 && result[0]?.exists
-      } catch (e) {
-        existsWa = false
-      }
-
-      if (!existsWa) {
-        return conn.sendMessage(m.chat, {
-          text: '❌ Este número no está registrado en WhatsApp'
-        }, { quoted: fkontak })
-      }
-
-      // =========================
-      // 👥 VALIDACIÓN GRUPO
-      // =========================
-      const existsGroup = metadata.participants.some(p =>
+      const exists = participants.some(p =>
         conn.decodeJid(p.id || p.jid || p.participant) === user
       )
 
-      if (!existsGroup) {
+      if (!exists) {
         return conn.sendMessage(m.chat, {
           text: '❌ Ese usuario no está en el grupo'
         }, { quoted: fkontak })
       }
 
       // =========================
-      // 👑 PROMOTE REAL
+      // 👑 PROMOTE
       // =========================
       await conn.groupParticipantsUpdate(
         m.chat,
@@ -129,12 +99,13 @@ export default {
       )
 
       return conn.sendMessage(m.chat, {
-        text: `👑 USUARIO PROMOVIDO\n\n✔️ Ahora es administrador\n✔️ Acción ejecutada correctamente\n✔️ Sistema: GUERRA BOT`,
-        mentions: [user]
+        text: '👑 Usuario promovido a administrador correctamente'
       }, { quoted: fkontak })
 
     } catch (e) {
+
       console.log(e)
+
       return conn.sendMessage(m.chat, {
         text: '🚫 Error al promover usuario'
       }, { quoted: m })
