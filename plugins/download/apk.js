@@ -1,4 +1,5 @@
 import axios from 'axios'
+import fetch from 'node-fetch'
 
 const apkCommand = {
     name: 'apk',
@@ -6,70 +7,86 @@ const apkCommand = {
     category: 'descargas',
 
     run: async (m, { conn, args }) => {
-        const query = args.join(' ').trim()
+        const text = args.join(' ').trim()
 
-        if (!query) {
+        if (!text) {
             return conn.sendMessage(m.chat, {
-                text: '*❒ Ingrese el nombre de la APK que desea buscar.*'
+                text: `╭─❒ ⚠️ ERROR\n│ ➤ Debes ingresar el nombre de la APK\n╰───────────────❒`
             }, { quoted: m })
         }
 
         try {
             await m.react('⏳')
 
-            // 🔎 BUSQUEDA EN APKPURE (más estable que APIs random)
-            const searchUrl = `https://apkpure.com/search?q=${encodeURIComponent(query)}`
-            const res = await axios.get(searchUrl, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0'
-                }
-            })
-
-            const html = res.data
-
-            // 🔥 extraer primer resultado
-            const match = html.match(/href="(\/[^"]+)" class="dd"/)
-
-            if (!match) {
+            let searchRes
+            try {
+                searchRes = await axios.get(
+                    `https://sylphy.xyz/search/fdroid?q=${encodeURIComponent(text)}&api_key=sylphy-Lg4rAtj`,
+                    { timeout: 15000 }
+                )
+            } catch (e) {
                 await m.react('❌')
                 return conn.sendMessage(m.chat, {
-                    text: '*❒ No se encontraron resultados para esa APK.*'
+                    text: `╭─❒ ⚠️ API ERROR\n│ ➤ No se pudo conectar al servidor\n│ ➤ Intenta más tarde\n╰───────────────❒`
                 }, { quoted: m })
             }
 
-            const appPath = match[1]
-            const appUrl = `https://apkpure.com${appPath}`
+            const results = searchRes?.data?.result
 
-            // 🔎 entrar a página de la app
-            const appRes = await axios.get(appUrl, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0'
-                }
-            })
+            if (!searchRes.data.status || !results?.length) {
+                await m.react('❌')
+                return conn.sendMessage(m.chat, {
+                    text: `╭─❒ APK SEARCH\n│ ➤ No se encontraron resultados\n╰───────────────❒`
+                }, { quoted: m })
+            }
 
-            const appHtml = appRes.data
+            const targetUrl = results[0].url
 
-            const name = appHtml.match(/<h1[^>]*>(.*?)<\/h1>/)?.[1] || 'APK'
-            const desc = appHtml.match(/<meta name="description" content="(.*?)"/)?.[1] || 'Sin descripción'
-            const downloadPage = appUrl + '/download'
+            let downloadRes
+            try {
+                downloadRes = await axios.get(
+                    `https://sylphy.xyz/download/fdroid?url=${encodeURIComponent(targetUrl)}&api_key=sylphy-Lg4rAtj`,
+                    { timeout: 15000 }
+                )
+            } catch (e) {
+                await m.react('❌')
+                return conn.sendMessage(m.chat, {
+                    text: `╭─❒ DESCARGA ERROR\n│ ➤ No se pudo obtener APK\n╰───────────────❒`
+                }, { quoted: m })
+            }
 
-            let txt = `╭━━━〔 📦 𝗔𝗣𝗞 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥 〕━━━⬣\n`
-            txt += `┃ ✦ 𝗣𝗟𝗔𝗧𝗔𝗙𝗢𝗥𝗠: APKPure Engine\n`
-            txt += `┣━━━━━━━━━━━━━━━━━━━━━━⬣\n`
-            txt += `┃ 📌 𝗡𝗢𝗠𝗕𝗥𝗘   : ${name}\n`
-            txt += `┃ 🧾 𝗗𝗘𝗦𝗖      : ${desc}\n`
-            txt += `┃ 🔗 𝗟𝗜𝗡𝗞     : ${appUrl}\n`
-            txt += `┗━━━━━━━━━━━━━━━━━━━━━━⬣`
+            const data = downloadRes?.data?.result
+            if (!data) {
+                await m.react('❌')
+                return conn.sendMessage(m.chat, {
+                    text: `╭─❒ ERROR\n│ ➤ Datos inválidos de descarga\n╰───────────────❒`
+                }, { quoted: m })
+            }
+
+            const resThumb = await fetch(data.icon)
+            const thumbBuffer = Buffer.from(await resThumb.arrayBuffer())
+
+            let txt = `
+╭━━〔 📦 APK DOWNLOADER 〕━━⬣
+┃ ✦ Nombre: ${data.name}
+┃ ✦ Versión: ${data.version}
+┃ ✦ Info: ${data.summary}
+╰━━━━━━━━━━━━━━━━━━━━⬣
+`.trim()
 
             await conn.sendMessage(m.chat, {
-                text: txt,
+                document: { url: data.apkUrl },
+                mimetype: 'application/vnd.android.package-archive',
+                fileName: `${data.name}.apk`,
+                caption: txt,
                 contextInfo: {
                     externalAdReply: {
-                        title: name,
-                        body: 'APK desde APKPure',
-                        sourceUrl: appUrl,
+                        title: data.name,
+                        body: '⬇️ Instalación lista',
+                        thumbnail: thumbBuffer,
+                        sourceUrl: data.apkUrl,
                         mediaType: 1,
-                        renderLargerThumbnail: false
+                        renderLargerThumbnail: true
                     }
                 }
             }, { quoted: m })
@@ -78,11 +95,10 @@ const apkCommand = {
 
         } catch (e) {
             console.error(e)
-
             await m.react('❌')
 
             return conn.sendMessage(m.chat, {
-                text: `❌ Error al buscar APK.\n\nDetalles: ${e.message}`
+                text: `╭─❒ ERROR FATAL\n│ ➤ ${e.message}\n╰───────────────❒`
             }, { quoted: m })
         }
     }
