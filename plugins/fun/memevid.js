@@ -9,37 +9,38 @@ const memeApiCommand = {
         await m.react('⏳');
 
         try {
-            let url = null;
-            let tries = 0;
+            const { data } = await axios.get('https://api.dix.lat/memevid');
 
-            // intentos hasta encontrar video válido
-            while (!url && tries < 3) {
-                tries++;
+            const url = data?.url;
+            if (!url) throw new Error('API sin URL');
 
-                const { data } = await axios.get('https://api.dix.lat/memevid');
-                const candidate = data?.url;
+            const caption =
+`🎬 *MEME ALEATORIO*
+────────────────
+😂 Disfruta el video
+⚡ Humor instantáneo
+────────────────`;
 
-                if (!candidate) continue;
-
-                // NO HEAD (rompe APIs)
-                url = candidate;
-            }
-
-            if (!url) throw new Error('No se obtuvo video válido');
+            await m.react('🎥');
 
             await conn.sendMessage(m.chat, {
-                video: { url },
-                caption: `🎬 *MEME ALEATORIO*\n😂 Disfruta`
+                video: { url },   // Baileys maneja stream directo
+                caption
             }, { quoted: m });
 
             await m.react('✅');
 
         } catch (err) {
             console.error(err);
+
             await m.react('❌');
 
             await conn.sendMessage(m.chat, {
-                text: `❌ No se pudo obtener meme`
+                text:
+`❌ *ERROR MEMEVID*
+────────────────
+⚠️ No se pudo enviar el video
+🔁 Intenta nuevamente`
             }, { quoted: m });
         }
     }
