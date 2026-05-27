@@ -37,7 +37,7 @@ export default {
         },
         message: {
           locationMessage: {
-            name: '👑 GUERRA BOT - PROMOTE',
+            name: '👑 GUERRA BOT ',
             jpegThumbnail: thumb
           }
         },
