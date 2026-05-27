@@ -2,48 +2,64 @@ import axios from 'axios'
 
 const reaction = {
     emoji: '😭',
-    txt_solo: '> ❒ @user1 está llorando y busca consuelo..😭',
-    txt_mencion: '> ❏ @user1 está llorando por culpa de @user2 😭',
+    txt_solo: '╭─❒ @user1\n│ 😭 Está llorando y busca consuelo...\n╰───────────────',
+    txt_mencion: '╭─❏ @user1\n│ 😭 Está llorando por culpa de @user2\n╰───────────────',
     links: [
-'https://media.tenor.com/j_jAo-neywoAAAPo/marin-crying-marin-kitagawa.mp4',
-'https://media.tenor.com/CJEm2aPh9ckAAAPo/kh%C3%B3c.mp4',
-'https://media.tenor.com/PYOMyiz9VckAAAPo/sad-anime-boy-crying.mp4',
-'https://media.tenor.com/HmSZYTarizUAAAPo/boku-no-hero-academia-my-hero-academia.mp4',
-'https://media.tenor.com/KwHr_b6QGSoAAAPo/clannad-anime.mp4',
-'https://media.tenor.com/mgVzx-npGLoAAAPo/killua-zoldyck.mp4'
-]
+        'https://media.tenor.com/j_jAo-neywoAAAPo/marin-crying-marin-kitagawa.mp4',
+        'https://media.tenor.com/CJEm2aPh9ckAAAPo/kh%C3%B3c.mp4',
+        'https://media.tenor.com/PYOMyiz9VckAAAPo/sad-anime-boy-crying.mp4',
+        'https://media.tenor.com/HmSZYTarizUAAAPo/boku-no-hero-academia-my-hero-academia.mp4',
+        'https://media.tenor.com/KwHr_b6QGSoAAAPo/clannad-anime.mp4',
+        'https://media.tenor.com/mgVzx-npGLoAAAPo/killua-zoldyck.mp4'
+    ]
 }
 
 const cry = {
     name: 'cry',
     alias: ['llorar'],
     category: 'interacciones',
+
     run: async (m, { conn }) => {
         if (!reaction.links.length) return
+
         const user1 = m.sender
         const user2 = m.mentionedJid[0] || (m.quoted ? m.quoted.sender : null)
+
         const name1 = '@' + user1.split('@')[0]
         const menciones = [user1]
+
         let textoFinal = ''
+
         if (user2) {
             menciones.push(user2)
+
             const name2 = '@' + user2.split('@')[0]
-            textoFinal = reaction.txt_mencion.replace(/@user1/g, name1).replace(/@user2/g, name2)
+
+            textoFinal = reaction.txt_mencion
+                .replace(/@user1/g, name1)
+                .replace(/@user2/g, name2)
+
         } else {
             textoFinal = reaction.txt_solo.replace(/@user1/g, name1)
         }
+
         try {
             if (m.react) await m.react(reaction.emoji)
-            const videoUrl = reaction.links[Math.floor(Math.random() * reaction.links.length)]
+
+            const videoUrl = reaction.links[
+                Math.floor(Math.random() * reaction.links.length)
+            ]
+
             await conn.sendMessage(m.chat, {
                 video: { url: videoUrl },
-                caption: textoFinal,
+                caption: `😭 𝗖𝗥𝗬 𝗠𝗢𝗗 😭\n\n${textoFinal}`,
                 gifPlayback: true,
                 mentions: menciones,
                 contextInfo: {
                     ...channelInfo
-               }
+                }
             }, { quoted: m })
+
         } catch (e) {
             console.error(e)
         }
