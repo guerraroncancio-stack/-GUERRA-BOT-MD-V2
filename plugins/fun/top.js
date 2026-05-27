@@ -1,51 +1,53 @@
-import { getRealJid } from '../../lib/identifier.js' 
+import { getRealJid } from '../../lib/identifier.js';
 
 const topCommand = {
     name: 'top',
     alias: ['topg'],
     category: 'fun',
-    run: async (m, { conn, text, participants, command, usedPrefix }) => {
+
+    run: async (m, { conn, text, participants }) => {
+
         const args = text.trim().split(' ');
-        let num;
-        let topReason;
 
-        if (!isNaN(parseInt(args[0]))) {
-            num = parseInt(args[0]);
-            topReason = args.slice(1).join(' ') || 'usuarios aleatorios';
-        } else {
-            num = 7;
-            topReason = text.trim() || 'usuarios aleatorios';
-        }
+        let num = !isNaN(parseInt(args[0])) ? Math.max(1, parseInt(args[0])) : 7;
+        let reason = !isNaN(parseInt(args[0])) ? (args.slice(1).join(' ') || 'usuarios aleatorios') : (text.trim() || 'usuarios aleatorios');
 
-        if (num <= 0) num = 7;
-
-        let shuffled = participants
+        const shuffled = participants
             .map(p => p.id)
-            .sort(() => 0.5 - Math.random());
+            .sort(() => Math.random() - 0.5);
 
-        const limit = Math.min(num, shuffled.length);
-        const selected = shuffled.slice(0, limit);
+        const selected = shuffled.slice(0, Math.min(num, shuffled.length));
 
-        const realParticipants = await Promise.all(
-            selected.map(async (id) => {
-                return await getRealJid(conn, id, m);
-            })
+        const real = await Promise.all(
+            selected.map(id => getRealJid(conn, id, m))
         );
 
-        let txt = `> ┏━━━〔 ᴛᴏᴘ ${limit} ${topReason.toUpperCase()} 〕━━━┓\n`;
+        let caption =
+`🏆 RANKING TOP ${real.length}
+━━━━━━━━━━━━━━━━
 
-        realParticipants.forEach((jid, i) => {
-            txt += `> ┃ ${i + 1}. @${jid.split('@')[0]}\n`;
+📌 Motivo: ${reason}
+
+`;
+
+        real.forEach((jid, i) => {
+            caption += `• ${i + 1} ➜ @${jid.split('@')[0]}\n`;
         });
 
-        txt += `> ┗━━━━━━━━━━━━━━━━━━━━┛`;
+        caption += `\n━━━━━━━━━━━━━━━━`;
 
-        return conn.sendMessage(m.chat, {
-            text: txt,
+        await conn.sendMessage(m.chat, {
+            text: caption,
             contextInfo: {
-                mentionedJid: realParticipants,
-                groupMentions: [],
-                remoteJidAlt: m.chat
+                mentionedJid: real,
+                externalAdReply: {
+                    title: "Ranking Top",
+                    body: reason,
+                    thumbnailUrl: "https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=1000&auto=format&fit=crop",
+                    sourceUrl: "https://github.com/",
+                    mediaType: 1,
+                    renderLargerThumbnail: true
+                }
             }
         }, { quoted: m });
     }
