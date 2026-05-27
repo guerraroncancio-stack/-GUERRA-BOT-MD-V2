@@ -27,9 +27,7 @@ const reflexionCommand = {
 
             const mensaje = `
 ╭───〔 💡 CONSEJO 〕───╮
-│
 │ ✦ ${r.categoria}
-│
 ╰────────────────────╯
 
 ❝ ${r.texto} ❞
