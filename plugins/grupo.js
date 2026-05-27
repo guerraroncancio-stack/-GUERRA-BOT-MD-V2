@@ -80,11 +80,12 @@ export default {
                 m.chat,
                 {
                     text:
-`╭━━〔 🔓 GRUPO ABIERTO 🔓 〕━━⬣
-┃ ⚔️ Ahora todos pueden hablar
-┃ 👑 Acción ejecutada correctamente
-┃ 🚀 Sistema: GUERRA BOT
-╰━━━━━━━━━━━━━━━━━━⬣`
+╭═━═⌬〔 👑 𝐆𝐔𝐄𝐑𝐑𝐀 𝐁𝐎𝐓 👑 〕⌬═━═╮
+┃  🔓 Estado del grupo actualizado
+┃  💬 Todos los miembros pueden hablar
+┃  ⚡ Acción ejecutada con éxito
+┃  🛡️ Sistema protegido y activo
+╰═━══════════════════━═╯
                 },
                 {
                     quoted: fkontak
@@ -111,11 +112,12 @@ export default {
                 m.chat,
                 {
                     text:
-`╭━━〔 🔒 GRUPO CERRADO 🔒 〕━━⬣
-┃ ⚠️ Solo admins pueden hablar
-┃ 🛡️ Protección activada
-┃ 🚀 Sistema: GUERRA BOT
-╰━━━━━━━━━━━━━━━━━━⬣`
+╭═━═⌬〔 👑 𝐆𝐔𝐄𝐑𝐑𝐀 𝐁𝐎𝐓 👑 〕⌬═━═╮
+┃  🔒 Estado del grupo actualizado
+┃  🚫 Solo administradores pueden hablar
+┃  ⚡ Protección activada correctamente
+┃  🛡️ Sistema protegido y activo
+╰═━══════════════════━═╯
                 },
                 {
                     quoted: fkontak
