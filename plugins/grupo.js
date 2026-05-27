@@ -1,5 +1,5 @@
 // =========================================
-// 👑 GUERRA BOT — OPEN/CLOSE SYSTEM
+// 👑 GUERRA BOT — GROUP SYSTEM
 // =========================================
 
 import fetch from 'node-fetch'
@@ -36,24 +36,16 @@ export default {
         command
     }) {
 
-        // =========================================
-        // ⚡ ACTION DETECT
-        // =========================================
-
         let action =
         (args[0] || '').toLowerCase()
 
         if (
             ['abrir', 'open'].includes(command)
-        ) {
-            action = 'abrir'
-        }
+        ) action = 'abrir'
 
         if (
             ['cerrar', 'close'].includes(command)
-        ) {
-            action = 'cerrar'
-        }
+        ) action = 'cerrar'
 
         // =========================================
         // 👑 VERIFIED STYLE
@@ -64,7 +56,7 @@ export default {
             key: {
                 remoteJid: m.chat,
                 fromMe: false,
-                id: 'GUERRA-BOT'
+                id: 'GUERRA-X'
             },
 
             message: {
@@ -87,29 +79,23 @@ export default {
         // 🔓 OPEN GROUP
         // =========================================
 
-        if (
-            action === 'abrir' ||
-            action === 'open'
-        ) {
+        if (action === 'abrir') {
 
             await conn.groupSettingUpdate(
                 m.chat,
                 'not_announcement'
             )
 
-            return await conn.sendMessage(
+            return conn.sendMessage(
                 m.chat,
                 {
                     text:
-`╭═━═⌬〔 👑 𝐆𝐔𝐄𝐑𝐑𝐀 𝐁𝐎𝐓 👑 〕⌬═━═╮
-┃
-┃  🔓 𝐆𝐑𝐔𝐏𝐎 𝐀𝐁𝐈𝐄𝐑𝐓𝐎
-┃  💬 Todos pueden enviar mensajes
-┃
-┃  ⚡ Estado actualizado correctamente
-┃  🛡️ Sistema protegido y estable
-┃
-╰═━════════════════════━━═╯`
+`╭━〔 👑 𝐆𝐔𝐄𝐑𝐑𝐀 𝐒𝐘𝐒𝐓𝐄𝐌 👑 〕━⬣
+┃ ✦ Estado: OPENED
+┃ ✦ Chat liberado correctamente
+┃ ✦ Todos pueden hablar 💬
+┃ ⚡ Protección sincronizada
+╰━━━━━━━━━━━━━━━━━━⬣`
                 },
                 {
                     quoted: fkontak
@@ -122,26 +108,23 @@ export default {
         // 🔒 CLOSE GROUP
         // =========================================
 
-        if (
-            action === 'cerrar' ||
-            action === 'close'
-        ) {
+        if (action === 'cerrar') {
 
             await conn.groupSettingUpdate(
                 m.chat,
                 'announcement'
             )
 
-            return await conn.sendMessage(
+            return conn.sendMessage(
                 m.chat,
                 {
                     text:
-`╭═━═⌬〔 👑 𝐆𝐔𝐄𝐑𝐑𝐀 𝐁𝐎𝐓 👑 〕⌬═━═╮
-┃  🔒 𝐆𝐑𝐔𝐏𝐎 𝐂𝐄𝐑𝐑𝐀𝐃𝐎
-┃  🚫 Solo admins pueden hablar
-┃  ⚡ Protección activada correctamente
-┃  🛡️ Seguridad reforzada
-╰═━════════════════════━━═╯`
+`╭━〔 👑 𝐆𝐔𝐄𝐑𝐑𝐀 𝐒𝐘𝐒𝐓𝐄𝐌 👑 〕━⬣
+┃ ✦ Estado: CLOSED
+┃ ✦ Solo admins pueden hablar 🚫
+┃ ✦ Protección activada
+┃ ⚡ Seguridad reforzada
+╰━━━━━━━━━━━━━━━━━━⬣`
                 },
                 {
                     quoted: fkontak
@@ -154,16 +137,16 @@ export default {
         // ❌ HELP MENU
         // =========================================
 
-        return await conn.sendMessage(
+        return conn.sendMessage(
             m.chat,
             {
                 text:
-`╭═━═⌬〔 👑 𝐆𝐔𝐄𝐑𝐑𝐀 𝐁𝐎𝐓 👑 〕⌬═━═╮
-┃  🔒 Estado del grupo actualizado
-┃  🚫 Solo administradores pueden hablar
-┃  ⚡ Protección activada correctamente
-┃  🛡️ Sistema protegido y activo
-╰═━══════════════════━═╯`
+`╭━〔 ⚙️ 𝐆𝐑𝐎𝐔𝐏 𝐂𝐎𝐍𝐓𝐑𝐎𝐋 ⚙️ 〕━⬣
+┃ ✦ .grupo abrir
+┃ ✦ .grupo cerrar
+┃ ✦ .abrir
+┃ ✦ .cerrar
+╰━━━━━━━━━━━━━━━━━━⬣`
             },
             {
                 quoted: fkontak
