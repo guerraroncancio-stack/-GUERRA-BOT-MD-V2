@@ -63,7 +63,7 @@ export default {
 
                 locationMessage: {
 
-                    name: 'GUERRA BOT VERIFIED',
+                    name: '👑GUERRA BOT OFICIAL👑',
 
                     jpegThumbnail: thumb
 
