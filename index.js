@@ -73,7 +73,8 @@ const folders = [
     './tmp',
     './plugins',
     './handler',
-    './lib'
+    './lib',
+    './lib/workers'
 ]
 
 for (const folder of folders) {
@@ -127,7 +128,10 @@ process.on('uncaughtException', (err) => {
         msg.includes('decrypt')
     ) return
 
-    console.error(chalk.redBright(err))
+    console.error(
+        chalk.redBright('[ UNCAUGHT EXCEPTION ]'),
+        err
+    )
 
 })
 
@@ -142,7 +146,10 @@ process.on('unhandledRejection', (reason) => {
         msg.includes('decrypt')
     ) return
 
-    console.error(chalk.redBright(reason))
+    console.error(
+        chalk.redBright('[ UNHANDLED REJECTION ]'),
+        reason
+    )
 
 })
 
@@ -158,11 +165,14 @@ cfonts.say('GUERRA BOT', {
     colors: ['yellow', 'cyan']
 })
 
-console.log(chalk.hex('#FFD700')(`
+console.log(
+chalk.hex('#FFD700')(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚔️ GUERRA BOT MD ONLINE ⚔️
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-`))
+`)
+)
+
 console.log(
 chalk.hex('#00F5FF')(`
 ╔══════════════════════════════════════╗
@@ -175,6 +185,7 @@ chalk.hex('#00F5FF')(`
 ╚══════════════════════════════════════╝
 `)
 )
+
 /* =========================================
    ☁️ DATABASE
 ========================================= */
@@ -300,7 +311,10 @@ chalk.hex('#00FFB3')(`
 
     } catch (err) {
 
-        console.error(err)
+        console.error(
+            chalk.redBright('[ MESSAGE HANDLER ERROR ]'),
+            err
+        )
 
     }
 
@@ -352,7 +366,16 @@ async function readPlugins(folder, type = 'plugin') {
                 if (
                     !imported ||
                     typeof imported !== 'object'
-                ) continue
+                ) {
+
+                    console.log(
+chalk.yellowBright(
+`[ INVALID PLUGIN ] ${filename}`
+)
+                    )
+
+                    continue
+                }
 
                 const plugin = {
                     ...imported
@@ -565,6 +588,51 @@ chalk.hex('#00FFB3')(`
                         console.error(err)
 
                     }
+
+                }
+
+            }
+        )
+
+        /* =========================================
+           👑 BOT ADMIN DETECT
+        ========================================= */
+
+        global.conn.ev.on(
+            'group-participants.update',
+            async (update) => {
+
+                try {
+
+                    if (
+                        update.action !== 'promote'
+                    ) return
+
+                    const botNumber =
+                    global.conn.user.id.split(':')[0] + '@s.whatsapp.net'
+
+                    if (
+                        !update.participants.includes(botNumber)
+                    ) return
+
+                    await global.conn.sendMessage(
+                        update.id,
+                        {
+                            text:
+`╭━━〔 👑 BOT PROMOTED 👑 〕━━⬣
+┃ ⚔️ GUERRA BOT AHORA ES ADMIN
+┃ 🚀 FUNCIONES DESBLOQUEADAS
+┃ 🛡️ SISTEMA ACTIVO
+╰━━━━━━━━━━━━━━━━━━⬣`
+                        }
+                    )
+
+                } catch (err) {
+
+                    console.error(
+                        '[ ADMIN DETECT ERROR ]',
+                        err
+                    )
 
                 }
 
