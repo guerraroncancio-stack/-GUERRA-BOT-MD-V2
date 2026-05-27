@@ -9,20 +9,34 @@ const youtubeCommand = {
     alias: ['play', 'audio', 'mp3', 'video', 'mp4', 'play2', 'playaudio', 'playvideo'],
     category: 'download',
     run: async (m, { conn, text, command, usedPrefix }) => {
-        if (!text?.trim()) return conn.reply(m.chat, `ᰔᩚ   *GUERRA DOWNLOAD* ᥫᩣ\n\n*Uso:* ${usedPrefix + command} <búsqueda>`, m);
+        if (!text?.trim()) return conn.reply(
+            m.chat,
+`╭━━〔 🎧 YOUTUBE PLAYER 〕━━⬣
+┃ ❒ Uso: ${usedPrefix + command} <búsqueda>
+╰━━━━━━━━━━━━━━⬣`,
+            m
+        );
 
-        const isAudio = /play$|audio$|mp3|ytmp3|playaudio/i.test(command);
+        const isAudio = /play$|audio|mp3|ytmp3|playaudio/i.test(command);
         const isDocument = /play$|play2$/i.test(command);
         const apiKey = 'kirito-bot-oficial';
 
-        await m.react("⌛"); 
+        await m.react("⌛");
 
         try {
             const videoMatch = text.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/|v\/))([id=a-zA-Z0-9_-]{11})/);
-            const searchPromise = videoMatch ? yts({ videoId: videoMatch[1] }) : yts(text).then(s => s.videos?.[0]);
+            const searchPromise = videoMatch
+                ? yts({ videoId: videoMatch[1] })
+                : yts(text).then(s => s.videos?.[0]);
 
             const videoSearchResult = await searchPromise;
-            if (!videoSearchResult) return conn.reply(m.chat, "No se hallaron resultados.", m);
+            if (!videoSearchResult) return conn.reply(
+                m.chat,
+`╭━━〔 ❌ SIN RESULTADOS 〕━━⬣
+┃ ❒ No se encontraron coincidencias
+╰━━━━━━━━━━━━━━⬣`,
+                m
+            );
 
             const videoUrl = 'https://www.youtube.com/watch?v=' + videoSearchResult.videoId;
             const thumbUrl = videoSearchResult.image || videoSearchResult.thumbnail;
@@ -43,21 +57,37 @@ const youtubeCommand = {
 
             const [thumbBuffer, apiResponse] = await Promise.all([thumbBufferPromise, apiResponsePromise]);
 
-            const infoText = `\n\t\t\t\t*♬♫ YOUTUBE DOWNLOAD 𝄞*\n\n✰ *TÍTULO:* ${videoSearchResult.title}\n♛ *CANAL:* ${videoSearchResult.author?.name || '---'}\n✎ *TIEMPO:* ${videoSearchResult.timestamp || '---'}\n⌬ *VISTAS:* ${videoSearchResult.views?.toLocaleString() || '---'}\n▢ *LINK:* ${videoUrl}\n`;
+            const infoText =
+`╭━━〔 🎬 YOUTUBE DOWNLOAD 〕━━⬣
+┃ ❒ Título: ${videoSearchResult.title}
+┃ ❒ Canal: ${videoSearchResult.author?.name || 'Desconocido'}
+┃ ❒ Duración: ${videoSearchResult.timestamp || '---'}
+┃ ❒ Vistas: ${videoSearchResult.views?.toLocaleString() || '---'}
+┃ ❒ URL: ${videoUrl}
+╰━━━━━━━━━━━━━━⬣`;
 
-            conn.sendMessage(m.chat, { 
-                image: { url: thumbUrl }, 
+            conn.sendMessage(m.chat, {
+                image: { url: thumbUrl },
                 caption: infoText,
                 contextInfo: { ...global.channelInfo }
             }, { quoted: m });
 
             if (!apiResponse.success) throw new Error("API Fallida");
+
             const downloadUrl = isAudio ? apiResponse.data.audio : apiResponse.data.video;
 
             const checkSize = await fetch(downloadUrl, { method: 'HEAD' });
             const sizeInBytes = parseInt(checkSize.headers.get('content-length') || '0');
+
             if (sizeInBytes > 10 * 1024 * 1024) {
-                return conn.reply(m.chat, `⚠️ Supera los 10MB.`, m);
+                return conn.reply(
+                    m.chat,
+`╭━━〔 ⚠️ ARCHIVO GRANDE 〕━━⬣
+┃ ❒ Supera los 10MB
+┃ ❒ Intenta otro video
+╰━━━━━━━━━━━━━━⬣`,
+                    m
+                );
             }
 
             if (isAudio) {
@@ -65,11 +95,20 @@ const youtubeCommand = {
                     mimetype: "audio/mpeg",
                     fileName: `${videoSearchResult.title}.mp3`
                 };
+
                 if (isDocument) {
-                    await conn.sendMessage(m.chat, { document: { url: downloadUrl }, ...audioPayload, jpegThumbnail: thumbBuffer }, { quoted: m });
+                    await conn.sendMessage(m.chat, {
+                        document: { url: downloadUrl },
+                        ...audioPayload,
+                        jpegThumbnail: thumbBuffer
+                    }, { quoted: m });
                 } else {
-                    await conn.sendMessage(m.chat, { audio: { url: downloadUrl }, ...audioPayload }, { quoted: m });
+                    await conn.sendMessage(m.chat, {
+                        audio: { url: downloadUrl },
+                        ...audioPayload
+                    }, { quoted: m });
                 }
+
             } else {
                 if (isDocument) {
                     await conn.sendMessage(m.chat, {
@@ -77,15 +116,21 @@ const youtubeCommand = {
                         mimetype: "video/mp4",
                         fileName: `${videoSearchResult.title}.mp4`,
                         jpegThumbnail: thumbBuffer,
-                        caption: videoSearchResult.title
+                        caption: `╭━━〔 📥 VIDEO DESCARGADO 〕━━⬣
+┃ ❒ ${videoSearchResult.title}
+╰━━━━━━━━━━━━━━⬣`
                     }, { quoted: m });
+
                 } else {
                     const mediaBuffer = await fetch(downloadUrl).then(res => res.buffer());
                     const instagramShortcode = "DXF25DKDZrN";
 
                     const [uploadedArt, messageContent] = await Promise.all([
                         prepareWAMessageMedia({ image: thumbBuffer }, { upload: conn.waUploadToServer }),
-                        generateWAMessageContent({ video: mediaBuffer, mimetype: 'video/mp4', jpegThumbnail: thumbBuffer }, { upload: conn.waUploadToServer })
+                        generateWAMessageContent(
+                            { video: mediaBuffer, mimetype: 'video/mp4', jpegThumbnail: thumbBuffer },
+                            { upload: conn.waUploadToServer }
+                        )
                     ]);
 
                     await conn.relayMessage(m.chat, {
@@ -99,19 +144,24 @@ const youtubeCommand = {
                                 isForwarded: true,
                                 forwardedNewsletterMessageInfo: {
                                     newsletterJid: global.ch || '',
-                                    newsletterName: 'GUERRA ♕ — Official Channel ™'
+                                    newsletterName: '🎧 GUERRA MUSIC • Official'
                                 }
                             },
                             annotations: [{
-                                polygonVertices: [{ x: 0.25, y: 0.41 }, { x: 0.75, y: 0.41 }, { x: 0.75, y: 0.58 }, { x: 0.25, y: 0.58 }],
+                                polygonVertices: [
+                                    { x: 0.25, y: 0.41 },
+                                    { x: 0.75, y: 0.41 },
+                                    { x: 0.75, y: 0.58 },
+                                    { x: 0.25, y: 0.58 }
+                                ],
                                 shouldSkipConfirmation: true,
                                 embeddedContent: {
                                     embeddedMusic: {
                                         musicContentMediaId: instagramShortcode,
                                         songId: instagramShortcode,
-                                        author: videoSearchResult.author?.name || 'kevin Tech',
-                                        title: videoSearchResult.title || 'KIRITO MUSIC',
-                                        artistAttribution: `https://www.instagram.com/p/${instagramShortcode}/`,
+                                        author: videoSearchResult.author?.name || 'GUERRA BOT',
+                                        title: videoSearchResult.title || 'YouTube Music',
+                                        artistAttribution: `https://www.youtube.com/watch?v=${videoSearchResult.videoId}`,
                                         artworkDirectPath: uploadedArt.imageMessage.directPath,
                                         artworkMediaKey: uploadedArt.imageMessage.mediaKey,
                                         artworkSha256: uploadedArt.imageMessage.fileSha256,
@@ -128,9 +178,18 @@ const youtubeCommand = {
                     }, { quoted: m });
                 }
             }
+
             await m.react("✅");
+
         } catch (error) {
-            conn.reply(m.chat, `*Error:* ${error.message}`, m);
+            conn.reply(
+                m.chat,
+`╭━━〔 ❌ ERROR YOUTUBE 〕━━⬣
+┃ ❒ ${error.message}
+┃ ❒ Intenta nuevamente
+╰━━━━━━━━━━━━━━⬣`,
+                m
+            );
             await m.react("❌");
         }
     }
