@@ -22,7 +22,8 @@ const parejasCommand = {
         );
 
         let txt = `
-💞 RESULTADO DE PAREJAS
+💞  PAREJAS ALEATORIAS
+────────────────────
 `.trim() + '\n\n';
 
         for (let i = 0; i < users.length; i += 2) {
@@ -31,22 +32,19 @@ const parejasCommand = {
             const love = Math.floor(Math.random() * 100);
 
             txt += `
-• ${u1.split('@')[0]} ❤ ${u2.split('@')[0]}
-  Compatibilidad: ${love}%
+👤 @${u1.split('@')[0]}
+   ❤️ con
+👤 @${u2.split('@')[0]}
+   💘 ${love}%
+────────────────────
 `.trim() + '\n';
         }
-
-        txt += `
-━━━━━━━━━━━━━━━━━━
-`.trim();
 
         return conn.sendMessage(
             m.chat,
             {
                 text: txt,
-                contextInfo: {
-                    mentionedJid: users
-                }
+                mentions: users
             },
             { quoted: m }
         );
