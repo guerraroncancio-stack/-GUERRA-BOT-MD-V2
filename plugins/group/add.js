@@ -4,55 +4,91 @@ const addCommand = {
     category: 'admin',
     botAdmin: true,
     grupo: true,
-    run: async (m, { conn, text, participants }) => {
+
+    run: async (m, { conn, text }) => {
         try {
-            const groupMetadata = global.groupCache?.get(m.chat) || await conn.groupMetadata(m.chat).catch(() => null);
+            const groupMetadata = await conn.groupMetadata(m.chat).catch(() => null);
             if (!groupMetadata) return;
 
-            let input = text?.trim() || (m.quoted?.sender ? m.quoted.sender : '');
-            if (!input) return m.reply('❌ Escribe el número o menciona a alguien.');
+            let input = text?.trim() || m.quoted?.sender || '';
+            if (!input) return m.reply('❌ Ingresa un número o menciona a alguien.');
 
-            const num = input.replace(/@.*$/, '').replace(/\D/g, '');
+            const num = input.replace(/[^0-9]/g, '');
             if (num.length < 7) return m.reply('❌ Número inválido.');
 
             const jid = `${num}@s.whatsapp.net`;
-            const { subject: groupName, participants: members } = groupMetadata;
 
-            const alreadyIn = members.some(p => p.id?.includes(num));
-            if (alreadyIn) return m.reply('⚠️ El usuario ya es miembro del grupo.');
+            const already = groupMetadata.participants.some(p => p.id === jid);
+            if (already) return m.reply('⚠️ Este usuario ya está en el grupo.');
 
-            const result = await conn.groupParticipantsUpdate(m.chat, [jid], 'add').catch(() => null);
-            const res = Array.isArray(result) ? result[0] : null;
-            const statusCode = res?.status?.toString();
+            await m.react('⏳');
 
-            if (statusCode === '200') {
+            const result = await conn.groupParticipantsUpdate(
+                m.chat,
+                [jid],
+                'add'
+            ).catch(() => null);
+
+            const status = result?.[0]?.status?.toString();
+
+            // ✔️ ADDED DIRECTLY
+            if (status === '200') {
                 await m.react('✅');
-                return m.reply(`✨ @${num} ha sido añadido con éxito.`, m.chat, { mentions: [jid] });
+
+                return conn.sendMessage(m.chat, {
+                    text:
+`👤 AGREGADO AL GRUPO
+
+• Usuario: @${num}
+• Estado: añadido correctamente
+• Acción: invitación directa`,
+                    mentions: [jid]
+                }, { quoted: m });
             }
 
-            if (statusCode === '409') return m.reply('⚠️ El usuario ya es miembro del grupo.');
-            if (statusCode === '500') return m.reply('❌ Error interno al intentar añadir al usuario.');
+            // ⚠️ YA EN GRUPO
+            if (status === '409') {
+                await m.react('⚠️');
+                return m.reply('⚠️ El usuario ya pertenece al grupo.');
+            }
 
+            // ❌ NO SE PUDO AGREGAR → INVITACIÓN PRIVADA
             const code = await conn.groupInviteCode(m.chat).catch(() => null);
-            if (!code) return m.reply('❌ No se pudo añadir ni generar enlace de invitación.');
 
-            const inviteText =
-                `Hola, fuiste invitado a unirte al grupo *${groupName}*.\n\n` +
-                `👥 *Miembros:* ${members.length}\n` +
-                `🔗 *Enlace:* https://chat.whatsapp.com/${code}`;
+            if (!code) {
+                await m.react('❌');
+                return m.reply('❌ No se pudo generar enlace de invitación.');
+            }
 
-            await conn.sendMessage(jid, { text: inviteText }).catch(() => null);
+            const invite =
+`👋 INVITACIÓN DE GRUPO
+
+Te han intentado agregar, pero WhatsApp no lo permitió.
+
+🔗 Únete aquí:
+https://chat.whatsapp.com/${code}
+
+📌 Si quieres entrar, toca el enlace.`;
+
+            await conn.sendMessage(jid, {
+                text: invite
+            }).catch(() => null);
 
             await m.react('📨');
-            return m.reply(
-                `📨 Se envió invitación privada a @${num} porque no puede ser añadido directamente.`,
-                m.chat,
-                { mentions: [jid] }
-            );
+
+            return conn.sendMessage(m.chat, {
+                text:
+`📨 INVITACIÓN ENVIADA
+
+• Usuario: @${num}
+• Acción: invitación privada enviada`,
+                mentions: [jid]
+            }, { quoted: m });
 
         } catch (err) {
-            console.error('[add] Error:', err.message);
-            return m.reply('❌ Ocurrió un error inesperado.');
+            console.error(err);
+            await m.react('❌');
+            return m.reply('❌ Error inesperado al ejecutar add.');
         }
     }
 };
