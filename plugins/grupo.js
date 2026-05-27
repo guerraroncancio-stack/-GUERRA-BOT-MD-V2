@@ -1,7 +1,17 @@
 // =========================================
-// 🔓 ABRIR / 🔒 CERRAR GRUPO PREMIUM
-// Archivo: plugins/grupo-openclose.js
+// 🔓 ABRIR / 🔒 CERRAR GRUPO VERIFICADO
 // =========================================
+
+import fetch from 'node-fetch'
+
+let thumb = null
+
+fetch('https://cdn.dix.lat/me/3a1b5867-1ecb-40dc-acf8-250526ebad65.jpg')
+.then(res => res.arrayBuffer())
+.then(buf => {
+    thumb = Buffer.from(buf)
+})
+.catch(() => null)
 
 export default {
 
@@ -24,11 +34,36 @@ export default {
         const action =
         (args[0] || '').toLowerCase()
 
-        const banner =
-        'https://cdn.dix.lat/me/3a1b5867-1ecb-40dc-acf8-250526ebad65.jpg'
+        // =========================================
+        // 📌 MENSAJE VERIFICADO
+        // =========================================
+
+        const fkontak = {
+
+            key: {
+                remoteJid: m.chat,
+                fromMe: false,
+                id: 'GUERRA'
+            },
+
+            message: {
+
+                locationMessage: {
+
+                    name: 'GUERRA BOT VERIFIED',
+
+                    jpegThumbnail: thumb
+
+                }
+
+            },
+
+            participant: '0@s.whatsapp.net'
+
+        }
 
         // =========================================
-        // 🔓 ABRIR GRUPO
+        // 🔓 ABRIR
         // =========================================
 
         if (
@@ -49,43 +84,17 @@ export default {
 ┃ ⚔️ Ahora todos pueden hablar
 ┃ 👑 Acción ejecutada correctamente
 ┃ 🚀 Sistema: GUERRA BOT
-╰━━━━━━━━━━━━━━━━━━⬣`,
-
-                    contextInfo: {
-
-                        mentionedJid: [m.sender],
-
-                        externalAdReply: {
-
-                            title: 'GUERRA BOT MD',
-
-                            body: 'Sistema de Administración',
-
-                            thumbnailUrl: banner,
-
-                            sourceUrl:
-                            'https://github.com',
-
-                            mediaType: 1,
-
-                            renderLargerThumbnail: true,
-
-                            showAdAttribution: true
-
-                        }
-
-                    }
-
+╰━━━━━━━━━━━━━━━━━━⬣`
                 },
                 {
-                    quoted: m
+                    quoted: fkontak
                 }
             )
 
         }
 
         // =========================================
-        // 🔒 CERRAR GRUPO
+        // 🔒 CERRAR
         // =========================================
 
         if (
@@ -106,43 +115,17 @@ export default {
 ┃ ⚠️ Solo admins pueden hablar
 ┃ 🛡️ Protección activada
 ┃ 🚀 Sistema: GUERRA BOT
-╰━━━━━━━━━━━━━━━━━━⬣`,
-
-                    contextInfo: {
-
-                        mentionedJid: [m.sender],
-
-                        externalAdReply: {
-
-                            title: 'GUERRA BOT MD',
-
-                            body: 'Sistema de Seguridad',
-
-                            thumbnailUrl: banner,
-
-                            sourceUrl:
-                            'https://github.com',
-
-                            mediaType: 1,
-
-                            renderLargerThumbnail: true,
-
-                            showAdAttribution: true
-
-                        }
-
-                    }
-
+╰━━━━━━━━━━━━━━━━━━⬣`
                 },
                 {
-                    quoted: m
+                    quoted: fkontak
                 }
             )
 
         }
 
         // =========================================
-        // ❌ USO INCORRECTO
+        // ❌ USO
         // =========================================
 
         return conn.sendMessage(
@@ -152,34 +135,10 @@ export default {
 `╭━━〔 ⚙️ USO DEL COMANDO ⚙️ 〕━━⬣
 ┃ 📌 .grupo abrir
 ┃ 📌 .grupo cerrar
-╰━━━━━━━━━━━━━━━━━━⬣`,
-
-                contextInfo: {
-
-                    externalAdReply: {
-
-                        title: 'GUERRA BOT MD',
-
-                        body: 'Panel de Administración',
-
-                        thumbnailUrl: banner,
-
-                        sourceUrl:
-                        'https://github.com',
-
-                        mediaType: 1,
-
-                        renderLargerThumbnail: true,
-
-                        showAdAttribution: true
-
-                    }
-
-                }
-
+╰━━━━━━━━━━━━━━━━━━⬣`
             },
             {
-                quoted: m
+                quoted: fkontak
             }
         )
 
