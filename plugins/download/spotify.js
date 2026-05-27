@@ -5,66 +5,90 @@ const spotifyCommand = {
     alias: ['spt', 'sp', 'music'],
     category: 'download',
     col: 0,
+
     run: async (m, { conn, text, usedPrefix, command }) => {
-        if (!text) return m.reply(`> ✎ USO: ${usedPrefix + command} <nombre de la canción o URL>`);
+
+        if (!text) {
+            return m.reply(
+`╭─〔 🎧 SPOTIFY DOWNLOADER 〕─╮
+│ Uso: ${usedPrefix + command} <canción o URL>
+╰────────────────────╯`
+            );
+        }
 
         await m.react('🕓');
 
         try {
-            const isUrl = text.match(/^(https?:\/\/)?(www\.)?(open\.spotify\.com|spotify\.link)\/.+$/gi);
+            const isUrl = text.match(/^(https?:\/\/)?(www\.)?(open\.spotify\.com|spotify\.link)\/.+$/i);
             let track;
 
             if (isUrl) {
                 track = { url: text, title: 'Spotify Track' };
             } else {
-                const searchRes = await fetch(`https://api.delirius.store/search/spotify?q=${encodeURIComponent(text)}&limit=1`);
+                const searchRes = await fetch(
+                    `https://api.delirius.store/search/spotify?q=${encodeURIComponent(text)}&limit=1`
+                );
+
                 const searchData = await searchRes.json();
 
                 if (!searchData.status || !searchData.data.length) {
                     await m.react('✖️');
-                    return m.reply('> ⚔ ERROR: No se encontraron resultados.');
+                    return m.reply('❌ No se encontraron resultados en Spotify.');
                 }
 
                 track = searchData.data[0];
 
-                let txt = `\t\t\t\t*SPOTIFY DOWNLOAD*\n\n`;
-                txt += `> ▢ *TÍTULO:* ${track.title}\n`;
-                txt += `> ▢ *ARTISTA:* ${track.artist}\n`;
-                txt += `> ▢ *ÁLBUM:* ${track.album}\n`;
-                txt += `> ▢ *DURACIÓN:* ${track.duration}\n`;
-                txt += `> ▢ *PUBLICADO:* ${track.publish}\n\n`;
-                txt += `> _Procesando audio, espere un momento..._`;
+                const info =
+`╭─〔 🎶 SPOTIFY RESULT 〕─╮
+│ 🎵 Título: ${track.title}
+│ 👤 Artista: ${track.artist}
+│ 💿 Álbum: ${track.album}
+│ ⏱ Duración: ${track.duration}
+│ 📅 Publicado: ${track.publish}
+│ 🔗 Link: ${track.url || text}
+╰────────────────────╯
 
-                await conn.sendMessage(m.chat, { 
-                    image: { url: track.image }, 
-                    caption: txt 
+⏳ Procesando audio...`;
+
+                await conn.sendMessage(m.chat, {
+                    image: { url: track.image },
+                    caption: info
                 }, { quoted: m });
             }
 
-            const downloadRes = await fetch(`https://api.delirius.store/download/spotifydl?url=${track.url}`);
+            const downloadRes = await fetch(
+                `https://api.delirius.store/download/spotifydl?url=${track.url}`
+            );
+
             const textResponse = await downloadRes.text();
 
             let downloadData;
             try {
                 downloadData = JSON.parse(textResponse);
-            } catch (e) {
-                return console.error("Error parseando JSON de descarga");
+            } catch {
+                await m.react('✖️');
+                return m.reply('❌ Error procesando la respuesta de descarga.');
             }
 
-            if (downloadData.status && downloadData.data.download) {
-                await conn.sendMessage(m.chat, { 
-                    audio: { url: downloadData.data.download }, 
-                    mimetype: 'audio/mpeg', 
-                    fileName: `${track.title}.mp3` 
+            if (downloadData.status && downloadData.data?.download) {
+
+                await conn.sendMessage(m.chat, {
+                    audio: { url: downloadData.data.download },
+                    mimetype: 'audio/mpeg',
+                    fileName: `${track.title}.mp3`
                 }, { quoted: m });
+
                 await m.react('✅');
+
             } else {
                 await m.react('✖️');
+                m.reply('❌ No se pudo descargar el audio.');
             }
 
         } catch (e) {
+            console.error(e);
             await m.react('✖️');
-            m.reply(`> ⚔ ERROR CRÍTICO: ${e.message}`);
+            m.reply(`❌ Error: ${e.message}`);
         }
     }
 };
