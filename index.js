@@ -1,5 +1,5 @@
 /* =========================================
-   ⚔️ GUERRA BOT MD — FINAL STABLE CORE
+   ⚔️ GUERRA BOT MD — ULTIMATE CORE
    Powered by Kevin Guerra
 ========================================= */
 
@@ -11,6 +11,8 @@ import fs, {
     watch,
     promises as fsP
 } from 'fs'
+
+import os from 'os'
 
 import path, {
     join,
@@ -52,7 +54,7 @@ import { smsg } from './lib/serializer.js'
 global.BOT = {
     name: 'GUERRA BOT MD',
     owner: 'Kevin Guerra',
-    version: '11.0.0',
+    version: '12.0.0',
     prefix: '.',
     mode: 'PUBLIC'
 }
@@ -97,6 +99,10 @@ global.plugins = new Map()
 global.aliases = new Map()
 global.handlers = new Map()
 
+global.startTime = Date.now()
+global.blocked = []
+global.temp = new Map()
+
 global.commandCache = new NodeCache({
     stdTTL: 60,
     checkperiod: 120,
@@ -108,7 +114,13 @@ global.commandCache = new NodeCache({
 ========================================= */
 
 const logger = pino({
-    level: 'silent'
+    level: 'silent',
+    transport: {
+        target: 'pino-pretty',
+        options: {
+            colorize: true
+        }
+    }
 })
 
 /* =========================================
@@ -160,10 +172,9 @@ process.on('unhandledRejection', (reason) => {
 console.clear()
 
 cfonts.say('GUERRA BOT', {
-    font: 'block',
+    font: 'tiny',
     align: 'center',
-    colors: ['yellow', 'cyan'],
-    gradient: ['yellow', 'cyan']
+    colors: ['yellow', 'cyan']
 })
 
 console.log(
@@ -263,6 +274,12 @@ const connectionOptions = {
 
     markOnlineOnConnect: true,
 
+    emitOwnEvents: true,
+
+    fireInitQueries: true,
+
+    generateHighQualityLinkPreview: true,
+
     syncFullHistory: false,
 
     connectTimeoutMs: 60000,
@@ -280,7 +297,44 @@ const connectionOptions = {
 
 let isStarting = false
 let reconnectAttempts = 0
+
 const MAX_RECONNECT = 10
+
+/* =========================================
+   🧹 AUTO CLEAN TMP
+========================================= */
+
+setInterval(async () => {
+
+    try {
+
+        const tmp =
+        await fsP.readdir('./tmp')
+
+        for (const file of tmp) {
+
+            const filepath =
+            `./tmp/${file}`
+
+            const stat =
+            await fsP.stat(filepath)
+
+            const now = Date.now()
+
+            if (
+                now - stat.mtimeMs >
+                1000 * 60 * 10
+            ) {
+
+                await fsP.unlink(filepath)
+
+            }
+
+        }
+
+    } catch {}
+
+}, 1000 * 60 * 5)
 
 /* =========================================
    📩 MESSAGE HANDLER
@@ -313,7 +367,9 @@ chalk.hex('#00FFB3')(`
     } catch (err) {
 
         console.error(
-            chalk.redBright('[ MESSAGE HANDLER ERROR ]'),
+            chalk.redBright(
+                '[ MESSAGE HANDLER ERROR ]'
+            ),
             err
         )
 
@@ -332,7 +388,10 @@ watch(
    🔌 LOAD PLUGINS
 ========================================= */
 
-async function readPlugins(folder, type = 'plugin') {
+async function readPlugins(
+    folder,
+    type = 'plugin'
+) {
 
     const files =
     await fsP.readdir(folder)
@@ -349,7 +408,9 @@ async function readPlugins(folder, type = 'plugin') {
 
             await readPlugins(file, type)
 
-        } else if (filename.endsWith('.js')) {
+        } else if (
+            filename.endsWith('.js')
+        ) {
 
             try {
 
@@ -367,16 +428,7 @@ async function readPlugins(folder, type = 'plugin') {
                 if (
                     !imported ||
                     typeof imported !== 'object'
-                ) {
-
-                    console.log(
-chalk.yellowBright(
-`[ INVALID PLUGIN ] ${filename}`
-)
-                    )
-
-                    continue
-                }
+                ) continue
 
                 const plugin = {
                     ...imported
@@ -399,7 +451,9 @@ chalk.yellowBright(
                 }
 
                 if (
-                    !Array.isArray(plugin.aliases)
+                    !Array.isArray(
+                        plugin.aliases
+                    )
                 ) {
 
                     plugin.aliases = []
@@ -422,7 +476,9 @@ chalk.yellowBright(
 
                 }
 
-                for (const alias of plugin.aliases) {
+                for (
+                    const alias of plugin.aliases
+                ) {
 
                     if (!alias) continue
 
@@ -460,6 +516,45 @@ ${filename}
 
 await readPlugins('./plugins', 'plugin')
 await readPlugins('./handler', 'handler')
+
+/* =========================================
+   🔄 HOT RELOAD
+========================================= */
+
+watch('./plugins', async () => {
+
+    console.log(
+        chalk.yellowBright(
+            '[ ⚡ ] RELOADING PLUGINS'
+        )
+    )
+
+    global.plugins.clear()
+    global.aliases.clear()
+
+    await readPlugins(
+        './plugins',
+        'plugin'
+    )
+
+})
+
+watch('./handler', async () => {
+
+    console.log(
+        chalk.cyanBright(
+            '[ ⚡ ] RELOADING HANDLERS'
+        )
+    )
+
+    global.handlers.clear()
+
+    await readPlugins(
+        './handler',
+        'handler'
+    )
+
+})
 
 console.log(
 chalk.hex('#00F5FF')(`
@@ -561,7 +656,9 @@ chalk.hex('#00FFB3')(`
                     const msg =
                     chatUpdate.messages?.[0]
 
-                    if (!msg?.message) return
+                    if (
+                        !msg?.message
+                    ) return
 
                     const m =
                     await smsg(
@@ -569,7 +666,9 @@ chalk.hex('#00FFB3')(`
                         msg
                     )
 
-                    if (global.messageHandler) {
+                    if (
+                        global.messageHandler
+                    ) {
 
                         await global.messageHandler.call(
                             global.conn,
@@ -596,59 +695,73 @@ chalk.hex('#00FFB3')(`
         )
 
         /* =========================================
-           👑 BOT ADMIN DETECT FIXED
-========================================= */
+           👥 GROUP EVENTS
+        ========================================= */
 
-global.conn.ev.on(
-    'group-participants.update',
-    async (update) => {
+        global.conn.ev.on(
+            'group-participants.update',
+            async (update) => {
 
-        try {
+                try {
 
-            if (update.action !== 'promote') return
+                    for (
+                        const user of update.participants
+                    ) {
 
-            const botJid =
-            global.conn.decodeJid(global.conn.user.id)
+                        if (
+                            update.action ===
+                            'promote'
+                        ) {
 
-            const promoted =
-            update.participants.map(p =>
-                global.conn.decodeJid(p)
-            )
+                            await global.conn.sendMessage(
+                                update.id,
+                                {
+                                    text:
+`╭━━〔 👑 NUEVO ADMIN 👑 〕━━⬣
+┃ @${user.split('@')[0]}
+┃ AHORA ES ADMIN
+┃ ⚔️ GUERRA BOT SYSTEM
+╰━━━━━━━━━━━━━━━━━━⬣`,
+mentions: [user]
+                                }
+                            )
 
-            if (!promoted.includes(botJid)) return
+                        }
 
-            await global.conn.sendMessage(
-                update.id,
-                {
-                    text:
-`╭━━〔 👑 GUERRA BOT ADMIN 👑 〕━━⬣
-┃ ⚔️ EL BOT AHORA ES ADMIN
-┃ 🚀 FUNCIONES AVANZADAS ACTIVADAS
-┃ 🛡️ SISTEMA OPERATIVO
-┃ 👑 PODER TOTAL DESBLOQUEADO
-╰━━━━━━━━━━━━━━━━━━━━━━⬣`
+                        if (
+                            update.action ===
+                            'demote'
+                        ) {
+
+                            await global.conn.sendMessage(
+                                update.id,
+                                {
+                                    text:
+`╭━━〔 ⚠️ ADMIN REMOVIDO ⚠️ 〕━━⬣
+┃ @${user.split('@')[0]}
+┃ YA NO ES ADMIN
+┃ ⚔️ GUERRA BOT SYSTEM
+╰━━━━━━━━━━━━━━━━━━⬣`,
+mentions: [user]
+                                }
+                            )
+
+                        }
+
+                    }
+
+                } catch (err) {
+
+                    console.error(
+                        '[ GROUP EVENT ERROR ]',
+                        err
+                    )
+
                 }
-            )
 
-            console.log(
-                chalk.hex('#FFD700')(
-                    '[ 👑 ] BOT PROMOTED TO ADMIN'
-                )
-            )
+            }
+        )
 
-        } catch (err) {
-
-            console.error(
-                chalk.redBright(
-                    '[ ADMIN DETECT ERROR ]'
-                ),
-                err
-            )
-
-        }
-
-    }
-)
         /* =========================================
            📡 CONNECTION UPDATE
         ========================================= */
@@ -662,7 +775,10 @@ global.conn.ev.on(
                     lastDisconnect
                 } = update
 
-                if (connection === 'connecting') {
+                if (
+                    connection ===
+                    'connecting'
+                ) {
 
                     console.log(
 chalk.hex('#FFD700')(`
@@ -672,23 +788,45 @@ chalk.hex('#FFD700')(`
 
                 }
 
-                if (connection === 'open') {
+                if (
+                    connection === 'open'
+                ) {
 
                     reconnectAttempts = 0
 
+                    const used =
+                    (
+                        process.memoryUsage()
+                        .heapUsed /
+                        1024 /
+                        1024
+                    ).toFixed(2)
+
+                    const total =
+                    (
+                        os.totalmem() /
+                        1024 /
+                        1024 /
+                        1024
+                    ).toFixed(2)
+
                     console.log(
 chalk.hex('#00FFB3')(`
-╔══════════════════════════════════════╗
-║        WHATSAPP CONNECTED           ║
-╠══════════════════════════════════════╣
-║ STATUS : ONLINE
-╚══════════════════════════════════════╝
+
+╭━━━━━━━━━━━━━━━━━━⬣
+┃ ✅ BOT ONLINE
+┃ 👑 ${global.BOT.name}
+┃ 🚀 RAM: ${used} MB
+┃ 💻 SYSTEM: ${total} GB
+╰━━━━━━━━━━━━━━━━━━⬣
 `)
                     )
 
                 }
 
-                if (connection === 'close') {
+                if (
+                    connection === 'close'
+                ) {
 
                     const reason =
                     new Boom(
@@ -748,19 +886,22 @@ chalk.hex('#FFD700')(`
 
                     isStarting = false
 
-                    setTimeout(async () => {
+                    setTimeout(
+                        async () => {
 
-                        try {
+                            try {
 
-                            await startBot()
+                                await startBot()
 
-                        } catch (err) {
+                            } catch (err) {
 
-                            console.error(err)
+                                console.error(err)
 
-                        }
+                            }
 
-                    }, 5000)
+                        },
+                        5000
+                    )
 
                 }
 
@@ -800,6 +941,22 @@ chalk.yellowBright(
     )
 
 }
+
+/* =========================================
+   📴 EXIT SYSTEM
+========================================= */
+
+process.on('SIGINT', async () => {
+
+    console.log(
+chalk.redBright(`
+[ ⚠️ ] BOT OFFLINE
+`)
+    )
+
+    process.exit(0)
+
+})
 
 /* =========================================
    🚀 START
