@@ -1,11 +1,19 @@
-const isAdmin = require('../lib/isAdmin')
-const { downloadContentFromMessage } = require('@whiskeysockets/baileys')
-const fs = require('fs')
-const path = require('path')
+import fs from 'fs'
+import path from 'path'
+
+import {
+    downloadContentFromMessage
+} from '@whiskeysockets/baileys'
+
+import isAdmin from '../lib/isAdmin.js'
 
 async function downloadMediaMessage(message, mediaType) {
 
-    const stream = await downloadContentFromMessage(message, mediaType)
+    const stream =
+    await downloadContentFromMessage(
+        message,
+        mediaType
+    )
 
     let buffer = Buffer.from([])
 
@@ -13,163 +21,238 @@ async function downloadMediaMessage(message, mediaType) {
         buffer = Buffer.concat([buffer, chunk])
     }
 
-    const extension = mediaType === 'image'
+    const extension =
+    mediaType === 'image'
         ? 'jpg'
         : mediaType === 'video'
         ? 'mp4'
-        : 'bin'
+        : mediaType === 'document'
+        ? 'bin'
+        : 'dat'
 
-    const filePath = path.join(__dirname, '../temp/', `${Date.now()}.${extension}`)
+    const folder =
+    path.resolve('./tmp')
+
+    if (!fs.existsSync(folder)) {
+        fs.mkdirSync(folder, {
+            recursive: true
+        })
+    }
+
+    const filePath =
+    path.join(
+        folder,
+        `${Date.now()}.${extension}`
+    )
 
     fs.writeFileSync(filePath, buffer)
 
     return filePath
 }
 
-async function nCommand(sock, chatId, senderId, messageText, replyMessage, message) {
+const plugin = {
 
-    try {
+    name: 'hidetag',
 
-        const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderId)
+    aliases: [
+        'tag',
+        'notify'
+    ],
 
-        if (!isBotAdmin) {
-            return await sock.sendMessage(chatId, {
-                text: '⚠️ El bot necesita ser administrador primero.'
-            }, { quoted: message })
+    group: true,
+    admin: true,
+    botAdmin: true,
+
+    async run(m, { conn, text }) {
+
+        try {
+
+            const chatId = m.chat
+            const senderId = m.sender
+
+            const {
+                isSenderAdmin,
+                isBotAdmin
+            } = await isAdmin(
+                conn,
+                chatId,
+                senderId
+            )
+
+            if (!isBotAdmin) {
+
+                return conn.sendMessage(
+                    chatId,
+                    {
+                        text: '⚠️ El bot necesita admin.'
+                    },
+                    {
+                        quoted: m
+                    }
+                )
+
+            }
+
+            if (!isSenderAdmin) {
+
+                return conn.sendMessage(
+                    chatId,
+                    {
+                        text: '❌ Solo admins.'
+                    },
+                    {
+                        quoted: m
+                    }
+                )
+
+            }
+
+            const metadata =
+            await conn.groupMetadata(chatId)
+
+            const mentions =
+            metadata.participants.map(
+                p => p.id
+            )
+
+            const quoted =
+            m.quoted?.message ||
+            m.msg?.contextInfo?.quotedMessage
+
+            /* =========================
+               📸 IMAGEN
+            ========================= */
+
+            if (quoted?.imageMessage) {
+
+                const file =
+                await downloadMediaMessage(
+                    quoted.imageMessage,
+                    'image'
+                )
+
+                await conn.sendMessage(
+                    chatId,
+                    {
+                        image: {
+                            url: file
+                        },
+                        caption:
+                        text ||
+                        quoted.imageMessage.caption ||
+                        '',
+                        mentions
+                    }
+                )
+
+                fs.unlinkSync(file)
+
+                return
+            }
+
+            /* =========================
+               🎥 VIDEO
+            ========================= */
+
+            if (quoted?.videoMessage) {
+
+                const file =
+                await downloadMediaMessage(
+                    quoted.videoMessage,
+                    'video'
+                )
+
+                await conn.sendMessage(
+                    chatId,
+                    {
+                        video: {
+                            url: file
+                        },
+                        caption:
+                        text ||
+                        quoted.videoMessage.caption ||
+                        '',
+                        mentions
+                    }
+                )
+
+                fs.unlinkSync(file)
+
+                return
+            }
+
+            /* =========================
+               📄 DOCUMENTO
+            ========================= */
+
+            if (quoted?.documentMessage) {
+
+                const file =
+                await downloadMediaMessage(
+                    quoted.documentMessage,
+                    'document'
+                )
+
+                await conn.sendMessage(
+                    chatId,
+                    {
+                        document: {
+                            url: file
+                        },
+                        fileName:
+                        quoted.documentMessage.fileName ||
+                        'file',
+                        mimetype:
+                        quoted.documentMessage.mimetype,
+                        mentions,
+                        caption: text || ''
+                    }
+                )
+
+                fs.unlinkSync(file)
+
+                return
+            }
+
+            /* =========================
+               💬 TEXTO
+            ========================= */
+
+            const quotedText =
+            quoted?.conversation ||
+            quoted?.extendedTextMessage?.text ||
+            text ||
+            '‎'
+
+            await conn.sendMessage(
+                chatId,
+                {
+                    text: quotedText,
+                    mentions
+                },
+                {
+                    quoted: m
+                }
+            )
+
+        } catch (err) {
+
+            console.log(err)
+
+            await conn.sendMessage(
+                m.chat,
+                {
+                    text: '❌ Error en hidetag.'
+                },
+                {
+                    quoted: m
+                }
+            )
+
         }
 
-        if (!isSenderAdmin) {
-            return await sock.sendMessage(chatId, {
-                text: '❌ Solo los administradores pueden usar este comando.'
-            }, { quoted: message })
-        }
-
-        const groupMetadata = await sock.groupMetadata(chatId)
-        const participants = groupMetadata.participants
-
-        const mentionedJidList = participants.map(p => p.id)
-
-        let messageContent = {}
-
-        if (replyMessage) {
-
-            // 📸 IMAGEN
-            if (replyMessage.imageMessage) {
-
-                const filePath = await downloadMediaMessage(replyMessage.imageMessage, 'image')
-
-                messageContent = {
-                    image: { url: filePath },
-                    caption: messageText || replyMessage.imageMessage.caption || '',
-                    mentions: mentionedJidList,
-                    contextInfo: {
-                        forwardingScore: 999,
-                        isForwarded: true,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterJid: '120363409628624676@newsletter',
-                            newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕮𝖆𝖓𝖆𝖑 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 ✧'
-                        }
-                    }
-                }
-
-                await sock.sendMessage(chatId, messageContent)
-
-                fs.unlinkSync(filePath)
-            }
-
-            // 🎥 VIDEO
-            else if (replyMessage.videoMessage) {
-
-                const filePath = await downloadMediaMessage(replyMessage.videoMessage, 'video')
-
-                messageContent = {
-                    video: { url: filePath },
-                    gifPlayback: true,
-                    caption: messageText || replyMessage.videoMessage.caption || '',
-                    mentions: mentionedJidList,
-                    contextInfo: {
-                        forwardingScore: 999,
-                        isForwarded: true,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterJid: '120363409628624676@newsletter',
-                            newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕮𝖆𝖓𝖆𝖑 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 ✧'
-                        }
-                    }
-                }
-
-                await sock.sendMessage(chatId, messageContent)
-
-                fs.unlinkSync(filePath)
-            }
-
-            // 💬 TEXTO
-            else if (replyMessage.conversation || replyMessage.extendedTextMessage) {
-
-                messageContent = {
-                    text: messageText || replyMessage.conversation || replyMessage.extendedTextMessage.text,
-                    mentions: mentionedJidList,
-                    contextInfo: {
-                        forwardingScore: 999,
-                        isForwarded: true,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterJid: '120363409628624676@newsletter',
-                            newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕮𝖆𝖓𝖆𝖑 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 ✧'
-                        }
-                    }
-                }
-
-                await sock.sendMessage(chatId, messageContent)
-            }
-
-            // 📄 DOCUMENTO
-            else if (replyMessage.documentMessage) {
-
-                const filePath = await downloadMediaMessage(replyMessage.documentMessage, 'document')
-
-                messageContent = {
-                    document: { url: filePath },
-                    fileName: replyMessage.documentMessage.fileName,
-                    caption: messageText || '',
-                    mentions: mentionedJidList,
-                    contextInfo: {
-                        forwardingScore: 999,
-                        isForwarded: true,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterJid: '120363409628624676@newsletter',
-                            newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕮𝖆𝖓𝖆𝖑 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 ✧'
-                        }
-                    }
-                }
-
-                await sock.sendMessage(chatId, messageContent)
-
-                fs.unlinkSync(filePath)
-            }
-
-        } else {
-
-            await sock.sendMessage(chatId, {
-                text: messageText || '',
-                mentions: mentionedJidList,
-                contextInfo: {
-                    forwardingScore: 999,
-                    isForwarded: true,
-                    forwardedNewsletterMessageInfo: {
-                        newsletterJid: '120363409628624676@newsletter',
-                        newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕮𝖆𝖓𝖆𝖑 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 ✧'
-                    }
-                }
-            }, { quoted: message })
-        }
-
-    } catch (error) {
-
-        console.error('Error en comando .n:', error)
-
-        await sock.sendMessage(chatId, {
-            text: '❌ Ocurrió un error al ejecutar el comando.'
-        }, { quoted: message })
     }
+
 }
 
-module.exports = nCommand
+export default plugin
