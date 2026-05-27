@@ -6,26 +6,34 @@ const memeApiCommand = {
     category: 'fun',
     run: async (m, { conn }) => {
         await m.react('⏳');
-        
+
         try {
             const { data } = await axios.get('https://api.dix.lat/memevid');
 
-            if (!data || !data.url) {
-                throw new Error('No se recibió una URL válida de la API');
-            }
+            if (!data?.url) throw new Error('URL inválida');
 
             await m.react('🎬');
-            await conn.sendMessage(m.chat, { 
-                video: { url: data.url }, 
-                caption: '*_ʕ˖͜͡˖ʔ Mira esté meme aleatorio._*' 
-            }, { quoted: m });
+
+            await conn.sendMessage(
+                m.chat,
+                {
+                    video: { url: data.url },
+                    caption: '🎬 meme random'
+                },
+                { quoted: m }
+            );
 
         } catch (err) {
-            console.error("API_ERROR:", err.message);
+            console.error(err);
             await m.react('🚫');
-            await conn.sendMessage(m.chat, { 
-                text: `*×᷼× ERROR AL OBTENER MEME*\n\n*Detalle:* ${err.message}` 
-            }, { quoted: m });
+
+            await conn.sendMessage(
+                m.chat,
+                {
+                    text: `❌ Error: ${err.message}`
+                },
+                { quoted: m }
+            );
         }
     }
 };
