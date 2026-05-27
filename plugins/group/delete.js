@@ -4,8 +4,11 @@ const deleteCommand = {
     category: 'group',
     admin: true,
     group: true,
+
     run: async (m, { conn, text }) => {
         try {
+            const header = `🗑️ *ELIMINADOR DE MENSAJES*`;
+
             if (m.quoted) {
                 const key = m.quoted.key || {
                     remoteJid: m.chat,
@@ -20,6 +23,7 @@ const deleteCommand = {
                 if (!isNaN(count) && count > 1) {
                     const limit = Math.min(count - 1, 20);
                     const messages = conn.store?.messages[m.chat]?.array || [];
+
                     const userMessages = messages
                         .filter(v => (v.key.participant || v.key.remoteJid) === m.quoted.sender)
                         .slice(-limit);
@@ -28,35 +32,46 @@ const deleteCommand = {
                         await conn.sendMessage(m.chat, { delete: msg.key }).catch(() => null);
                     }
                 }
-                return await m.react('🗑️');
+
+                await m.react('🗑️');
+                return conn.reply(m.chat, `${header}\n\n✓ Mensaje eliminado correctamente.`, m);
             }
 
             const count = parseInt(text);
             if (!isNaN(count) && count > 0) {
                 const limit = Math.min(count, 20);
                 const messages = conn.store?.messages[m.chat]?.array || [];
-                
-                if (!messages || messages.length === 0) {
-                    return conn.reply(m.chat, '⛔ Store vacío: no se encontraron registros en este chat..', m);
+
+                if (!messages?.length) {
+                    return conn.reply(m.chat, `${header}\n\n⚠️ No hay mensajes en memoria.`, m);
                 }
 
                 const toDelete = messages.slice(-limit);
+
                 for (const msg of toDelete.reverse()) {
                     if (msg.key) {
                         await conn.sendMessage(m.chat, { delete: msg.key }).catch(() => null);
                     }
                 }
-                return await m.react('🗑️');
+
+                await m.react('🗑️');
+                return conn.reply(m.chat, `${header}\n\n✓ Se eliminaron ${limit} mensajes.`, m);
             }
 
-            return conn.reply(m.chat, '⚠️ Debes responder a un mensaje para poder eliminarlo.', m);
+            return conn.reply(
+                m.chat,
+                `${header}\n\n⚠️ Responde a un mensaje o indica cantidad a borrar.`,
+                m
+            );
 
         } catch (e) {
-            
-            const errorText = format(e);
-            await conn.reply(m.chat, `❌ *ERROR CRÍTICO AL ELIMINAR*\n\n> *Mensaje:* ${e.message}\n\n\`\`\`${errorText}\`\`\``, m);
+            return conn.reply(
+                m.chat,
+                `❌ *ERROR*\n\nNo se pudo eliminar el mensaje.`,
+                m
+            );
         }
     }
-}
+};
 
 export default deleteCommand;
