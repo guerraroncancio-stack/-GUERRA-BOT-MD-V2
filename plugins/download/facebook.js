@@ -3,10 +3,14 @@ const facebook = {
     alias: ['fb', 'fbdl'],
     category: 'descargas',
     run: async (m, { conn, args, usedPrefix, command }) => {
-        if (!args[0]) return m.reply(`*⍰ Ingresa un enlace de Facebook...*`)
+        if (!args[0]) return m.reply(`╭━━〔 ⚠️ FACEBOOK DL 〕━━⬣
+┃ ❒ Ingresa un enlace de Facebook
+╰━━━━━━━━━━━━━━⬣`)
 
         const regexFacebook = /^(https?:\/\/)?(www\.)?(facebook\.com|fb\.watch|fb\.gg)\/[^\s]+$/i
-        if (!regexFacebook.test(args[0])) return m.reply(`*ஐ Enlace de Facebook no válido.*`)
+        if (!regexFacebook.test(args[0])) return m.reply(`╭━━〔 ❌ ERROR 〕━━⬣
+┃ ❒ Enlace de Facebook no válido
+╰━━━━━━━━━━━━━━⬣`)
 
         try {
             if (m.react) await m.react("⏳")
@@ -28,23 +32,28 @@ const facebook = {
 
             if (type === 'image' || (media && media.length > 0 && !hd && !sd)) {
                 const images = media || [json.data.url]
+
                 for (const imgUrl of images) {
-                    await conn.sendMessage(m.chat, { image: { url: imgUrl }, caption: titulo || '' }, { quoted: m })
+                    await conn.sendMessage(m.chat, { 
+                        image: { url: imgUrl }, 
+                        caption: `╭━━〔 📸 FACEBOOK IMG 〕━━⬣
+┃ ❒ ${titulo || 'Imagen de Facebook'}
+╰━━━━━━━━━━━━━━⬣`
+                    }, { quoted: m })
                 }
+
                 if (m.react) await m.react("✅")
                 return
             }
 
             const videoUrl = hd || sd
-            const quality = hd ? "720p (HD)" : "SD"
+            const quality = hd ? "HD 720p" : "SD"
 
-            const caption = `\t\t\t 𝗙𝗔𝗖𝗘𝗕𝗢𝗢𝗞 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥
-
-> ღ *Título:* ${titulo || "Video de Facebook"}
-> ✰ *Calidad:* ${quality}
-> ✎ *Enlace:* ${args[0]}
-
-`
+            const caption = `╭━━〔 📥 FACEBOOK DOWNLOADER 〕━━⬣
+┃ ❒ Título: ${titulo || "Video de Facebook"}
+┃ ❒ Calidad: ${quality}
+┃ ❒ Link: ${args[0]}
+╰━━━━━━━━━━━━━━⬣`
 
             const videoRes = await fetch(videoUrl)
             const videoBuffer = Buffer.from(await videoRes.arrayBuffer())
@@ -53,15 +62,15 @@ const facebook = {
             if (sizeMB > 80) {
                 await conn.sendMessage(m.chat, { 
                     document: videoBuffer, 
-                    caption: caption,
-                    fileName: `fb_video.mp4`,
+                    caption,
+                    fileName: `facebook.mp4`,
                     mimetype: 'video/mp4'
                 }, { quoted: m })
             } else {
                 await conn.sendMessage(m.chat, { 
                     video: videoBuffer, 
-                    caption: caption,
-                    fileName: `fb_video.mp4`,
+                    caption,
+                    fileName: `facebook.mp4`,
                     mimetype: 'video/mp4'
                 }, { quoted: m })
             }
@@ -71,7 +80,11 @@ const facebook = {
         } catch (e) {
             console.error(e)
             if (m.react) await m.react("❌")
-            m.reply("卍 Error al procesar Facebook. El video podría ser privado o el enlace ha expirado.\n\nUsa el comando *#report* para reportar esté error.")
+            m.reply(`╭━━〔 ❌ ERROR FACEBOOK 〕━━⬣
+┃ ❒ No se pudo procesar el video
+┃ ❒ Puede ser privado o expirado
+┃ ❒ Usa #report si el error persiste
+╰━━━━━━━━━━━━━━⬣`)
         }
     }
 }
