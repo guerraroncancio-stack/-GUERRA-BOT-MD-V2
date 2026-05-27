@@ -4,33 +4,49 @@ const poemaCommand = {
     name: 'poema',
     alias: ['verso', 'poesia'],
     category: 'cultura',
+
     run: async (m, { conn, text }) => {
         const urlRaw = 'https://raw.githubusercontent.com/eliac-d/database/main/src/poemas.json';
-        
+
         try {
-            const response = await axios.get(urlRaw);
-            let lista = response.data.poemas_masivos;
+            const { data } = await axios.get(urlRaw);
+
+            let lista = data.poemas_masivos;
 
             if (text) {
-                lista = lista.filter(p => 
-                    p.autor.toLowerCase().includes(text.toLowerCase()) || 
-                    p.titulo.toLowerCase().includes(text.toLowerCase())
+                const q = text.toLowerCase();
+                lista = lista.filter(p =>
+                    p.autor.toLowerCase().includes(q) ||
+                    p.titulo.toLowerCase().includes(q)
                 );
             }
 
-            if (lista.length === 0) return;
+            if (!lista.length) {
+                return conn.reply(m.chat, '📭 No se encontraron poemas.', m);
+            }
 
             const p = lista[Math.floor(Math.random() * lista.length)];
 
-            const mensaje = `📜 *${p.titulo.toUpperCase()}*\n\n${p.texto}\n\n_— ${p.autor}_ (${p.estilo})`;
+            const caption =
+`📜 *POEMA ALEATORIO*
+────────────────
+✦ *${p.titulo}*
+✦ Autor: ${p.autor}
+✦ Estilo: ${p.estilo}
+────────────────
 
-            await conn.sendMessage(m.chat, { 
-                text: mensaje,
-                mentions: [m.sender] 
+${p.texto}
+
+────────────────`;
+
+            await conn.sendMessage(m.chat, {
+                text: caption,
+                mentions: [m.sender]
             }, { quoted: m });
 
         } catch (error) {
             console.error(error);
+            await conn.reply(m.chat, '❌ Error al obtener poema.', m);
         }
     }
 };
