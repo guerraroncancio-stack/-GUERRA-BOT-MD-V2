@@ -4,38 +4,38 @@ const reflexionCommand = {
     name: 'advice',
     alias: ['consejo', 'frase'],
     category: 'crecimiento',
-
     run: async (m, { conn, text }) => {
-
         const urlRaw = 'https://raw.githubusercontent.com/eliac-d/database/main/src/consejos.json';
 
         try {
-            const response = await axios.get(urlRaw);
-            let lista = response.data.reflexiones_masivas;
+            const { data } = await axios.get(urlRaw);
+            let lista = data.reflexiones_masivas;
 
             if (text) {
+                const q = text.toLowerCase();
                 lista = lista.filter(r =>
-                    r.categoria.toLowerCase().includes(text.toLowerCase()) ||
-                    r.autor.toLowerCase().includes(text.toLowerCase())
+                    r.categoria.toLowerCase().includes(q) ||
+                    r.autor.toLowerCase().includes(q)
                 );
             }
 
-            if (lista.length === 0) return;
+            if (!lista.length) {
+                return m.reply('> ⚠️ No se encontraron consejos con ese filtro.');
+            }
 
             const r = lista[Math.floor(Math.random() * lista.length)];
 
-            const mensaje =
-`╭─〔 💡 CONSEJO DEL DÍA 〕─╮
-│ 📌 Categoría: ${r.categoria}
+            const mensaje = `
+╭───〔 💡 CONSEJO 〕───╮
+│
+│ ✦ ${r.categoria}
+│
 ╰────────────────────╯
 
-╭─〔 ✨ REFLEXIÓN 〕─╮
-│ "${r.texto}"
-╰────────────────────╯
+❝ ${r.texto} ❞
 
-╭─〔 👤 AUTOR 〕─╮
-│ ${r.autor}
-╰────────────────────╯`;
+➤ ${r.autor}
+`.trim();
 
             await conn.sendMessage(
                 m.chat,
@@ -47,7 +47,8 @@ const reflexionCommand = {
             );
 
         } catch (error) {
-            console.error('Error en suministro de reflexiones:', error);
+            console.error('Error en reflexiones:', error);
+            m.reply('> ❌ Error al obtener el consejo.');
         }
     }
 };
