@@ -11,84 +11,76 @@ const apkCommand = {
 
         if (!text) {
             return conn.sendMessage(m.chat, {
-                text: `╭─❒ ⚠️ ERROR\n│ ➤ Debes ingresar el nombre de la APK\n╰───────────────❒`
+                text: `╭━━〔 ⚠️ ERROR 〕━━⬣
+┃ ➤ Debes ingresar el nombre de la APK
+┃ ➤ Ejemplo: .apk whatsapp
+╰━━━━━━━━━━━━━━⬣`
             }, { quoted: m })
         }
 
         try {
             await m.react('⏳')
 
-            let searchRes
-            try {
-                searchRes = await axios.get(
-                    `https://sylphy.xyz/search/fdroid?q=${encodeURIComponent(text)}&api_key=sylphy-Lg4rAtj`,
-                    { timeout: 15000 }
-                )
-            } catch (e) {
+            const search = await axios.get(
+                `https://sylphy.xyz/search/fdroid?q=${encodeURIComponent(text)}&api_key=sylphy-Lg4rAtj`,
+                { timeout: 15000 }
+            )
+
+            const results = search?.data?.result
+
+            if (!search.data.status || !results?.length) {
                 await m.react('❌')
                 return conn.sendMessage(m.chat, {
-                    text: `╭─❒ ⚠️ API ERROR\n│ ➤ No se pudo conectar al servidor\n│ ➤ Intenta más tarde\n╰───────────────❒`
-                }, { quoted: m })
-            }
-
-            const results = searchRes?.data?.result
-
-            if (!searchRes.data.status || !results?.length) {
-                await m.react('❌')
-                return conn.sendMessage(m.chat, {
-                    text: `╭─❒ APK SEARCH\n│ ➤ No se encontraron resultados\n╰───────────────❒`
+                    text: `╭━━〔 APK SEARCH 〕━━⬣
+┃ ➤ No se encontraron resultados
+╰━━━━━━━━━━━━━━⬣`
                 }, { quoted: m })
             }
 
             const targetUrl = results[0].url
 
-            let downloadRes
-            try {
-                downloadRes = await axios.get(
-                    `https://sylphy.xyz/download/fdroid?url=${encodeURIComponent(targetUrl)}&api_key=sylphy-Lg4rAtj`,
-                    { timeout: 15000 }
-                )
-            } catch (e) {
+            const download = await axios.get(
+                `https://sylphy.xyz/download/fdroid?url=${encodeURIComponent(targetUrl)}&api_key=sylphy-Lg4rAtj`,
+                { timeout: 15000 }
+            )
+
+            const data = download?.data?.result
+
+            if (!data || !data.apkUrl) {
                 await m.react('❌')
                 return conn.sendMessage(m.chat, {
-                    text: `╭─❒ DESCARGA ERROR\n│ ➤ No se pudo obtener APK\n╰───────────────❒`
+                    text: `╭━━〔 ERROR 〕━━⬣
+┃ ➤ No se pudo obtener el APK
+╰━━━━━━━━━━━━━━⬣`
                 }, { quoted: m })
             }
 
-            const data = downloadRes?.data?.result
-            if (!data) {
+            const apkUrl = data.apkUrl
+
+            // validar link real
+            const check = await fetch(apkUrl, { method: 'HEAD' }).catch(() => null)
+
+            if (!check || !check.ok) {
                 await m.react('❌')
                 return conn.sendMessage(m.chat, {
-                    text: `╭─❒ ERROR\n│ ➤ Datos inválidos de descarga\n╰───────────────❒`
+                    text: `╭━━〔 LINK BLOQUEADO 〕━━⬣
+┃ ➤ El APK no es descargable
+┃ ➤ Fuente protegida o expirada
+╰━━━━━━━━━━━━━━⬣`
                 }, { quoted: m })
             }
 
-            const resThumb = await fetch(data.icon)
-            const thumbBuffer = Buffer.from(await resThumb.arrayBuffer())
-
-            let txt = `
-╭━━〔 📦 APK DOWNLOADER 〕━━⬣
+            let txt = `╭━━〔 📦 APK DOWNLOADER 〕━━⬣
 ┃ ✦ Nombre: ${data.name}
 ┃ ✦ Versión: ${data.version}
 ┃ ✦ Info: ${data.summary}
-╰━━━━━━━━━━━━━━━━━━━━⬣
-`.trim()
+╰━━━━━━━━━━━━━━━━━━━━⬣`
 
             await conn.sendMessage(m.chat, {
-                document: { url: data.apkUrl },
+                document: { url: apkUrl },
                 mimetype: 'application/vnd.android.package-archive',
                 fileName: `${data.name}.apk`,
-                caption: txt,
-                contextInfo: {
-                    externalAdReply: {
-                        title: data.name,
-                        body: '⬇️ Instalación lista',
-                        thumbnail: thumbBuffer,
-                        sourceUrl: data.apkUrl,
-                        mediaType: 1,
-                        renderLargerThumbnail: true
-                    }
-                }
+                caption: txt
             }, { quoted: m })
 
             await m.react('✅')
@@ -98,7 +90,9 @@ const apkCommand = {
             await m.react('❌')
 
             return conn.sendMessage(m.chat, {
-                text: `╭─❒ ERROR FATAL\n│ ➤ ${e.message}\n╰───────────────❒`
+                text: `╭━━〔 ERROR FATAL 〕━━⬣
+┃ ➤ ${e.message}
+╰━━━━━━━━━━━━━━⬣`
             }, { quoted: m })
         }
     }
