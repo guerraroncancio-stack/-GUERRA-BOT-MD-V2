@@ -8,20 +8,18 @@ const youtubeCommand = {
     name: 'youtube_play',
     alias: ['play', 'audio', 'mp3', 'video', 'mp4', 'play2', 'playaudio', 'playvideo'],
     category: 'download',
-
     run: async (m, { conn, text, command, usedPrefix }) => {
 
-        if (!text?.trim()) return conn.reply(
-            m.chat,
-`╭〔 🎧 YOUTUBE 〕
-│ ⚠️ Uso:
-│ ${usedPrefix + command} canción
-╰──────────────`,
-            m
-        );
+        if (!text?.trim()) {
+            return conn.reply(
+                m.chat,
+                `╭─〔 🎬 YOUTUBE DOWNLOADER 〕─╮\n│ Uso: ${usedPrefix + command} <búsqueda o link>\n╰──────────────────────╯`,
+                m
+            );
+        }
 
         const isAudio = /play$|audio|mp3|ytmp3|playaudio/i.test(command);
-        const isDocument = /play$|play2$/i.test(command);
+        const isDocument = /play2$/i.test(command);
         const apiKey = 'kirito-bot-oficial';
 
         await m.react("⌛");
@@ -34,27 +32,25 @@ const youtubeCommand = {
 
             const videoSearchResult = await searchPromise;
 
-            if (!videoSearchResult) return conn.reply(
-                m.chat,
-`╭〔 ❌ YOUTUBE 〕
-│ No se encontró nada
-╰──────────────`,
-                m
-            );
+            if (!videoSearchResult) {
+                return conn.reply(m.chat, `❌ No se encontraron resultados.`, m);
+            }
 
-            const videoUrl = 'https://www.youtube.com/watch?v=' + videoSearchResult.videoId;
+            const videoUrl = `https://www.youtube.com/watch?v=${videoSearchResult.videoId}`;
             const thumbUrl = videoSearchResult.image || videoSearchResult.thumbnail;
 
             const thumbBufferPromise = fetch(thumbUrl)
                 .then(res => res.buffer())
-                .then(buf => sharp(buf)
-                    .resize(200, 200, { fit: 'cover' })
-                    .jpeg({ quality: 60 })
-                    .toBuffer()
+                .then(buf =>
+                    sharp(buf)
+                        .resize(250, 250, { fit: 'cover' })
+                        .jpeg({ quality: 70 })
+                        .toBuffer()
                 );
 
             const apiResponsePromise = fetch(
-                `https://panel.apinexus.fun/api/youtube/${isAudio ? 'mp3' : 'mp4'}`, {
+                `https://panel.apinexus.fun/api/youtube/${isAudio ? 'mp3' : 'mp4'}`,
+                {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -70,107 +66,55 @@ const youtubeCommand = {
             ]);
 
             const infoText =
-`╭〔 🎬 YOUTUBE 〕
-│ 📌 ${videoSearchResult.title}
-│ 👤 ${videoSearchResult.author?.name || 'Desconocido'}
-│ ⏱ ${videoSearchResult.timestamp || '---'}
-│ 👁 ${videoSearchResult.views?.toLocaleString() || '---'}
-╰──────────────`;
+`╭─〔 🎧 YOUTUBE RESULT 〕─╮
+│ 📌 Título: ${videoSearchResult.title}
+│ 👤 Canal: ${videoSearchResult.author?.name || 'Desconocido'}
+│ ⏱ Duración: ${videoSearchResult.timestamp || '---'}
+│ 👁 Vistas: ${videoSearchResult.views?.toLocaleString() || '---'}
+│ 🔗 Link: ${videoUrl}
+╰──────────────────────╯`;
 
             await conn.sendMessage(m.chat, {
                 image: { url: thumbUrl },
-                caption: infoText
+                caption: infoText,
+                contextInfo: { ...global.channelInfo }
             }, { quoted: m });
 
-            if (!apiResponse.success) throw new Error("API Fallida");
+            if (!apiResponse.success) throw new Error("API fallida");
 
-            const downloadUrl = isAudio ? apiResponse.data.audio : apiResponse.data.video;
+            const downloadUrl = isAudio
+                ? apiResponse.data.audio
+                : apiResponse.data.video;
 
             const checkSize = await fetch(downloadUrl, { method: 'HEAD' });
             const sizeInBytes = parseInt(checkSize.headers.get('content-length') || '0');
 
             if (sizeInBytes > 10 * 1024 * 1024) {
-                return conn.reply(
-                    m.chat,
-`╭〔 ⚠️ PESADO 〕
-│ +10MB no permitido
-╰──────────────`,
-                    m
-                );
+                return conn.reply(m.chat, `⚠️ El archivo supera los 10MB.`, m);
             }
 
             if (isAudio) {
-
-                const audioPayload = {
+                await conn.sendMessage(m.chat, {
+                    audio: { url: downloadUrl },
                     mimetype: "audio/mpeg",
                     fileName: `${videoSearchResult.title}.mp3`
-                };
-
-                if (isDocument) {
-                    await conn.sendMessage(m.chat, {
-                        document: { url: downloadUrl },
-                        ...audioPayload,
-                        jpegThumbnail: thumbBuffer
-                    }, { quoted: m });
-                } else {
-                    await conn.sendMessage(m.chat, {
-                        audio: { url: downloadUrl },
-                        ...audioPayload
-                    }, { quoted: m });
-                }
-
+                }, { quoted: m });
             } else {
+                const mediaBuffer = await fetch(downloadUrl).then(res => res.buffer());
 
-                if (isDocument) {
-                    await conn.sendMessage(m.chat, {
-                        document: { url: downloadUrl },
-                        mimetype: "video/mp4",
-                        fileName: `${videoSearchResult.title}.mp4`,
-                        jpegThumbnail: thumbBuffer,
-                        caption: `╭〔 📥 VIDEO 〕\n│ ${videoSearchResult.title}\n╰──────────────`
-                    }, { quoted: m });
-
-                } else {
-                    const mediaBuffer = await fetch(downloadUrl).then(res => res.buffer());
-
-                    const [uploadedArt, messageContent] = await Promise.all([
-                        prepareWAMessageMedia({ image: thumbBuffer }, { upload: conn.waUploadToServer }),
-                        generateWAMessageContent(
-                            { video: mediaBuffer, mimetype: 'video/mp4', jpegThumbnail: thumbBuffer },
-                            { upload: conn.waUploadToServer }
-                        )
-                    ]);
-
-                    await conn.relayMessage(m.chat, {
-                        videoMessage: {
-                            ...messageContent.videoMessage,
-                            jpegThumbnail: thumbBuffer.toString('base64'),
-                            thumbnailWidth: 480,
-                            thumbnailHeight: 480,
-                            contextInfo: {
-                                forwardingScore: 999,
-                                isForwarded: true,
-                                forwardedNewsletterMessageInfo: {
-                                    newsletterJid: global.ch || '',
-                                    newsletterName: '🎧 GUERRA BOT'
-                                }
-                            }
-                        }
-                    }, { quoted: m });
-                }
+                await conn.sendMessage(m.chat, {
+                    video: mediaBuffer,
+                    mimetype: "video/mp4",
+                    caption: `🎬 ${videoSearchResult.title}\n🔗 ${videoUrl}`
+                }, { quoted: m });
             }
 
             await m.react("✅");
 
         } catch (error) {
-            conn.reply(
-                m.chat,
-`╭〔 ❌ ERROR 〕
-│ ${error.message}
-╰──────────────`,
-                m
-            );
+            console.error(error);
             await m.react("❌");
+            conn.reply(m.chat, `❌ Error: ${error.message}`, m);
         }
     }
 };
