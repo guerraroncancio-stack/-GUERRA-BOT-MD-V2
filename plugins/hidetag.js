@@ -1,258 +1,291 @@
-import fs from 'fs'
-import path from 'path'
-
 import {
-    downloadContentFromMessage
+  generateWAMessageFromContent,
+  downloadContentFromMessage
 } from '@whiskeysockets/baileys'
 
-import isAdmin from '../lib/isAdmin.js'
+import fetch from 'node-fetch'
 
-async function downloadMediaMessage(message, mediaType) {
+let thumb = null
 
-    const stream =
-    await downloadContentFromMessage(
-        message,
-        mediaType
-    )
+fetch('https://api.dix.lat/media2/1777604199636.jpg')
+  .then(res => res.arrayBuffer())
+  .then(buf => {
+    thumb = Buffer.from(buf)
+  })
+  .catch(() => null)
 
-    let buffer = Buffer.from([])
+function unwrapMessage(msg = {}) {
+  let m = msg
+
+  while (
+    m?.ephemeralMessage?.message ||
+    m?.viewOnceMessage?.message ||
+    m?.viewOnceMessageV2?.message ||
+    m?.viewOnceMessageV2Extension?.message
+  ) {
+    m =
+      m.ephemeralMessage?.message ||
+      m.viewOnceMessage?.message ||
+      m.viewOnceMessageV2?.message ||
+      m.viewOnceMessageV2Extension?.message
+  }
+
+  return m
+}
+
+function getText(m) {
+  const msg = unwrapMessage(m.message || {})
+
+  return (
+    m.text ||
+    m.body ||
+    msg?.conversation ||
+    msg?.extendedTextMessage?.text ||
+    ''
+  )
+}
+
+async function downloadMedia(message, type) {
+  try {
+    const stream = await downloadContentFromMessage(message, type)
+
+    let buffer = Buffer.alloc(0)
 
     for await (const chunk of stream) {
-        buffer = Buffer.concat([buffer, chunk])
+      buffer = Buffer.concat([buffer, chunk])
     }
 
-    const extension =
-    mediaType === 'image'
-        ? 'jpg'
-        : mediaType === 'video'
-        ? 'mp4'
-        : mediaType === 'document'
-        ? 'bin'
-        : 'dat'
+    return buffer
+  } catch {
+    return null
+  }
+}
 
-    const folder =
-    path.resolve('./tmp')
+export default async function hidetag(conn, m, chatUpdate) {
 
-    if (!fs.existsSync(folder)) {
-        fs.mkdirSync(folder, {
-            recursive: true
-        })
+  try {
+
+    if (!m?.isGroup) return
+
+    const text = getText(m).trim()
+
+    if (!/^\.?n(\s|$)/i.test(text)) return
+
+    const metadata = await conn.groupMetadata(m.chat)
+
+    const participants = metadata.participants || []
+
+    const sender =
+      participants.find(p => p.id === m.sender) || {}
+
+    const bot =
+      participants.find(p => p.id === conn.user.id) || {}
+
+    const isAdmin = sender.admin
+    const isBotAdmin = bot.admin
+
+    if (!isAdmin) {
+      return await conn.sendMessage(
+        m.chat,
+        {
+          text: '❌ Solo admins pueden usar este comando.'
+        },
+        { quoted: m }
+      )
     }
 
-    const filePath =
-    path.join(
-        folder,
-        `${Date.now()}.${extension}`
+    if (!isBotAdmin) {
+      return await conn.sendMessage(
+        m.chat,
+        {
+          text: '⚠️ El bot necesita admin.'
+        },
+        { quoted: m }
+      )
+    }
+
+    await conn.sendMessage(
+      m.chat,
+      {
+        react: {
+          text: '👑',
+          key: m.key
+        }
+      }
     )
 
-    fs.writeFileSync(filePath, buffer)
+    const users = participants.map(p => p.id)
 
-    return filePath
-}
+    const quoted = m.quoted || m
+    const qmsg = unwrapMessage(quoted.message || {})
 
-const plugin = {
+    const mtype =
+      Object.keys(qmsg || {})[0] || ''
 
-    name: 'hidetag',
+    const userText =
+      text.replace(/^\.?n(\s|$)/i, '').trim()
 
-    aliases: [
-        'tag',
-        'notify'
-    ],
+    const watermark = '> GUERRA BOT 👑'
 
-    group: true,
-    admin: true,
-    botAdmin: true,
+    const caption =
+      userText
+        ? `${userText}\n\n${watermark}`
+        : watermark
 
-    async run(m, { conn, text }) {
-
-        try {
-
-            const chatId = m.chat
-            const senderId = m.sender
-
-            const {
-                isSenderAdmin,
-                isBotAdmin
-            } = await isAdmin(
-                conn,
-                chatId,
-                senderId
-            )
-
-            if (!isBotAdmin) {
-
-                return conn.sendMessage(
-                    chatId,
-                    {
-                        text: '⚠️ El bot necesita admin.'
-                    },
-                    {
-                        quoted: m
-                    }
-                )
-
-            }
-
-            if (!isSenderAdmin) {
-
-                return conn.sendMessage(
-                    chatId,
-                    {
-                        text: '❌ Solo admins.'
-                    },
-                    {
-                        quoted: m
-                    }
-                )
-
-            }
-
-            const metadata =
-            await conn.groupMetadata(chatId)
-
-            const mentions =
-            metadata.participants.map(
-                p => p.id
-            )
-
-            const quoted =
-            m.quoted?.message ||
-            m.msg?.contextInfo?.quotedMessage
-
-            /* =========================
-               📸 IMAGEN
-            ========================= */
-
-            if (quoted?.imageMessage) {
-
-                const file =
-                await downloadMediaMessage(
-                    quoted.imageMessage,
-                    'image'
-                )
-
-                await conn.sendMessage(
-                    chatId,
-                    {
-                        image: {
-                            url: file
-                        },
-                        caption:
-                        text ||
-                        quoted.imageMessage.caption ||
-                        '',
-                        mentions
-                    }
-                )
-
-                fs.unlinkSync(file)
-
-                return
-            }
-
-            /* =========================
-               🎥 VIDEO
-            ========================= */
-
-            if (quoted?.videoMessage) {
-
-                const file =
-                await downloadMediaMessage(
-                    quoted.videoMessage,
-                    'video'
-                )
-
-                await conn.sendMessage(
-                    chatId,
-                    {
-                        video: {
-                            url: file
-                        },
-                        caption:
-                        text ||
-                        quoted.videoMessage.caption ||
-                        '',
-                        mentions
-                    }
-                )
-
-                fs.unlinkSync(file)
-
-                return
-            }
-
-            /* =========================
-               📄 DOCUMENTO
-            ========================= */
-
-            if (quoted?.documentMessage) {
-
-                const file =
-                await downloadMediaMessage(
-                    quoted.documentMessage,
-                    'document'
-                )
-
-                await conn.sendMessage(
-                    chatId,
-                    {
-                        document: {
-                            url: file
-                        },
-                        fileName:
-                        quoted.documentMessage.fileName ||
-                        'file',
-                        mimetype:
-                        quoted.documentMessage.mimetype,
-                        mentions,
-                        caption: text || ''
-                    }
-                )
-
-                fs.unlinkSync(file)
-
-                return
-            }
-
-            /* =========================
-               💬 TEXTO
-            ========================= */
-
-            const quotedText =
-            quoted?.conversation ||
-            quoted?.extendedTextMessage?.text ||
-            text ||
-            '‎'
-
-            await conn.sendMessage(
-                chatId,
-                {
-                    text: quotedText,
-                    mentions
-                },
-                {
-                    quoted: m
-                }
-            )
-
-        } catch (err) {
-
-            console.log(err)
-
-            await conn.sendMessage(
-                m.chat,
-                {
-                    text: '❌ Error en hidetag.'
-                },
-                {
-                    quoted: m
-                }
-            )
-
+    const fkontak = {
+      key: {
+        remoteJid: m.chat,
+        fromMe: false,
+        id: 'GUERRA'
+      },
+      message: {
+        locationMessage: {
+          name: 'GUERRA BOT 👑',
+          jpegThumbnail: thumb
         }
-
+      },
+      participant: '0@s.whatsapp.net'
     }
 
-}
+    /* =========================
+       IMAGE
+    ========================= */
 
-export default plugin
+    if (mtype === 'imageMessage') {
+
+      const buffer = await downloadMedia(
+        qmsg.imageMessage,
+        'image'
+      )
+
+      return await conn.sendMessage(
+        m.chat,
+        {
+          image: buffer,
+          caption,
+          mentions: users
+        },
+        { quoted: fkontak }
+      )
+    }
+
+    /* =========================
+       VIDEO
+    ========================= */
+
+    if (mtype === 'videoMessage') {
+
+      const buffer = await downloadMedia(
+        qmsg.videoMessage,
+        'video'
+      )
+
+      return await conn.sendMessage(
+        m.chat,
+        {
+          video: buffer,
+          caption,
+          mentions: users,
+          mimetype: 'video/mp4'
+        },
+        { quoted: fkontak }
+      )
+    }
+
+    /* =========================
+       AUDIO
+    ========================= */
+
+    if (mtype === 'audioMessage') {
+
+      const buffer = await downloadMedia(
+        qmsg.audioMessage,
+        'audio'
+      )
+
+      return await conn.sendMessage(
+        m.chat,
+        {
+          audio: buffer,
+          mimetype: 'audio/mpeg',
+          ptt: false,
+          mentions: users
+        },
+        { quoted: fkontak }
+      )
+    }
+
+    /* =========================
+       STICKER
+    ========================= */
+
+    if (mtype === 'stickerMessage') {
+
+      const buffer = await downloadMedia(
+        qmsg.stickerMessage,
+        'sticker'
+      )
+
+      return await conn.sendMessage(
+        m.chat,
+        {
+          sticker: buffer,
+          mentions: users
+        },
+        { quoted: fkontak }
+      )
+    }
+
+    /* =========================
+       TEXT
+    ========================= */
+
+    if (quoted && quoted !== m) {
+
+      const newMsg = generateWAMessageFromContent(
+        m.chat,
+        {
+          extendedTextMessage: {
+            text: caption,
+            contextInfo: {
+              mentionedJid: users
+            }
+          }
+        },
+        {
+          quoted: fkontak,
+          userJid: conn.user.id
+        }
+      )
+
+      return await conn.relayMessage(
+        m.chat,
+        newMsg.message,
+        {
+          messageId: newMsg.key.id
+        }
+      )
+    }
+
+    return await conn.sendMessage(
+      m.chat,
+      {
+        text: caption,
+        mentions: users
+      },
+      { quoted: fkontak }
+    )
+
+  } catch (err) {
+
+    console.log(err)
+
+    return await conn.sendMessage(
+      m.chat,
+      {
+        text: '❌ Error en hidetag.'
+      },
+      { quoted: m }
+    )
+  }
+}
