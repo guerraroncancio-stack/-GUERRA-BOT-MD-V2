@@ -12,21 +12,34 @@ const memesCommand = {
 
             if (!res?.éxito || !res.memes?.length) {
                 m.react('❌');
-                return conn.reply(m.chat, `> ⍰ No se encontraron memes en este momento.`, m);
+                return conn.reply(m.chat, '⚠ No se encontraron memes en este momento.', m);
             }
 
             const memeUrl = res.memes[Math.floor(Math.random() * res.memes.length)];
 
-            await conn.sendMessage(m.chat, { 
-                image: { url: memeUrl }, 
-                caption: `*── 「 MEMES 」 ──*\n\n> 😂 ¡Aquí tienes tu dosis de humor!\n\n*❯`,
-                mentions: [m.sender]
-            }, { quoted: m });
+            const caption = `
+😂 MEME RANDOM
+────────────────
+
+✨ Disfruta tu dosis de humor
+
+────────────────
+`.trim();
+
+            await conn.sendMessage(
+                m.chat,
+                {
+                    image: { url: memeUrl },
+                    caption,
+                    mentions: [m.sender]
+                },
+                { quoted: m }
+            );
 
             m.react('✅');
 
         } catch (error) {
-            console.error(`> [ERROR]: ${error.message}`);
+            console.error(error);
             m.react('❌');
         }
     }
