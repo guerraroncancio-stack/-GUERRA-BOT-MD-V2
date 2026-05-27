@@ -11,7 +11,7 @@ const parejasCommand = {
             .sort(() => Math.random() - 0.5);
 
         if (shuffled.length < 2) {
-            return conn.reply(m.chat, '> ⚠ No hay suficientes participantes.', m);
+            return conn.reply(m.chat, '⚠ No hay suficientes participantes.', m);
         }
 
         const limit = Math.min(6, shuffled.length - (shuffled.length % 2));
@@ -22,8 +22,8 @@ const parejasCommand = {
         );
 
         let txt = `
-╭───〔 💞 PAREJAS ALEATORIAS 〕───╮
-`.trim();
+💞 RESULTADO DE PAREJAS
+`.trim() + '\n\n';
 
         for (let i = 0; i < users.length; i += 2) {
             const u1 = users[i];
@@ -31,14 +31,13 @@ const parejasCommand = {
             const love = Math.floor(Math.random() * 100);
 
             txt += `
-│
-│ 🫂 @${u1.split('@')[0]} × @${u2.split('@')[0]}
-│ 💘 Compatibilidad: ${love}%
+• ${u1.split('@')[0]} ❤ ${u2.split('@')[0]}
+  Compatibilidad: ${love}%
 `.trim() + '\n';
         }
 
         txt += `
-╰────────────────────────────╯
+━━━━━━━━━━━━━━━━━━
 `.trim();
 
         return conn.sendMessage(
