@@ -1,5 +1,5 @@
 // =========================================
-// 🔓 ABRIR / 🔒 CERRAR GRUPO CON IMAGEN
+// 🔓 ABRIR / 🔒 CERRAR GRUPO PREMIUM
 // Archivo: plugins/grupo-openclose.js
 // =========================================
 
@@ -18,18 +18,19 @@ export default {
 
     async run(m, {
         conn,
-        args,
-        command
+        args
     }) {
 
         const action =
         (args[0] || '').toLowerCase()
 
-        // 📸 Imagen
         const banner =
         'https://cdn.dix.lat/me/3a1b5867-1ecb-40dc-acf8-250526ebad65.jpg'
 
-        // 🔓 ABRIR
+        // =========================================
+        // 🔓 ABRIR GRUPO
+        // =========================================
+
         if (
             action === 'abrir' ||
             action === 'open'
@@ -43,16 +44,38 @@ export default {
             return conn.sendMessage(
                 m.chat,
                 {
-                    image: {
-                        url: banner
-                    },
-
-                    caption:
+                    text:
 `╭━━〔 🔓 GRUPO ABIERTO 🔓 〕━━⬣
 ┃ ⚔️ Ahora todos pueden hablar
 ┃ 👑 Acción ejecutada correctamente
 ┃ 🚀 Sistema: GUERRA BOT
-╰━━━━━━━━━━━━━━━━━━⬣`
+╰━━━━━━━━━━━━━━━━━━⬣`,
+
+                    contextInfo: {
+
+                        mentionedJid: [m.sender],
+
+                        externalAdReply: {
+
+                            title: 'GUERRA BOT MD',
+
+                            body: 'Sistema de Administración',
+
+                            thumbnailUrl: banner,
+
+                            sourceUrl:
+                            'https://github.com',
+
+                            mediaType: 1,
+
+                            renderLargerThumbnail: true,
+
+                            showAdAttribution: true
+
+                        }
+
+                    }
+
                 },
                 {
                     quoted: m
@@ -61,7 +84,10 @@ export default {
 
         }
 
-        // 🔒 CERRAR
+        // =========================================
+        // 🔒 CERRAR GRUPO
+        // =========================================
+
         if (
             action === 'cerrar' ||
             action === 'close'
@@ -75,16 +101,38 @@ export default {
             return conn.sendMessage(
                 m.chat,
                 {
-                    image: {
-                        url: banner
-                    },
-
-                    caption:
+                    text:
 `╭━━〔 🔒 GRUPO CERRADO 🔒 〕━━⬣
 ┃ ⚠️ Solo admins pueden hablar
 ┃ 🛡️ Protección activada
 ┃ 🚀 Sistema: GUERRA BOT
-╰━━━━━━━━━━━━━━━━━━⬣`
+╰━━━━━━━━━━━━━━━━━━⬣`,
+
+                    contextInfo: {
+
+                        mentionedJid: [m.sender],
+
+                        externalAdReply: {
+
+                            title: 'GUERRA BOT MD',
+
+                            body: 'Sistema de Seguridad',
+
+                            thumbnailUrl: banner,
+
+                            sourceUrl:
+                            'https://github.com',
+
+                            mediaType: 1,
+
+                            renderLargerThumbnail: true,
+
+                            showAdAttribution: true
+
+                        }
+
+                    }
+
                 },
                 {
                     quoted: m
@@ -93,19 +141,42 @@ export default {
 
         }
 
-        // ❌ USO
+        // =========================================
+        // ❌ USO INCORRECTO
+        // =========================================
+
         return conn.sendMessage(
             m.chat,
             {
-                image: {
-                    url: banner
-                },
-
-                caption:
+                text:
 `╭━━〔 ⚙️ USO DEL COMANDO ⚙️ 〕━━⬣
 ┃ 📌 .grupo abrir
 ┃ 📌 .grupo cerrar
-╰━━━━━━━━━━━━━━━━━━⬣`
+╰━━━━━━━━━━━━━━━━━━⬣`,
+
+                contextInfo: {
+
+                    externalAdReply: {
+
+                        title: 'GUERRA BOT MD',
+
+                        body: 'Panel de Administración',
+
+                        thumbnailUrl: banner,
+
+                        sourceUrl:
+                        'https://github.com',
+
+                        mediaType: 1,
+
+                        renderLargerThumbnail: true,
+
+                        showAdAttribution: true
+
+                    }
+
+                }
+
             },
             {
                 quoted: m
