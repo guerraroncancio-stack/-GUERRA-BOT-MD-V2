@@ -31,28 +31,28 @@ const reflexionCommand = {
                 : lista[Math.floor(Math.random() * lista.length)];
 
             const caption =
-`╭─ ✦ *REFLEXIÓN* ✦ ─╮
-│ ✧ ${r.titulo}
-│ ❖ ${r.tema}
-╰───────────────╯
+`💭 REFLEXIÓN
 
-💭 ${r.wa_format}
+Título: ${r.titulo}
+Tema: ${r.tema}
 
-━━━━━━━━━━━━━━
-🧠 *Momento de introspección*
-`;
+--------------------
+${r.wa_format}
+
+--------------------
+Sistema de reflexión`;
 
             await conn.sendMessage(m.chat, {
                 text: caption,
                 contextInfo: {
                     mentionedJid: [m.sender],
                     externalAdReply: {
-                        title: r.titulo || 'Reflexión',
-                        body: 'Sistema de pensamientos',
-                        thumbnailUrl: 'https://images.unsplash.com/photo-1464802686167-b939a6910659?q=80&w=1000&auto=format&fit=crop',
-                        sourceUrl: 'https://github.com/deylin-16/database',
+                        title: r.titulo,
+                        body: "Reflexiones del sistema",
+                        thumbnailUrl: "https://images.unsplash.com/photo-1464802686167-b939a6910659?q=80&w=1000&auto=format&fit=crop",
+                        sourceUrl: "https://github.com/deylin-16/database",
                         mediaType: 1,
-                        renderLargerThumbnail: true
+                        renderLargerThumbnail: false
                     }
                 }
             }, { quoted: m });
@@ -61,7 +61,7 @@ const reflexionCommand = {
             console.error(error);
 
             await conn.sendMessage(m.chat, {
-                text: '❌ Error al conectar con la base de reflexiones.'
+                text: "❌ Error al obtener la reflexión."
             }, { quoted: m });
         }
     }
