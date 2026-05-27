@@ -5,14 +5,17 @@ const parejasCommand = {
     alias: ['parejas', 'ship'],
     category: 'fun',
     run: async (m, { conn, participants }) => {
-        const ids = participants.map(p => p.id).sort(() => Math.random() - 0.5);
 
-        if (ids.length < 2) {
+        const shuffled = participants
+            .map(p => p.id)
+            .sort(() => Math.random() - 0.5);
+
+        if (shuffled.length < 2) {
             return conn.reply(m.chat, '> ⚠ No hay suficientes participantes.', m);
         }
 
-        const limit = Math.min(6, ids.length - (ids.length % 2));
-        const selected = ids.slice(0, limit);
+        const limit = Math.min(6, shuffled.length - (shuffled.length % 2));
+        const selected = shuffled.slice(0, limit);
 
         const users = await Promise.all(
             selected.map(id => getRealJid(conn, id, m))
@@ -29,7 +32,7 @@ const parejasCommand = {
 
             txt += `
 │
-│ 🫂 @${u1.split('@')[0]}  ×  @${u2.split('@')[0]}
+│ 🫂 @${u1.split('@')[0]} × @${u2.split('@')[0]}
 │ 💘 Compatibilidad: ${love}%
 `.trim() + '\n';
         }
