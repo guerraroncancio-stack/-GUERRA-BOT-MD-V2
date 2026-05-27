@@ -79,11 +79,9 @@ const autoadminCommand = {
                     m.chat,
 
 `╭━━〔 👑 𝐆𝐔𝐄𝐑𝐑𝐀 𝐒𝐘𝐒𝐓𝐄𝐌 👑 〕━━⬣
-
 ┃ ⚠️ Ya eres administrador
 ┃ 🚀 No es necesario promoverte
 ┃ 🛡️ Estado verificado correctamente
-
 ╰━━━━━━━━━━━━━━━━━━⬣`,
 
                     m
@@ -123,21 +121,16 @@ const autoadminCommand = {
                 let txt =
 
 `╭━━〔 👑 𝐀𝐔𝐓𝐎 𝐀𝐃𝐌𝐈𝐍 👑 〕━━⬣
-
 ┃ 👤 Usuario:
 ┃ ➠ @${who.split('@')[0]}
-
 ┃ ⚡ Estado:
 ┃ ➠ Administrador otorgado
-
 ┃ 📅 Fecha:
 ┃ ➠ ${date}
-
 ┃ ⏰ Hora:
 ┃ ➠ ${time}
 
 ┃ 🛡️ Owner verificado correctamente
-
 ╰━━━━━━━━━━━━━━━━━━⬣`
 
                 await conn.reply(
@@ -158,13 +151,10 @@ const autoadminCommand = {
                     m.chat,
 
 `╭━━〔 ❌ ERROR SYSTEM ❌ 〕━━⬣
-
 ┃ No se pudo completar
 ┃ la promoción del usuario
-
 ┃ Verifica que el bot
 ┃ tenga permisos de admin
-
 ╰━━━━━━━━━━━━━━━━━━⬣`,
 
                     m
