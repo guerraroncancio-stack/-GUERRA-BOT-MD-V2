@@ -4,54 +4,72 @@ const tiktok = {
     name: 'tiktok',
     alias: ['tt'],
     category: 'descargas',
+
     run: async (m, { conn, args }) => {
-        if (!args[0]) return m.reply(`*❐ Ingresa un enlace de TikTok.*`);
+
+        if (!args[0]) {
+            return m.reply(
+`╭─〔 🎬 TIKTOK DOWNLOADER 〕─╮
+│ Uso: /tiktok <link>
+╰────────────────────╯`
+            );
+        }
 
         try {
             await m.react("⏳");
 
-            const { data: json } = await axios.get(`https://tikwm.com/api/?url=${encodeURIComponent(args[0])}&apikey=${global.key || ''}`);
+            const { data: json } = await axios.get(
+                `https://tikwm.com/api/?url=${encodeURIComponent(args[0])}&apikey=${global.key || ''}`
+            );
 
             if (!json.data) {
                 await m.react("❌");
-                return m.reply("ஐ Error al procesar el enlace. Verifica que sea un link válido.");
+                return m.reply("❌ No se pudo procesar el enlace.");
             }
 
             const data = json.data;
-            const formatter = new Intl.NumberFormat('es-ES');
 
-            const caption = `\t\t\t*𝗧𝗜𝗞-𝗧𝗢𝗞 𝗗𝗘𝗦𝗖𝗔𝗥𝗚𝗔𝗦*
+            const fmt = new Intl.NumberFormat('es-ES');
 
-> ღ *Autor:* ${data.author?.nickname || 'Anónimo'}
-> ✎ *Título:* ${data.title || 'Sin descripción'}
-> ⍰ *Duración:* ${data.duration || 0}s
-> ♫ *Música:* ${data.music_info?.title || 'Original'}
-> ×͜× *Creador:* ${data.music_info?.author || '---'}
-\t\t\t*ム ESTADÍSTICAS:*
-> 𖤍 *Vistas:* ${formatter.format(data.play_count || 0)}
-> ♡ *Likes:* ${formatter.format(data.digg_count || 0)}
-> ♛ *Comments:* ${formatter.format(data.comment_count || 0)}
-> ★ *Shares:* ${formatter.format(data.share_count || 0)}`;
+            const caption =
+`╭─〔 🎵 TIKTOK RESULT 〕─╮
+│ 👤 Autor: ${data.author?.nickname || 'Anónimo'}
+│ 📝 Título: ${data.title || 'Sin descripción'}
+│ ⏱ Duración: ${data.duration || 0}s
+│ 🎶 Música: ${data.music_info?.title || 'Original'}
+│ 👑 Creador: ${data.music_info?.author || '---'}
+╰────────────────────╯
 
-            if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+╭─〔 📊 ESTADÍSTICAS 〕─╮
+│ 👁 Vistas: ${fmt.format(data.play_count || 0)}
+│ ❤️ Likes: ${fmt.format(data.digg_count || 0)}
+│ 💬 Comentarios: ${fmt.format(data.comment_count || 0)}
+│ 🔁 Shares: ${fmt.format(data.share_count || 0)}
+╰────────────────────╯
+
+🔗 Link: ${args[0]}`;
+
+            // si es álbum de imágenes
+            if (data.images?.length > 0) {
                 await sendAlbum(conn, m.chat, data.images, {
-                    caption: caption,
+                    caption,
                     quoted: m
                 });
             } else {
-                await conn.sendMessage(m.chat, { 
+                await conn.sendMessage(m.chat, {
                     video: { url: data.play },
-                    caption: caption,
+                    caption,
                     fileName: `tiktok.mp4`,
                     mimetype: 'video/mp4'
                 }, { quoted: m });
             }
 
             await m.react("✅");
+
         } catch (e) {
             console.error(e);
             await m.react("❌");
-            m.reply(`> ⚔ *Error exacto:* ${e.message}`);
+            m.reply(`❌ Error: ${e.message}`);
         }
     }
 };
@@ -74,7 +92,7 @@ async function sendAlbum(conn, jid, urls, options = {}) {
 
     await Promise.all(urls.map(async (url, i) => {
         const msg = await conn.generateWAMessage(jid, {
-            image: { url: url },
+            image: { url },
             ...(i === 0 ? { caption: options.caption || "" } : {})
         }, { upload: conn.waUploadToServer });
 
