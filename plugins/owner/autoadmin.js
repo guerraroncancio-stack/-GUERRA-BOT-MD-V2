@@ -55,19 +55,12 @@ const autoadminCommand = {
 
             let who =
 
-            m.mentionedJid &&
-            m.mentionedJid[0]
-
-            ? m.mentionedJid[0]
-
-            : m.quoted
-
-            ? m.quoted.sender
-
-            : m.sender
+            m.mentionedJid?.[0] ||
+            m.quoted?.sender ||
+            m.sender
 
             // =========================================
-            // ✅ ALREADY ADMIN
+            // ⚠️ YA ES ADMIN
             // =========================================
 
             if (
@@ -76,13 +69,15 @@ const autoadminCommand = {
             ) {
 
                 return conn.reply(
+
                     m.chat,
 
-`╭━━〔 👑 𝐆𝐔𝐄𝐑𝐑𝐀 𝐒𝐘𝐒𝐓𝐄𝐌 👑 〕━━⬣
-┃ ⚠️ Ya eres administrador
-┃ 🚀 No es necesario promoverte
-┃ 🛡️ Estado verificado correctamente
-╰━━━━━━━━━━━━━━━━━━⬣`,
+`┏━━━〔 👑 AUTOADMIN 👑 〕━━━⬣
+┃
+┃ ✅ Ya eres administrador
+┃ ⚡ No necesitas promoción
+┃
+┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
                     m
                 )
@@ -109,7 +104,7 @@ const autoadminCommand = {
             try {
 
                 // =========================================
-                // 👑 PROMOTE USER
+                // 👑 PROMOVER
                 // =========================================
 
                 await conn.groupParticipantsUpdate(
@@ -120,18 +115,23 @@ const autoadminCommand = {
 
                 let txt =
 
-`╭━━〔 👑 𝐀𝐔𝐓𝐎 𝐀𝐃𝐌𝐈𝐍 👑 〕━━⬣
-┃ 👤 Usuario:
-┃ ➠ @${who.split('@')[0]}
-┃ ⚡ Estado:
-┃ ➠ Administrador otorgado
-┃ 📅 Fecha:
-┃ ➠ ${date}
-┃ ⏰ Hora:
-┃ ➠ ${time}
-
-┃ 🛡️ Owner verificado correctamente
-╰━━━━━━━━━━━━━━━━━━⬣`
+`┏━━━〔 👑 AUTOADMIN 👑 〕━━━⬣
+┃
+┃ 👤 Usuario
+┃ ➥ @${who.split('@')[0]}
+┃
+┃ ⚔️ Estado
+┃ ➥ Admin otorgado
+┃
+┃ 📅 Fecha
+┃ ➥ ${date}
+┃
+┃ ⏰ Hora
+┃ ➥ ${time}
+┃
+┃ 🛡️ Owner verificado
+┃
+┗━━━━━━━━━━━━━━━━━━━━⬣`
 
                 await conn.reply(
                     m.chat,
@@ -150,12 +150,12 @@ const autoadminCommand = {
 
                     m.chat,
 
-`╭━━〔 ❌ ERROR SYSTEM ❌ 〕━━⬣
-┃ No se pudo completar
-┃ la promoción del usuario
-┃ Verifica que el bot
-┃ tenga permisos de admin
-╰━━━━━━━━━━━━━━━━━━⬣`,
+`┏━━━〔 ❌ ERROR ❌ 〕━━━⬣
+┃
+┃ No se pudo promover
+┃ Revisa permisos del bot
+┃
+┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
                     m
                 )
