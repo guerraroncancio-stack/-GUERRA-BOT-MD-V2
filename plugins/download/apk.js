@@ -5,6 +5,7 @@ const apkCommand = {
     name: 'apk',
     alias: ['modapk', 'fdroid'],
     category: 'descargas',
+
     run: async (m, { conn, args }) => {
         const text = args.join(' ')
         if (!text) return conn.sendMessage(m.chat, { text: '*[!] Ingrese el nombre de la APK.*' }, { quoted: m })
@@ -31,13 +32,14 @@ const apkCommand = {
             const resThumb = await fetch(data.icon)
             const thumbBuffer = Buffer.from(await resThumb.arrayBuffer())
 
-            let txt = `┏━━━━━━━━━━━━━━━━☒\n`
-            txt += `┇➙ *❒ F-DROID - DOWNLOADER*\n`
-            txt += `┣━━━━━━━━━━━━━━━━⚄\n`
-            txt += `┋➙ *Nombre:* ${data.name}\n`
-            txt += `┋➙ *Versión:* ${data.version}\n`
-            txt += `┋➙ *Resumen:* ${data.summary}\n`
-            txt += `┗━━━━━━━━━━━━━━━━⍰`
+            // 🔥 SOLO CAMBIO VISUAL AQUÍ
+            let txt = `╭━━━〔 📦 𝗔𝗣𝗞 𝗠𝗢𝗗 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥 〕━━━⬣\n`
+            txt += `┃ ✦ 𝗣𝗟𝗔𝗧𝗔𝗙𝗢𝗥𝗠: F-Droid Engine\n`
+            txt += `┣━━━━━━━━━━━━━━━━━━━━━━⬣\n`
+            txt += `┃ 📌 𝗡𝗢𝗠𝗕𝗥𝗘   : ${data.name}\n`
+            txt += `┃ 🔖 𝗩𝗘𝗥𝗦𝗜𝗢𝗡   : ${data.version}\n`
+            txt += `┃ 🧾 𝗗𝗘𝗦𝗖𝗥𝗜𝗣𝗖𝗜𝗢𝗡 : ${data.summary}\n`
+            txt += `┗━━━━━━━━━━━━━━━━━━━━━━⬣`
 
             await conn.sendMessage(m.chat, {
                 document: { url: data.apkUrl },
