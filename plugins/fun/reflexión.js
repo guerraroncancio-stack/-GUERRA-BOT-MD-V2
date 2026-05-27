@@ -4,45 +4,52 @@ const reflexionCommand = {
     name: 'reflexion',
     alias: ['reflexión', 'meditar', 'existencia'],
     category: 'crecimiento',
+
     run: async (m, { conn, text }) => {
-        
+
         const urlRaw = 'https://raw.githubusercontent.com/eliac-d/database/main/src/reflexion.json';
 
         try {
-            const response = await axios.get(urlRaw);
-            
-            const lista = Array.isArray(response.data) ? response.data : response.data.reflexiones;
+            const { data } = await axios.get(urlRaw);
+
+            const lista = Array.isArray(data)
+                ? data
+                : data.reflexiones || [];
 
             let filtradas = lista;
 
-            
             if (text) {
-                filtradas = lista.filter(r => 
-                    r.tema.toLowerCase().includes(text.toLowerCase()) ||
-                    r.titulo.toLowerCase().includes(text.toLowerCase())
+                const q = text.toLowerCase();
+                filtradas = lista.filter(r =>
+                    r.tema?.toLowerCase().includes(q) ||
+                    r.titulo?.toLowerCase().includes(q)
                 );
             }
 
-            if (filtradas.length === 0) filtradas = lista;
+            const r = filtradas.length
+                ? filtradas[Math.floor(Math.random() * filtradas.length)]
+                : lista[Math.floor(Math.random() * lista.length)];
 
-            
-            const r = filtradas[Math.floor(Math.random() * filtradas.length)];
+            const caption =
+`╭─ ✦ *REFLEXIÓN* ✦ ─╮
+│ ✧ ${r.titulo}
+│ ❖ ${r.tema}
+╰───────────────╯
 
-            
-            const mensaje = `✨ *${r.titulo}*\n` +
-                          `_Categoría: ${r.tema}_\n` +
-                          `──────────────────\n\n` +
-                          `${r.wa_format}\n\n` +
-                          `*Propósito:* _Apoyo emocional digital._`;
+💭 ${r.wa_format}
 
-            await conn.sendMessage(m.chat, { 
-                text: mensaje,
+━━━━━━━━━━━━━━
+🧠 *Momento de introspección*
+`;
+
+            await conn.sendMessage(m.chat, {
+                text: caption,
                 contextInfo: {
                     mentionedJid: [m.sender],
                     externalAdReply: {
-                        title: 'SISTEMA DE REFLEXIÓN CÓSMICA',
-                        body: 'Conéctate con el universo',
-                        thumbnailUrl: 'https://images.unsplash.com/photo-1464802686167-b939a6910659?q=80&w=1000&auto=format&fit=crop', 
+                        title: r.titulo || 'Reflexión',
+                        body: 'Sistema de pensamientos',
+                        thumbnailUrl: 'https://images.unsplash.com/photo-1464802686167-b939a6910659?q=80&w=1000&auto=format&fit=crop',
                         sourceUrl: 'https://github.com/deylin-16/database',
                         mediaType: 1,
                         renderLargerThumbnail: true
@@ -51,8 +58,11 @@ const reflexionCommand = {
             }, { quoted: m });
 
         } catch (error) {
-            console.error('Error en suministro de reflexiones:', error);
-            await conn.sendMessage(m.chat, { text: '❌ Error al conectar con la base de datos estelar.' }, { quoted: m });
+            console.error(error);
+
+            await conn.sendMessage(m.chat, {
+                text: '❌ Error al conectar con la base de reflexiones.'
+            }, { quoted: m });
         }
     }
 };
