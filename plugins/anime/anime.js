@@ -7,15 +7,13 @@ const animeCommand = {
 
     run: async (m, { conn }) => {
 
-        const sleep = (ms) => new Promise(res => setTimeout(res, ms))
-
         const sendAlbumMessage = async (conn, jid, medias, options = {}) => {
             if (typeof jid !== "string") throw new TypeError("jid must be string")
 
-            const caption = options.caption || options.text || ""
-            const delayTime = options.delay || 500
+            const caption = options.text || options.caption || ""
+            const delayTime = !isNaN(options.delay) ? options.delay : 500
 
-            const album = await conn.generateWAMessageFromContent(
+            const album = conn.generateWAMessageFromContent(
                 jid,
                 {
                     messageContextInfo: {},
@@ -24,14 +22,14 @@ const animeCommand = {
                         expectedVideoCount: medias.filter(m => m.type === "video").length,
                         ...(options.quoted ? {
                             contextInfo: {
+                                remoteJid: options.quoted.key.remoteJid,
+                                fromMe: options.quoted.key.fromMe,
                                 stanzaId: options.quoted.key.id,
                                 participant: options.quoted.key.participant || options.quoted.key.remoteJid,
-                                remoteJid: options.quoted.key.remoteJid,
                                 quotedMessage: options.quoted.message,
-                                fromMe: options.quoted.key.fromMe
-                            }
-                        } : {})
-                    }
+                            },
+                        } : {}),
+                    },
                 },
                 {}
             )
@@ -44,7 +42,7 @@ const animeCommand = {
                 const { type, data } = medias[i]
 
                 try {
-                    const msg = await conn.generateWAMessage(
+                    const img = await conn.generateWAMessage(
                         album.key.remoteJid,
                         {
                             [type]: data,
@@ -53,21 +51,21 @@ const animeCommand = {
                         { upload: conn.waUploadToServer }
                     )
 
-                    msg.message.messageContextInfo = {
+                    img.message.messageContextInfo = {
                         messageAssociation: {
                             associationType: 1,
                             parentMessageKey: album.key
                         }
                     }
 
-                    await conn.relayMessage(msg.key.remoteJid, msg.message, {
-                        messageId: msg.key.id
+                    await conn.relayMessage(img.key.remoteJid, img.message, {
+                        messageId: img.key.id
                     })
 
-                    await sleep(delayTime)
+                    await conn.delay(delayTime)
 
                 } catch (err) {
-                    console.log('Error enviando media:', err)
+                    continue
                 }
             }
 
@@ -75,13 +73,11 @@ const animeCommand = {
         }
 
         try {
-            const url_api = global.api || '' // por si lo tienes en global
-
             const res = await fetch(`${url_api}/api/search/anime?apikey=400klob`)
             const json = await res.json()
 
-            if (!json?.status || !Array.isArray(json?.images)) {
-                return conn.reply(m.chat, '❌ No se encontraron imágenes anime.', m)
+            if (!json.status || !Array.isArray(json.images)) {
+                return conn.reply(m.chat, '❌ No se pudieron obtener imágenes anime.', m)
             }
 
             const maxImgs = Math.min(json.images.length, 10)
@@ -92,7 +88,10 @@ const animeCommand = {
             }))
 
             await sendAlbumMessage(conn, m.chat, medias, {
-                caption: `✨ *Aquí tienes ${maxImgs} imágenes anime* ✨`,
+                caption: `╭─❒ 𝗔𝗡𝗜𝗠𝗘 𝗚𝗔𝗟𝗟𝗘𝗥𝗬 ✨
+│ 📸 Imágenes: ${maxImgs}
+│ 🎌 Solicitud completada
+╰──────────────`,
                 quoted: m
             })
 
