@@ -600,60 +600,48 @@ chalk.hex('#00FFB3')(`
 ========================================= */
 
 global.conn.ev.on(
-    'groups.update',
-    async (groupsUpdate) => {
+    'group-participants.update',
+    async (update) => {
 
         try {
 
-            for (const group of groupsUpdate) {
+            if (update.action !== 'promote') return
 
-                const metadata =
-                await global.conn.groupMetadata(group.id)
+            const botJid =
+            global.conn.decodeJid(global.conn.user.id)
 
-                const botNumber =
-                global.conn.user.id.split(':')[0] + '@s.whatsapp.net'
+            const promoted =
+            update.participants.map(p =>
+                global.conn.decodeJid(p)
+            )
 
-                const botData =
-                metadata.participants.find(
-                    p => p.id === botNumber
+            if (!promoted.includes(botJid)) return
+
+            await global.conn.sendMessage(
+                update.id,
+                {
+                    text:
+`╭━━〔 👑 GUERRA BOT ADMIN 👑 〕━━⬣
+┃ ⚔️ EL BOT AHORA ES ADMIN
+┃ 🚀 FUNCIONES AVANZADAS ACTIVADAS
+┃ 🛡️ SISTEMA OPERATIVO
+┃ 👑 PODER TOTAL DESBLOQUEADO
+╰━━━━━━━━━━━━━━━━━━━━━━⬣`
+                }
+            )
+
+            console.log(
+                chalk.hex('#FFD700')(
+                    '[ 👑 ] BOT PROMOTED TO ADMIN'
                 )
-
-                if (!botData?.admin) return
-
-                const cacheKey =
-                `admin-${group.id}`
-
-                if (
-                    global.commandCache.get(cacheKey)
-                ) return
-
-                global.commandCache.set(
-                    cacheKey,
-                    true,
-                    15
-                )
-
-                await global.conn.sendMessage(
-                    group.id,
-                    {
-                        text:
-`╭━━〔 👑 BOT PROMOVIDO 👑 〕━━⬣
-┃
-┃ ⚔️ GUERRA BOT AHORA ES ADMIN
-┃ 🚀 TODAS LAS FUNCIONES ACTIVAS
-┃ 🛡️ SISTEMA DE MODERACIÓN ONLINE
-┃ ⚡ MODO PROTECCIÓN ACTIVADO
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━⬣`
-                    }
-                )
-
-            }
+            )
 
         } catch (err) {
 
             console.error(
-                '[ ADMIN DETECT ERROR ]',
+                chalk.redBright(
+                    '[ ADMIN DETECT ERROR ]'
+                ),
                 err
             )
 
@@ -661,7 +649,6 @@ global.conn.ev.on(
 
     }
 )
-
         /* =========================================
            📡 CONNECTION UPDATE
         ========================================= */
