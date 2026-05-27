@@ -1,4 +1,5 @@
 import {
+  generateWAMessageFromContent,
   downloadContentFromMessage
 } from '@whiskeysockets/baileys'
 
@@ -13,6 +14,28 @@ fetch('https://api.dix.lat/media2/1777604199636.jpg')
   })
   .catch(() => null)
 
+function unwrapMessage(m = {}) {
+
+  let n = m
+
+  while (
+    n?.viewOnceMessage?.message ||
+    n?.viewOnceMessageV2?.message ||
+    n?.viewOnceMessageV2Extension?.message ||
+    n?.ephemeralMessage?.message
+  ) {
+
+    n =
+      n.viewOnceMessage?.message ||
+      n.viewOnceMessageV2?.message ||
+      n.viewOnceMessageV2Extension?.message ||
+      n.ephemeralMessage?.message
+
+  }
+
+  return n
+}
+
 async function downloadMedia(message, type) {
 
   const stream =
@@ -24,7 +47,9 @@ async function downloadMedia(message, type) {
   let buffer = Buffer.alloc(0)
 
   for await (const chunk of stream) {
+
     buffer = Buffer.concat([buffer, chunk])
+
   }
 
   return buffer
@@ -34,7 +59,7 @@ export default {
 
   name: 'hidetag',
 
-  alias: ['n', 'tagall'],
+  alias: ['n', 'notify', 'tagall'],
 
   group: true,
 
@@ -58,16 +83,43 @@ export default {
         key: {
           remoteJid: m.chat,
           fromMe: false,
-          id: 'GUERRA'
+          id: '𝕵uan'
         },
         message: {
           locationMessage: {
-            name: 'GUERRA BOT 👑',
+            name: 'Hola, Soy GUERRA 𝐁𝐎𝐓',
             jpegThumbnail: thumb
           }
         },
         participant: '0@s.whatsapp.net'
       }
+
+      const q =
+        m.quoted
+          ? unwrapMessage(m.quoted)
+          : unwrapMessage(m)
+
+      const mtype =
+        q.mtype ||
+        Object.keys(q.message || {})[0] ||
+        ''
+
+      const watermark =
+        '> GUERRA 𝐁𝐎𝐓 👑'
+
+      const originalCaption =
+        (
+          q.msg?.caption ||
+          q.text ||
+          ''
+        ).trim()
+
+      const finalCaption =
+        text
+          ? `${text}\n\n${watermark}`
+          : originalCaption
+          ? `${originalCaption}\n\n${watermark}`
+          : watermark
 
       /* =======================
          IMAGE
@@ -87,7 +139,7 @@ export default {
           m.chat,
           {
             image: media,
-            caption: text || '',
+            caption: finalCaption,
             mentions: users
           },
           { quoted: fkontak }
@@ -113,7 +165,8 @@ export default {
           m.chat,
           {
             video: media,
-            caption: text || '',
+            caption: finalCaption,
+            mimetype: 'video/mp4',
             mentions: users
           },
           { quoted: fkontak }
@@ -135,12 +188,21 @@ export default {
             'audio'
           )
 
-        return await conn.sendMessage(
+        await conn.sendMessage(
           m.chat,
           {
             audio: media,
             mimetype: 'audio/mpeg',
             ptt: false,
+            mentions: users
+          },
+          { quoted: fkontak }
+        )
+
+        return await conn.sendMessage(
+          m.chat,
+          {
+            text: finalCaption,
             mentions: users
           },
           { quoted: fkontak }
@@ -174,13 +236,52 @@ export default {
       }
 
       /* =======================
-         TEXT
+         QUOTED TEXT
+      ======================= */
+
+      if (m.quoted) {
+
+        const newMsg =
+          conn.cMod(
+            m.chat,
+            generateWAMessageFromContent(
+              m.chat,
+              {
+                [mtype || 'extendedTextMessage']:
+                  q?.message?.[mtype] || {
+                    text: finalCaption
+                  }
+              },
+              {
+                quoted: fkontak,
+                userJid: conn.user.id
+              }
+            ),
+            finalCaption,
+            conn.user.jid,
+            {
+              mentions: users
+            }
+          )
+
+        return await conn.relayMessage(
+          m.chat,
+          newMsg.message,
+          {
+            messageId: newMsg.key.id
+          }
+        )
+
+      }
+
+      /* =======================
+         NORMAL TEXT
       ======================= */
 
       return await conn.sendMessage(
         m.chat,
         {
-          text: text || '‎',
+          text: finalCaption,
           mentions: users
         },
         { quoted: fkontak }
