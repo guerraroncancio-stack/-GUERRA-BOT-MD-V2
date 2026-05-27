@@ -83,7 +83,7 @@ export default {
         key: {
           remoteJid: m.chat,
           fromMe: false,
-          id: '𝕵uan'
+          id: 'Guerra'
         },
         message: {
           locationMessage: {
