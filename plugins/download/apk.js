@@ -1,5 +1,4 @@
 import axios from 'axios'
-import fetch from 'node-fetch'
 
 const apkCommand = {
     name: 'apk',
@@ -7,53 +6,70 @@ const apkCommand = {
     category: 'descargas',
 
     run: async (m, { conn, args }) => {
-        const text = args.join(' ')
-        if (!text) return conn.sendMessage(m.chat, { text: '*[!] Ingrese el nombre de la APK.*' }, { quoted: m })
+        const query = args.join(' ').trim()
+
+        if (!query) {
+            return conn.sendMessage(m.chat, {
+                text: '*❒ Ingrese el nombre de la APK que desea buscar.*'
+            }, { quoted: m })
+        }
 
         try {
             await m.react('⏳')
 
-            const searchRes = await axios.get(`https://sylphy.xyz/search/fdroid?q=${encodeURIComponent(text)}&api_key=sylphy-Lg4rAtj`)
-            
-            if (!searchRes.data.status || !searchRes.data.result || searchRes.data.result.length === 0) {
+            // 🔎 BUSQUEDA EN APKPURE (más estable que APIs random)
+            const searchUrl = `https://apkpure.com/search?q=${encodeURIComponent(query)}`
+            const res = await axios.get(searchUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0'
+                }
+            })
+
+            const html = res.data
+
+            // 🔥 extraer primer resultado
+            const match = html.match(/href="(\/[^"]+)" class="dd"/)
+
+            if (!match) {
                 await m.react('❌')
-                return conn.sendMessage(m.chat, { text: '*[!] No se encontraron resultados en F-Droid.*' }, { quoted: m })
+                return conn.sendMessage(m.chat, {
+                    text: '*❒ No se encontraron resultados para esa APK.*'
+                }, { quoted: m })
             }
 
-            const targetUrl = searchRes.data.result[0].url
-            const downloadRes = await axios.get(`https://sylphy.xyz/download/fdroid?url=${encodeURIComponent(targetUrl)}&api_key=sylphy-Lg4rAtj`)
+            const appPath = match[1]
+            const appUrl = `https://apkpure.com${appPath}`
 
-            if (!downloadRes.data.status || !downloadRes.data.result) {
-                await m.react('❌')
-                return conn.sendMessage(m.chat, { text: '*[!] Error al obtener los detalles de descarga.*' }, { quoted: m })
-            }
+            // 🔎 entrar a página de la app
+            const appRes = await axios.get(appUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0'
+                }
+            })
 
-            const data = downloadRes.data.result
-            const resThumb = await fetch(data.icon)
-            const thumbBuffer = Buffer.from(await resThumb.arrayBuffer())
+            const appHtml = appRes.data
 
-            // 🔥 SOLO CAMBIO VISUAL AQUÍ
-            let txt = `╭━━━〔 📦 𝗔𝗣𝗞 𝗠𝗢𝗗 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥 〕━━━⬣\n`
-            txt += `┃ ✦ 𝗣𝗟𝗔𝗧𝗔𝗙𝗢𝗥𝗠: F-Droid Engine\n`
+            const name = appHtml.match(/<h1[^>]*>(.*?)<\/h1>/)?.[1] || 'APK'
+            const desc = appHtml.match(/<meta name="description" content="(.*?)"/)?.[1] || 'Sin descripción'
+            const downloadPage = appUrl + '/download'
+
+            let txt = `╭━━━〔 📦 𝗔𝗣𝗞 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥 〕━━━⬣\n`
+            txt += `┃ ✦ 𝗣𝗟𝗔𝗧𝗔𝗙𝗢𝗥𝗠: APKPure Engine\n`
             txt += `┣━━━━━━━━━━━━━━━━━━━━━━⬣\n`
-            txt += `┃ 📌 𝗡𝗢𝗠𝗕𝗥𝗘   : ${data.name}\n`
-            txt += `┃ 🔖 𝗩𝗘𝗥𝗦𝗜𝗢𝗡   : ${data.version}\n`
-            txt += `┃ 🧾 𝗗𝗘𝗦𝗖𝗥𝗜𝗣𝗖𝗜𝗢𝗡 : ${data.summary}\n`
+            txt += `┃ 📌 𝗡𝗢𝗠𝗕𝗥𝗘   : ${name}\n`
+            txt += `┃ 🧾 𝗗𝗘𝗦𝗖      : ${desc}\n`
+            txt += `┃ 🔗 𝗟𝗜𝗡𝗞     : ${appUrl}\n`
             txt += `┗━━━━━━━━━━━━━━━━━━━━━━⬣`
 
             await conn.sendMessage(m.chat, {
-                document: { url: data.apkUrl },
-                mimetype: 'application/vnd.android.package-archive',
-                fileName: `${data.name}.apk`,
-                caption: txt,
+                text: txt,
                 contextInfo: {
                     externalAdReply: {
-                        title: data.name,
-                        body: 'Click para instalar APK',
-                        thumbnail: thumbBuffer,
-                        sourceUrl: data.apkUrl,
+                        title: name,
+                        body: 'APK desde APKPure',
+                        sourceUrl: appUrl,
                         mediaType: 1,
-                        renderLargerThumbnail: true
+                        renderLargerThumbnail: false
                     }
                 }
             }, { quoted: m })
@@ -62,8 +78,12 @@ const apkCommand = {
 
         } catch (e) {
             console.error(e)
+
             await m.react('❌')
-            return conn.sendMessage(m.chat, { text: e.message }, { quoted: m })
+
+            return conn.sendMessage(m.chat, {
+                text: `❌ Error al buscar APK.\n\nDetalles: ${e.message}`
+            }, { quoted: m })
         }
     }
 }
