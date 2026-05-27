@@ -10,30 +10,40 @@ const memeApiCommand = {
         try {
             const { data } = await axios.get('https://api.dix.lat/memevid');
 
-            if (!data?.url) throw new Error('URL inválida');
+            const url = data?.url;
+            if (!url) throw new Error('API sin URL');
 
-            await m.react('🎬');
+            // validar que el video exista antes de enviarlo
+            const head = await axios.head(url).catch(() => null);
+            if (!head) throw new Error('Video expirado o caído');
 
-            await conn.sendMessage(
-                m.chat,
-                {
-                    video: { url: data.url },
-                    caption: '🎬 meme random'
-                },
-                { quoted: m }
-            );
+            const caption =
+`🎬 *MEME ALEATORIO*
+────────────────
+😂 Disfruta este video
+⚡ Humor rápido
+────────────────`;
+
+            await m.react('🎥');
+
+            await conn.sendMessage(m.chat, {
+                video: { url },
+                caption
+            }, { quoted: m });
+
+            await m.react('✅');
 
         } catch (err) {
             console.error(err);
             await m.react('🚫');
 
-            await conn.sendMessage(
-                m.chat,
-                {
-                    text: `❌ Error: ${err.message}`
-                },
-                { quoted: m }
-            );
+            await conn.sendMessage(m.chat, {
+                text:
+`❌ *ERROR MEME*
+────────────────
+⚠️ No se pudo cargar el video
+🔁 Intenta de nuevo`
+            }, { quoted: m });
         }
     }
 };
