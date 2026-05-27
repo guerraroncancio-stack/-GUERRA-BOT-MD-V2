@@ -1,9 +1,15 @@
+const IMAGE_URL = "https://cdn.dix.lat/me/c58ae6d8-2932-4f99-bb9a-7527cbe9573b.jpg"
+
 async function run(m, { conn, text }) {
 
   try {
 
-    if (!m.isGroup)
-      return m.reply('❌ Solo funciona en grupos')
+    if (!m.isGroup) {
+      return conn.sendMessage(m.chat, {
+        image: { url: IMAGE_URL },
+        caption: '❌ Este comando solo funciona en grupos'
+      }, { quoted: m })
+    }
 
     let user =
       m.mentionedJid?.[0] ||
@@ -15,41 +21,55 @@ async function run(m, { conn, text }) {
     // =========================
     if (!user && text) {
 
-      const clean = text
-        .replace(/[^0-9]/g, '')
+      const clean = text.replace(/[^0-9]/g, '')
 
-      if (clean.length < 7)
-        return m.reply('❌ Número inválido')
+      if (clean.length < 7) {
+        return conn.sendMessage(m.chat, {
+          image: { url: IMAGE_URL },
+          caption: '❌ Número inválido'
+        }, { quoted: m })
+      }
 
       user = clean + '@s.whatsapp.net'
     }
 
-    if (!user)
-      return conn.reply(
-        m.chat,
-        '> ➤ MENCIONA O RESPONDE A UN USUARIO PARA PROMOVERLO 👑',
-        m
-      )
+    if (!user) {
+      return conn.sendMessage(m.chat, {
+        image: { url: IMAGE_URL },
+        caption: '> ➤ Menciona o responde a un usuario para promoverlo 👑'
+      }, { quoted: m })
+    }
 
     // =========================
-    // 🔥 VALIDACIÓN BÁSICA
+    // 🔍 VERIFICACIÓN WHATSAPP
     // =========================
-    const metadata =
-      await conn.groupMetadata(m.chat)
+    const [wa] = await conn.onWhatsApp(user)
 
-    const participants =
-      metadata?.participants || []
-
-    const exists =
-      participants.some(p =>
-        conn.decodeJid(p.id || p.jid || p.participant) === user
-      )
-
-    if (!exists)
-      return m.reply('❌ Ese usuario no está en el grupo')
+    if (!wa?.exists) {
+      return conn.sendMessage(m.chat, {
+        image: { url: IMAGE_URL },
+        caption: '❌ Este número no está registrado en WhatsApp'
+      }, { quoted: m })
+    }
 
     // =========================
-    // 🔥 PROMOTE REAL
+    // 🔥 VALIDACIÓN EN GRUPO
+    // =========================
+    const metadata = await conn.groupMetadata(m.chat)
+
+    const exists = metadata.participants.some(p =>
+      conn.decodeJid(p.id || p.jid || p.participant) === user
+    )
+
+    if (!exists) {
+      return conn.sendMessage(m.chat, {
+        image: { url: IMAGE_URL },
+        caption: '❌ Ese usuario no está en el grupo'
+      }, { quoted: m })
+    }
+
+    // =========================
+    // 👑 PROMOTE REAL
     // =========================
     await conn.groupParticipantsUpdate(
       m.chat,
@@ -57,26 +77,23 @@ async function run(m, { conn, text }) {
       'promote'
     )
 
-    return conn.reply(
-      m.chat,
-      '✅ Usuario promovido a admin correctamente',
-      m
-    )
+    return conn.sendMessage(m.chat, {
+      image: { url: IMAGE_URL },
+      caption: '👑 Usuario promovido a administrador correctamente'
+    }, { quoted: m })
 
   } catch (e) {
 
     console.log(e)
 
-    return conn.reply(
-      m.chat,
-      '🚫 Error al promover usuario',
-      m
-    )
+    return conn.sendMessage(m.chat, {
+      image: { url: IMAGE_URL },
+      caption: '🚫 Error al promover usuario'
+    }, { quoted: m })
   }
 }
 
 export default {
-
   name: 'promote',
   command: ['promote', 'admin'],
   tags: ['group'],
