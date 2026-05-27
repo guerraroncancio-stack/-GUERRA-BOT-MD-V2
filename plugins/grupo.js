@@ -6,7 +6,7 @@ import fetch from 'node-fetch'
 
 let thumb = null
 
-fetch('https://cdn.dix.lat/me/3a1b5867-1ecb-40dc-acf8-250526ebad65.jpg')
+fetch('https://cdn.dix.lat/me/c58ae6d8-2932-4f99-bb9a-7527cbe9573b.jpg')
 .then(res => res.arrayBuffer())
 .then(buf => {
     thumb = Buffer.from(buf)
