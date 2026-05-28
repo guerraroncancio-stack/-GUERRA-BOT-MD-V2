@@ -1,256 +1,169 @@
-import express from 'express'
-import multer from 'multer'
-import crypto from 'crypto'
-import path from 'path'
 import fs from 'fs'
-import cors from 'cors'
+import path from 'path'
+import crypto from 'crypto'
 
-// ========================================
-// 👑 GUERRA API CDN
-// ========================================
+const dixCommand = {
 
-const app = express()
+    name: 'dix',
 
-// ========================================
-// ⚙️ CONFIG
-// ========================================
+    alias: [
+        'upload',
+        'tourl',
+        'imgurl'
+    ],
 
-const PORT =
-process.env.PORT || 3000
+    category: 'tools',
 
-const DOMAIN =
-'https://cdn.guerra-api.com'
-
-// ========================================
-// 📂 FOLDERS
-// ========================================
-
-const mediaFolder =
-'./public/media'
-
-if (!fs.existsSync(mediaFolder)) {
-
-    fs.mkdirSync(
-        mediaFolder,
-        {
-            recursive: true
-        }
-    )
-
-}
-
-// ========================================
-// 🛡️ MIDDLEWARE
-// ========================================
-
-app.use(cors())
-app.use(express.json())
-app.use(express.urlencoded({
-    extended: true
-}))
-
-// ========================================
-// 📸 STORAGE
-// ========================================
-
-const storage =
-multer.diskStorage({
-
-    destination(req, file, cb) {
-
-        cb(
-            null,
-            mediaFolder
-        )
-
-    },
-
-    filename(req, file, cb) {
-
-        const ext =
-        path.extname(
-            file.originalname
-        )
-
-        const random =
-        crypto
-        .randomBytes(8)
-        .toString('hex')
-
-        const filename =
-
-`${Date.now()}-${random}${ext}`
-
-        cb(
-            null,
-            filename
-        )
-
-    }
-
-})
-
-// ========================================
-// 📤 UPLOAD
-// ========================================
-
-const upload = multer({
-
-    storage,
-
-    limits: {
-
-        fileSize:
-        50 * 1024 * 1024
-
-    }
-
-})
-
-// ========================================
-// 🌍 HOME
-// ========================================
-
-app.get('/', (req, res) => {
-
-    res.json({
-
-        success: true,
-
-        name:
-        'GUERRA API CDN',
-
-        creator:
-        'Kevin Guerra',
-
-        status:
-        'ONLINE',
-
-        upload:
-        '/upload'
-
-    })
-
-})
-
-// ========================================
-// 🚀 UPLOAD ROUTE
-// ========================================
-
-app.post(
-
-    '/upload',
-
-    upload.single('file'),
-
-    async (req, res) => {
+    async run(m, { conn }) {
 
         try {
 
-            if (!req.file) {
+            const q =
+            m.quoted
+            ? m.quoted
+            : m
 
-                return res.status(400).json({
+            const mime =
+            (q.msg || q).mimetype || ''
 
-                    success: false,
+            if (!mime) {
 
-                    message:
-                    'No file uploaded'
+                return conn.reply(
 
-                })
+                    m.chat,
+
+`┏━━━〔 👑 GUERRA API 👑 〕━━━⬣
+┃
+┃ ❌ Responde a una imagen,
+┃ video o audio.
+┃
+┗━━━━━━━━━━━━━━━━━━━━⬣`,
+
+                    m
+
+                )
 
             }
 
-            const fileUrl =
+            await m.react('📤')
 
-`${DOMAIN}/media/${req.file.filename}`
+            // =========================================
+            // 📥 DOWNLOAD
+            // =========================================
 
-            return res.json({
+            const buffer =
+            await q.download()
 
-                success: true,
+            // =========================================
+            // 📂 EXTENSIÓN
+            // =========================================
 
-                creator:
-                'Kevin Guerra',
+            let ext = 'bin'
 
-                file:
-                req.file.filename,
+            if (mime.includes('image'))
+            ext = 'jpg'
 
-                size:
-                req.file.size,
+            else if (mime.includes('video'))
+            ext = 'mp4'
 
-                mimetype:
-                req.file.mimetype,
+            else if (mime.includes('audio'))
+            ext = 'mp3'
 
-                url:
-                fileUrl
+            // =========================================
+            // 🆔 RANDOM NAME
+            // =========================================
 
-            })
+            const fileName =
+            crypto.randomBytes(6)
+            .toString('hex') +
+            '.' + ext
+
+            // =========================================
+            // 📁 SAVE
+            // =========================================
+
+            const folder =
+            './uploads'
+
+            if (!fs.existsSync(folder)) {
+
+                fs.mkdirSync(folder)
+
+            }
+
+            const filePath =
+            path.join(folder, fileName)
+
+            fs.writeFileSync(
+                filePath,
+                buffer
+            )
+
+            // =========================================
+            // 🌐 YOUR DOMAIN
+            // =========================================
+
+            const url =
+
+`https://guerra-api.com/uploads/${fileName}`
+
+            // =========================================
+            // ✅ SEND
+            // =========================================
+
+            await m.react('✅')
+
+            return conn.sendMessage(
+
+                m.chat,
+
+                {
+                    text:
+`┏━━━〔 👑 GUERRA API 👑 〕━━━⬣
+┃
+┃ ✅ Archivo subido
+┃ exitosamente
+┃
+┣━━━━━━━━━━━━━━━━━━⬣
+┃ 🌐 URL:
+┃ ${url}
+┣━━━━━━━━━━━━━━━━━━⬣
+┃ ⚡ Powered By
+┃ Kevin Guerra
+┗━━━━━━━━━━━━━━━━━━━━⬣`
+                },
+
+                {
+                    quoted: m
+                }
+
+            )
 
         } catch (err) {
 
-            console.log(err)
+            console.error(err)
 
-            return res.status(500).json({
+            await m.react('❌')
 
-                success: false,
+            return conn.reply(
 
-                error:
-                err.message
+                m.chat,
 
-            })
+`┏━━━〔 ⚠️ ERROR ⚠️ 〕━━━⬣
+┃
+┃ No se pudo subir
+┃ el archivo.
+┃
+┗━━━━━━━━━━━━━━━━━━━━⬣`,
+
+                m
+
+            )
 
         }
 
     }
 
-)
+}
 
-// ========================================
-// 🖼️ STATIC FILES
-// ========================================
-
-app.use(
-
-    '/media',
-
-    express.static(
-        mediaFolder
-    )
-
-)
-
-// ========================================
-// ❌ 404
-// ========================================
-
-app.use((req, res) => {
-
-    res.status(404).json({
-
-        success: false,
-
-        message:
-        'Route not found'
-
-    })
-
-})
-
-// ========================================
-// 🔥 START SERVER
-// ========================================
-
-app.listen(PORT, () => {
-
-    console.log(`
-
-╭━━━━━━━━━━━━━━━━━━⬣
-┃ 👑 GUERRA API CDN
-┃ 🚀 SERVER ONLINE
-┃ 🌐 PORT: ${PORT}
-┃ ⚡ CREATOR:
-┃ ➥ Kevin Guerra
-╰━━━━━━━━━━━━━━━━━━⬣
-
-`)
-
-})
+export default dixCommand
