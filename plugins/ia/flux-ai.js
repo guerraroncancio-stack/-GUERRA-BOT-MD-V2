@@ -21,7 +21,7 @@ const fluxCommand = {
     }) {
 
         // =========================================
-        // ❌ SIN TEXTO
+        // ❌ SIN PROMPT
         // =========================================
 
         if (!text) {
@@ -32,17 +32,20 @@ const fluxCommand = {
 
 `┏━━━〔 🎨 GUERRA FLUX IA 🎨 〕━━━⬣
 ┃
-┃ ✦ Generador de imágenes IA
-┃ ✦ Modelo: FLUX AI
-┃ ✦ Creador: Kevin Guerra
+┃ ✦ Generador avanzado IA
+┃ ✦ Compatible con anime
+┃ ✦ Fotos realistas
+┃ ✦ Arte cinematográfico
 ┃
 ┣━━━━━━━━━━━━━━━━━━⬣
 ┃ 📌 Ejemplos:
 ┃
+┃ ➥ .flux chica anime neon
+┃ ➥ .flux ferrari rojo lluvia
 ┃ ➥ .flux gato samurai
-┃ ➥ .flux ferrari futurista
-┃ ➥ .flux anime cyberpunk
-┃ ➥ .flux ciudad neon
+┃ ➥ .flux paisaje realista
+┃ ➥ .flux mujer cyberpunk
+┃ ➥ .flux naruto estilo realista
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
@@ -55,33 +58,27 @@ const fluxCommand = {
         try {
 
             // =========================================
-            // 🎨 REACT
+            // 🎨 REACCIÓN
             // =========================================
 
             await m.react('🎨')
 
             // =========================================
-            // 👑 PERSONALIDAD IA
+            // 👑 CREADOR
             // =========================================
+
+            const lower =
+            text.toLowerCase()
 
             const creatorQuestions = [
 
                 'quien te creo',
                 'quién te creó',
-
-                'quien hizo esta ia',
-                'quién hizo esta ia',
-
-                'quien desarrollo esta ia',
-                'quién desarrolló esta ia',
-
                 'creador',
-                'developer'
-
+                'developer',
+                'quien hizo esta ia',
+                'quién hizo esta ia'
             ]
-
-            const lower =
-            text.toLowerCase()
 
             if (
 
@@ -97,10 +94,10 @@ const fluxCommand = {
 
 `┏━━━〔 👑 GUERRA FLUX IA 👑 〕━━━⬣
 ┃
-┃ 🤖 Soy GUERRA FLUX IA
-┃ 🎨 Especialista en imágenes IA
+┃ 🤖 Sistema FLUX IA
+┃ 🎨 Especialista en imágenes
 ┃
-┃ 👑 Mi creador oficial es:
+┃ 👑 Creador oficial:
 ┃ ➥ Kevin Guerra
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
@@ -112,15 +109,72 @@ const fluxCommand = {
             }
 
             // =========================================
-            // 🌐 API FLUX
+            // 🧠 MEJORADOR PROMPT
             // =========================================
 
-            const prompt =
-            encodeURIComponent(text)
+            let enhancedPrompt = text
+
+            // 🔥 Anime
+            if (
+
+                lower.includes('anime') ||
+                lower.includes('naruto') ||
+                lower.includes('waifu') ||
+                lower.includes('manga')
+
+            ) {
+
+                enhancedPrompt =
+`${text}, ultra detailed anime, masterpiece, best quality, vibrant colors, cinematic lighting, highly detailed, studio anime style`
+
+            }
+
+            // 🔥 Realista
+            else if (
+
+                lower.includes('realista') ||
+                lower.includes('persona') ||
+                lower.includes('mujer') ||
+                lower.includes('hombre') ||
+                lower.includes('foto')
+
+            ) {
+
+                enhancedPrompt =
+`${text}, photorealistic, ultra realistic, 8k, DSLR, cinematic photo, detailed skin, realistic lighting`
+
+            }
+
+            // 🔥 Autos
+            else if (
+
+                lower.includes('ferrari') ||
+                lower.includes('lamborghini') ||
+                lower.includes('bmw') ||
+                lower.includes('carro')
+
+            ) {
+
+                enhancedPrompt =
+`${text}, cinematic car photography, ultra detailed, reflections, realistic, luxury car, 8k`
+
+            }
+
+            // 🔥 GENERAL
+            else {
+
+                enhancedPrompt =
+`${text}, ultra detailed, masterpiece, high quality, cinematic lighting, 8k`
+
+            }
+
+            // =========================================
+            // 🌐 GENERADOR
+            // =========================================
 
             const imageUrl =
 
-`https://image.pollinations.ai/prompt/${prompt}?width=1024&height=1024&seed=${Date.now()}&model=flux`
+`https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&seed=${Date.now()}&model=flux&enhance=true&nologo=true`
 
             // =========================================
             // 📸 CAPTION
@@ -137,10 +191,31 @@ const fluxCommand = {
 ┃ ➥ ${text}
 ┃
 ┣━━━━━━━━━━━━━━━━━━⬣
-┃ ⚡ Imagen generada correctamente
-┃ 🚀 Modelo: FLUX AI
-┃ 👑 Powered By Kevin Guerra
+┃ ⚡ Imagen generada
+┃ 🚀 Modelo: FLUX PRO
+┃ 🎭 Modo IA inteligente
+┃ 👑 Kevin Guerra
 ┗━━━━━━━━━━━━━━━━━━━━⬣`
+
+            // =========================================
+            // 📥 DESCARGAR
+            // =========================================
+
+            const response =
+            await fetch(imageUrl)
+
+            if (!response.ok) {
+
+                throw new Error(
+                    'Error generando imagen'
+                )
+
+            }
+
+            const buffer =
+            Buffer.from(
+                await response.arrayBuffer()
+            )
 
             // =========================================
             // ✅ ENVIAR
@@ -151,9 +226,7 @@ const fluxCommand = {
                 m.chat,
 
                 {
-                    image: {
-                        url: imageUrl
-                    },
+                    image: buffer,
                     caption
                 },
 
