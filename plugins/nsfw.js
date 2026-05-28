@@ -1,7 +1,9 @@
 export default {
 
   name: 'nsfw',
-  alias: [
+
+  command: [
+    'nsfw',
     'pack',
     'pack2',
     'pack3',
@@ -18,22 +20,7 @@ export default {
 
   tags: ['nsfw'],
 
-  command: [
-    'pack',
-    'pack2',
-    'pack3',
-    'videoxxx',
-    'vídeoxxx',
-    'videoxxxlesbi',
-    'videolesbixxx',
-    'pornolesbivid',
-    'pornolesbianavid',
-    'pornolesbiv',
-    'pornolesbianav',
-    'pornolesv'
-  ],
-
-  async run(m, { conn, command }) {
+  async run(m, { conn, command, args, isAdmin, isOwner }) {
 
     try {
 
@@ -41,6 +28,7 @@ export default {
       // 🔥 FIX DATABASE
       // =========================
 
+      global.db = global.db || {}
       global.db.data = global.db.data || {}
       global.db.data.chats = global.db.data.chats || {}
 
@@ -56,6 +44,80 @@ export default {
       global.db.data.chats[m.chat]
 
       // =========================
+      // 🔞 ACTIVAR / DESACTIVAR
+      // =========================
+
+      if (command === 'nsfw') {
+
+        if (!m.isGroup) {
+          return m.reply('❌ Solo para grupos.')
+        }
+
+        if (!isAdmin && !isOwner) {
+          return m.reply('❌ Solo admins.')
+        }
+
+        const option =
+        (args[0] || '').toLowerCase()
+
+        if (option === 'on') {
+
+          chat.nsfw = true
+
+          return conn.sendMessage(
+            m.chat,
+            {
+              text:
+`╭━━〔 🔞 NSFW 🔞 〕━━⬣
+┃
+┃ Estado:
+┃ ➥ ACTIVADO ✅
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+            },
+            { quoted: m }
+          )
+
+        }
+
+        if (option === 'off') {
+
+          chat.nsfw = false
+
+          return conn.sendMessage(
+            m.chat,
+            {
+              text:
+`╭━━〔 🔞 NSFW 🔞 〕━━⬣
+┃
+┃ Estado:
+┃ ➥ DESACTIVADO ❌
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+            },
+            { quoted: m }
+          )
+
+        }
+
+        return conn.sendMessage(
+          m.chat,
+          {
+            text:
+`╭━━〔 🔞 NSFW SYSTEM 🔞 〕━━⬣
+┃
+┃ Uso correcto:
+┃ ➥ .nsfw on
+┃ ➥ .nsfw off
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+          },
+          { quoted: m }
+        )
+
+      }
+
+      // =========================
       // 🔞 CHECK NSFW
       // =========================
 
@@ -65,13 +127,13 @@ export default {
           m.chat,
           {
             text:
-`╭━━〔 🔞 NSFW SYSTEM 🔞 〕━━⬣
+`╭━━〔 🔞 NSFW 🔞 〕━━⬣
 ┃
-┃ Los comandos NSFW
-┃ están desactivados.
+┃ El sistema NSFW
+┃ está desactivado.
 ┃
 ┃ Usa:
-┃ ➥ .enable nsfw
+┃ ➥ .nsfw on
 ┃
 ╰━━━━━━━━━━━━━━━━━━⬣`
           },
@@ -90,10 +152,7 @@ export default {
 
           const url =
           global.pack[
-            Math.floor(
-              Math.random() *
-              global.pack.length
-            )
+            Math.floor(Math.random() * global.pack.length)
           ]
 
           await conn.sendMessage(
@@ -116,10 +175,7 @@ export default {
 
           const url =
           global.packgirl[
-            Math.floor(
-              Math.random() *
-              global.packgirl.length
-            )
+            Math.floor(Math.random() * global.packgirl.length)
           ]
 
           await conn.sendMessage(
@@ -142,10 +198,7 @@ export default {
 
           const url =
           global.packmen[
-            Math.floor(
-              Math.random() *
-              global.packmen.length
-            )
+            Math.floor(Math.random() * global.packmen.length)
           ]
 
           await conn.sendMessage(
@@ -169,10 +222,7 @@ export default {
 
           const url =
           global.videosxxxc[
-            Math.floor(
-              Math.random() *
-              global.videosxxxc.length
-            )
+            Math.floor(Math.random() * global.videosxxxc.length)
           ]
 
           await conn.sendMessage(
@@ -202,10 +252,7 @@ export default {
 
           const url =
           global.videosxxxc2[
-            Math.floor(
-              Math.random() *
-              global.videosxxxc2.length
-            )
+            Math.floor(Math.random() * global.videosxxxc2.length)
           ]
 
           await conn.sendMessage(
@@ -243,35 +290,24 @@ export default {
 
 // =========================================
 // 📦 LINKS
-// PEGA TUS LINKS AQUÍ
 // =========================================
 
 global.pack = [
-
   // "LINK.jpg"
-
 ]
 
 global.packgirl = [
-
   // "LINK.jpg"
-
 ]
 
 global.packmen = [
-
   // "LINK.jpg"
-
 ]
 
 global.videosxxxc = [
-
   // "LINK.mp4"
-
 ]
 
 global.videosxxxc2 = [
-
   // "LINK.mp4"
-
 ]
