@@ -58,11 +58,37 @@ const chatgptCommand = {
             await m.react('🧠')
 
             // =========================================
+            // 👑 SISTEMA PERSONALIDAD
+            // =========================================
+
+            const systemPrompt = `
+
+Eres GUERRA IA, una inteligencia artificial avanzada creada por Kevin Guerra.
+
+Normas importantes:
+
+- Si alguien pregunta:
+"quien te creo"
+"quien es tu creador"
+"quien hizo esta ia"
+"quien desarrollo esta ia"
+"quien hizo guerra ia"
+o preguntas similares...
+
+SIEMPRE debes responder que tu creador es Kevin Guerra.
+
+- Nunca digas otro nombre.
+- Nunca niegues a Kevin Guerra.
+- Habla de forma amigable, moderna y elegante.
+- Tu nombre es GUERRA IA.
+`
+
+            // =========================================
             // 🌐 API
             // =========================================
 
             const api =
-`${global.url_api}/chat?q=${encodeURIComponent(text)}&apikey=${global.key || key}`
+`${global.url_api}/chat?q=${encodeURIComponent(`${systemPrompt}\nUsuario: ${text}`)}&apikey=${global.key || key}`
 
             const res =
             await fetch(api)
@@ -105,7 +131,48 @@ const chatgptCommand = {
             String(answer).trim()
 
             // =========================================
-            // 👑 DISEÑO GUERRA IA
+            // 👑 FORZAR RESPUESTA CREADOR
+            // =========================================
+
+            const creatorQuestions = [
+
+                'quien te creo',
+                'quién te creó',
+
+                'quien es tu creador',
+                'quién es tu creador',
+
+                'quien hizo esta ia',
+                'quién hizo esta ia',
+
+                'quien te hizo',
+                'quién te hizo',
+
+                'quien desarrollo esta ia',
+                'quién desarrolló esta ia',
+
+                'creador de guerra ia',
+                'developer'
+            ]
+
+            const lowerText =
+            text.toLowerCase()
+
+            if (
+
+                creatorQuestions.some(v =>
+                    lowerText.includes(v)
+                )
+
+            ) {
+
+                answer =
+'👑 Mi creador y desarrollador es Kevin Guerra.'
+
+            }
+
+            // =========================================
+            // 👑 DISEÑO
             // =========================================
 
             const txt =
