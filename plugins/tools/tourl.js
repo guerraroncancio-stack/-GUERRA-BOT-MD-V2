@@ -3,22 +3,20 @@ import { FormData, Blob } from 'formdata-node'
 import { fileTypeFromBuffer } from 'file-type'
 
 // =========================================
-// 👑 GUERRA UPLOAD SYSTEM
+// 👑 GUERRA UPLOAD
 // =========================================
 
-async function uploadImage(buffer, fileName, mime) {
+async function uploadToDix(buffer, fileName, mime) {
 
-    const apis = [
+    const endpoints = [
 
         'https://api.dix.lat/upload1',
 
-        'https://api.dix.lat/upload2',
-
-        'https://tmpfiles.org/api/v1/upload'
+        'https://api.dix.lat/upload2'
 
     ]
 
-    for (const api of apis) {
+    for (const api of endpoints) {
 
         try {
 
@@ -49,19 +47,27 @@ async function uploadImage(buffer, fileName, mime) {
                 headers: {
 
                     'User-Agent':
-                    'GUERRA-UPLOAD'
+                    'GUERRA-UPLOADER'
 
                 }
 
             })
 
-            if (!res.ok) continue
+            if (!res.ok) {
+
+                console.log(
+                    `HTTP ${res.status}`
+                )
+
+                continue
+
+            }
 
             const json =
             await res.json()
 
             // =========================================
-            // 📌 DIX API
+            // ✅ VALID RESPONSE
             // =========================================
 
             if (
@@ -71,17 +77,39 @@ async function uploadImage(buffer, fileName, mime) {
 
             ) {
 
+                const result =
+                json.data
+
+                // =========================================
+                // 🔥 DIRECT IMAGE URL
+                // =========================================
+
+                let finalUrl =
+                result.url
+
+                // fuerza extensión si no tiene
+
+                if (
+                    !/\.(jpg|jpeg|png|webp|gif)$/i
+                    .test(finalUrl)
+                ) {
+
+                    finalUrl +=
+                    `.${fileName.split('.').pop()}`
+
+                }
+
                 return {
 
                     id:
-                    json.data.id ||
+                    result.id ||
                     'unknown',
 
                     url:
-                    json.data.url,
+                    finalUrl,
 
                     size:
-                    json.data.size ||
+                    result.size ||
                     `${(
                         buffer.length /
                         1024 /
@@ -89,45 +117,18 @@ async function uploadImage(buffer, fileName, mime) {
                     ).toFixed(2)} MB`,
 
                     mime:
-                    json.data.mime ||
+                    result.mime ||
                     mime
 
                 }
 
             }
 
-            // =========================================
-            // 📌 TMPFILES
-            // =========================================
+        } catch (e) {
 
-            if (json?.data?.url) {
+            console.log(e)
 
-                return {
-
-                    id:
-                    'tmpfiles',
-
-                    url:
-                    json.data.url
-                    .replace(
-                        'tmpfiles.org/',
-                        'tmpfiles.org/dl/'
-                    ),
-
-                    size:
-                    `${(
-                        buffer.length /
-                        1024 /
-                        1024
-                    ).toFixed(2)} MB`,
-
-                    mime
-
-                }
-
-            }
-
-        } catch {}
+        }
 
     }
 
@@ -246,7 +247,7 @@ const uploadCommand = {
             // =========================================
 
             const result =
-            await uploadImage(
+            await uploadToDix(
 
                 buffer,
                 fileName,
@@ -257,7 +258,7 @@ const uploadCommand = {
             if (!result) {
 
                 throw new Error(
-                    'Todas las APIs fallaron'
+                    'La API no devolvió URL'
                 )
 
             }
@@ -298,9 +299,7 @@ const uploadCommand = {
             // ✅ SEND
             // =========================================
 
-            await m.react('✅')
-
-            return conn.sendMessage(
+            await conn.sendMessage(
 
                 m.chat,
 
@@ -314,9 +313,11 @@ const uploadCommand = {
 
             )
 
-        } catch (err) {
+            await m.react('✅')
 
-            console.error(err)
+        } catch (e) {
+
+            console.error(e)
 
             await m.react('❌')
 
@@ -329,7 +330,7 @@ const uploadCommand = {
 ┃ ❌ Error al subir
 ┃ la imagen.
 ┃
-┃ 🔧 ${err.message}
+┃ 🔧 ${e.message}
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
