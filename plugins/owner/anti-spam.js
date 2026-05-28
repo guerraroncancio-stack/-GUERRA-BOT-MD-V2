@@ -1,11 +1,7 @@
 const antiSpamGroup = {
-
   name: 'antispam',
-
   description: 'Sistema anti spam',
-
   version: '1.0.0',
-
   before: true,
 
   async run() {},
@@ -27,19 +23,15 @@ const antiSpamGroup = {
       if (!m.sender) return false
       if (!m.message) return false
 
-      // 👑 OWNERS
       if (isOwner || isROwner)
       return false
 
-      // 👑 ADMINS
       if (isAdmin)
       return false
 
-      // 🤖 BOT ADMIN
       if (!isBotAdmin)
       return false
 
-      // 🔥 DATABASE
       global.db.data =
       global.db.data || {}
 
@@ -50,15 +42,11 @@ const antiSpamGroup = {
       global.db.data.users || {}
 
       if (!global.db.data.chats[m.chat]) {
-
         global.db.data.chats[m.chat] = {}
-
       }
 
       if (!global.db.data.users[m.sender]) {
-
         global.db.data.users[m.sender] = {}
-
       }
 
       const chat =
@@ -67,22 +55,15 @@ const antiSpamGroup = {
       const user =
       global.db.data.users[m.sender]
 
-      // ⚙️ ACTIVAR
-      if (
-        !('antiSpam' in chat)
-      ) {
-
+      if (!('antiSpam' in chat)) {
         chat.antiSpam = true
-
       }
 
       if (!chat.antiSpam)
       return false
 
-      // ⏳ TIME
       const now = Date.now()
 
-      // 📊 DATA
       if (!user.groupSpamData) {
 
         user.groupSpamData = {
@@ -92,7 +73,6 @@ const antiSpamGroup = {
 
       }
 
-      // 🔄 RESET 3 MIN
       if (
         now -
         user.groupSpamData.time >
@@ -104,10 +84,8 @@ const antiSpamGroup = {
 
       }
 
-      // ➕ COUNT
       user.groupSpamData.count += 1
 
-      // 🚨 SPAM
       if (
         user.groupSpamData.count > 50
       ) {
@@ -133,20 +111,22 @@ const antiSpamGroup = {
           { quoted: m }
         )
 
-        // ❌ REMOVE
         await conn.groupParticipantsUpdate(
           m.chat,
           [m.sender],
           'remove'
         )
 
-        // 🔄 RESET
         user.groupSpamData.count = 0
         user.groupSpamData.time = now
 
       }
 
-    } catch {}
+    } catch (e) {
+
+      console.log(e)
+
+    }
 
     return false
 
@@ -155,4 +135,3 @@ const antiSpamGroup = {
 }
 
 export default antiSpamGroup
-```
