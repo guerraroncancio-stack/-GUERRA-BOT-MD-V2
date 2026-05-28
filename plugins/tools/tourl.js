@@ -1,155 +1,15 @@
-import fetch from 'node-fetch'
-import { FormData, Blob } from 'formdata-node'
-import { fileTypeFromBuffer } from 'file-type'
-
-// =========================================
-// 👑 GUERRA UPLOAD
-// =========================================
-
-async function uploadToDix(buffer, fileName, mime) {
-
-    const endpoints = [
-
-        'https://api.dix.lat/upload1',
-
-        'https://api.dix.lat/upload2'
-
-    ]
-
-    for (const api of endpoints) {
-
-        try {
-
-            const form =
-            new FormData()
-
-            const blob =
-            new Blob(
-                [buffer],
-                {
-                    type: mime
-                }
-            )
-
-            form.append(
-                'file',
-                blob,
-                fileName
-            )
-
-            const res =
-            await fetch(api, {
-
-                method: 'POST',
-
-                body: form,
-
-                headers: {
-
-                    'User-Agent':
-                    'GUERRA-UPLOADER'
-
-                }
-
-            })
-
-            if (!res.ok) {
-
-                console.log(
-                    `HTTP ${res.status}`
-                )
-
-                continue
-
-            }
-
-            const json =
-            await res.json()
-
-            // =========================================
-            // ✅ VALID RESPONSE
-            // =========================================
-
-            if (
-
-                json?.status &&
-                json?.data?.url
-
-            ) {
-
-                const result =
-                json.data
-
-                // =========================================
-                // 🔥 DIRECT IMAGE URL
-                // =========================================
-
-                let finalUrl =
-                result.url
-
-                // fuerza extensión si no tiene
-
-                if (
-                    !/\.(jpg|jpeg|png|webp|gif)$/i
-                    .test(finalUrl)
-                ) {
-
-                    finalUrl +=
-                    `.${fileName.split('.').pop()}`
-
-                }
-
-                return {
-
-                    id:
-                    result.id ||
-                    'unknown',
-
-                    url:
-                    finalUrl,
-
-                    size:
-                    result.size ||
-                    `${(
-                        buffer.length /
-                        1024 /
-                        1024
-                    ).toFixed(2)} MB`,
-
-                    mime:
-                    result.mime ||
-                    mime
-
-                }
-
-            }
-
-        } catch (e) {
-
-            console.log(e)
-
-        }
-
-    }
-
-    return null
-
-}
-
-// =========================================
-// 🚀 COMMAND
-// =========================================
+import fetch from "node-fetch";
+import { FormData, Blob } from "formdata-node";
+import { fileTypeFromBuffer } from "file-type";
 
 const uploadCommand = {
 
     name: 'upload',
 
     alias: [
-
         'tourl',
-        'img',
-        'imgurl'
-
+        'dix',
+        'cdn'
     ],
 
     category: 'tools',
@@ -163,10 +23,6 @@ const uploadCommand = {
 
         try {
 
-            // =========================================
-            // 📌 MESSAGE
-            // =========================================
-
             const q =
             m.quoted
             ? m.quoted
@@ -176,28 +32,29 @@ const uploadCommand = {
             (q.msg || q).mimetype || ''
 
             // =========================================
-            // ❌ NO IMAGE
+            // ❌ VALIDAR MEDIA
             // =========================================
 
             if (
-
                 !mime ||
-                !mime.startsWith('image/')
-
+                !/image|video|audio/.test(mime)
             ) {
 
                 return conn.reply(
 
                     m.chat,
 
-`┏━━━〔 👑 GUERRA UPLOAD 👑 〕━━━⬣
+`╭━━〔 ⚠️ GUERRA CDN ⚠️ 〕━━⬣
 ┃
-┃ ❌ Responde a una imagen
-┃ usando:
+┃ ✦ Responde a:
+┃ ➥ Imagen
+┃ ➥ Video
+┃ ➥ Audio
 ┃
-┃ ➥ .${command}
+┃ ✦ Uso:
+┃ ➥ .${command} respuesta
 ┃
-┗━━━━━━━━━━━━━━━━━━━━⬣`,
+╰━━━━━━━━━━━━━━━━━━⬣`,
 
                     m
 
@@ -227,73 +84,138 @@ const uploadCommand = {
             }
 
             // =========================================
-            // 📂 TYPE
+            // 📦 FILE INFO
             // =========================================
 
             const type =
-            await fileTypeFromBuffer(
-                buffer
-            )
+            await fileTypeFromBuffer(buffer)
 
             const ext =
-            type?.ext || 'jpg'
+            type?.ext || 'bin'
 
             const fileName =
-
 `guerra_${Date.now()}.${ext}`
 
             // =========================================
-            // 🚀 UPLOAD
+            // 📤 FORM DATA
             // =========================================
 
-            const result =
-            await uploadToDix(
+            const form =
+            new FormData()
 
-                buffer,
-                fileName,
-                mime
-
+            const blob =
+            new Blob(
+                [buffer],
+                {
+                    type:
+                    mime ||
+                    'application/octet-stream'
+                }
             )
 
-            if (!result) {
+            form.append(
+                'file',
+                blob,
+                fileName
+            )
+
+            // =========================================
+            // 🌐 UPLOAD
+            // =========================================
+
+            const response =
+            await fetch(
+                'https://cdn.dix.lat/upload',
+                {
+                    method: 'POST',
+                    body: form,
+                    headers: {
+                        'User-Agent':
+                        'GUERRA-BOT-UPLOADER'
+                    }
+                }
+            )
+
+            // =========================================
+            // ❌ HTTP ERROR
+            // =========================================
+
+            if (!response.ok) {
 
                 throw new Error(
-                    'La API no devolvió URL'
+                    `HTTP ${response.status}`
                 )
 
             }
 
+            const json =
+            await response.json()
+
             // =========================================
-            // 👑 DESIGN
+            // 🔍 VALIDAR RESPUESTA
+            // =========================================
+
+            if (
+                !json ||
+                !json.status ||
+                !json.data
+            ) {
+
+                throw new Error(
+                    'Respuesta inválida'
+                )
+
+            }
+
+            const result =
+            json.data
+
+            // =========================================
+            // 📱 TIPO
+            // =========================================
+
+            let mediaType =
+            'FILE'
+
+            if (
+                mime.startsWith('image')
+            ) mediaType = 'IMAGE'
+
+            if (
+                mime.startsWith('video')
+            ) mediaType = 'VIDEO'
+
+            if (
+                mime.startsWith('audio')
+            ) mediaType = 'AUDIO'
+
+            // =========================================
+            // ✨ DISEÑO
             // =========================================
 
             const txt =
 
-`┏━━━〔 👑 GUERRA UPLOAD 👑 〕━━━⬣
+`╭━━〔 🚀 GUERRA CDN 🚀 〕━━⬣
 ┃
-┃ ✅ Imagen subida
-┃ correctamente
+┃ ✦ Estado:
+┃ ➥ Upload completado
 ┃
-┣━━━━━━━━━━━━━━━━━━⬣
-┃ 🆔 ID:
-┃ ➥ ${result.id}
+┃ ✦ Tipo:
+┃ ➥ ${mediaType}
 ┃
-┃ 📄 Archivo:
+┃ ✦ Formato:
+┃ ➥ ${result.format || ext}
+┃
+┃ ✦ Archivo:
 ┃ ➥ ${fileName}
 ┃
-┃ 📦 Peso:
-┃ ➥ ${result.size}
-┃
-┃ 🧩 Tipo:
-┃ ➥ ${result.mime}
+┃ ✦ URL:
+┃ ➥ ${result.url}
 ┃
 ┣━━━━━━━━━━━━━━━━━━⬣
-┃ 🌐 URL:
-┃ ${result.url}
-┣━━━━━━━━━━━━━━━━━━⬣
-┃ ⚡ Powered By:
+┃ 👑 Powered By:
 ┃ ➥ Kevin Guerra
-┗━━━━━━━━━━━━━━━━━━━━⬣`
+╰━━━━━━━━━━━━━━━━━━⬣`
 
             // =========================================
             // ✅ SEND
@@ -315,9 +237,9 @@ const uploadCommand = {
 
             await m.react('✅')
 
-        } catch (e) {
+        } catch (err) {
 
-            console.error(e)
+            console.error(err)
 
             await m.react('❌')
 
@@ -325,14 +247,15 @@ const uploadCommand = {
 
                 m.chat,
 
-`┏━━━〔 ⚠️ GUERRA UPLOAD ⚠️ 〕━━━⬣
+`╭━━〔 ❌ GUERRA CDN ❌ 〕━━⬣
 ┃
-┃ ❌ Error al subir
-┃ la imagen.
+┃ ✦ Error al subir
+┃ ✦ Intenta nuevamente
 ┃
-┃ 🔧 ${e.message}
+┃ ✦ Detalle:
+┃ ➥ ${err.message}
 ┃
-┗━━━━━━━━━━━━━━━━━━━━⬣`,
+╰━━━━━━━━━━━━━━━━━━⬣`,
 
                 m
 
