@@ -6,36 +6,34 @@ import fetch from 'node-fetch'
 
 const codeAICommand = {
 
-```
-name: 'codeai',
+    name: 'codeai',
 
-alias: [
-    'dev',
-    'codigo',
-    'fix',
-    'coder',
-    'programar'
-],
+    alias: [
+        'dev',
+        'codigo',
+        'fix',
+        'coder',
+        'programar'
+    ],
 
-category: 'ai',
+    category: 'ai',
 
-cooldown: 5,
+    cooldown: 5,
 
-async run(m, {
-    conn,
-    text
-}) {
+    async run(m, {
+        conn,
+        text
+    }) {
 
-    // =========================================
-    // ❌ SIN TEXTO
-    // =========================================
+        // =========================================
+        // ❌ SIN TEXTO
+        // =========================================
 
-    if (!text) {
+        if (!text) {
 
-        return conn.reply(
+            return conn.reply(
 
-            m.chat,
-```
+                m.chat,
 
 `╭━━〔 👑 GUERRA CODE AI 👑 〕━━⬣
 ┃ 💻 Asistente de programación
@@ -49,277 +47,205 @@ async run(m, {
 ┃ ➥ .coder api nodejs
 ╰━━━━━━━━━━━━━━━━━━⬣`,
 
-```
-            m
-
-        )
-
-    }
-
-    try {
-
-        // =========================================
-        // 💻 REACT
-        // =========================================
-
-        await m.react('💻')
-
-        // =========================================
-        // 👑 RESPUESTAS MANUALES
-        // =========================================
-
-        const lower = text.toLowerCase()
-
-        // =========================================
-        // 👑 CREADOR
-        // =========================================
-
-        if (
-
-            lower.includes('quien te creo') ||
-            lower.includes('quién te creó') ||
-            lower.includes('creador') ||
-            lower.includes('developer')
-
-        ) {
-
-            await m.react('✅')
-
-            return conn.reply(
-
-                m.chat,
-```
-
-`╭━━〔 👑 GUERRA CODE AI 👑 〕━━⬣
-┃ 🤖 Sistema Developer AI
-┃
-┃ 👑 Mi creador oficial es:
-┃ ➥ Kevin Guerra
-┃
-┃ ⚡ Inteligencia avanzada
-┃ ⚡ Optimizada para código
-╰━━━━━━━━━━━━━━━━━━⬣`,
-
-```
                 m
 
             )
 
         }
-
-        // =========================================
-        // 🔥 FIX BAILEYS
-        // =========================================
-
-        if (
-
-            lower.includes('baileys') ||
-            lower.includes('error') ||
-            lower.includes('cannot use in operator')
-
-        ) {
-
-            await m.react('✅')
-
-            return conn.reply(
-
-                m.chat,
-```
-
-`╭━━〔 👑 GUERRA CODE AI 👑 〕━━⬣
-┃ 🔥 Solución encontrada
-┣━━━━━━━━━━━━━━━━━━⬣
-┃ 📌 Error detectado:
-┃ Cannot use 'in' operator
-┃
-┃ ✅ Solución:
-┃
-┃ Usa:
-┃
-┃ const msg = {
-┃   text: 'Hola'
-┃ }
-┃
-┃ Y NO:
-┃
-┃ const msg = '.hola'
-┃
-┃ Baileys necesita objetos
-┃ válidos dentro de sendMessage
-┃ y generateWAMessage.
-╰━━━━━━━━━━━━━━━━━━⬣`,
-
-```
-                m
-
-            )
-
-        }
-
-        // =========================================
-        // 🔥 MENU BOT
-        // =========================================
-
-        if (
-
-            lower.includes('menu') ||
-            lower.includes('menú')
-
-        ) {
-
-            await m.react('✅')
-
-            return conn.reply(
-
-                m.chat,
-```
-
-`╭━━〔 👑 GUERRA CODE AI 👑 〕━━⬣
-┃ 💻 Código generado
-┣━━━━━━━━━━━━━━━━━━⬣
-┃ export default {
-┃   name: 'menu',
-┃
-┃   async run(m,{conn}) {
-┃
-┃     conn.reply(
-┃       m.chat,
-┃       'Hola Mundo',
-┃       m
-┃     )
-┃
-┃   }
-┃ }
-╰━━━━━━━━━━━━━━━━━━⬣`,
-
-```
-                m
-
-            )
-
-        }
-
-        // =========================================
-        // 🔥 API NODEJS
-        // =========================================
-
-        if (
-
-            lower.includes('api') ||
-            lower.includes('nodejs')
-
-        ) {
-
-            await m.react('✅')
-
-            return conn.reply(
-
-                m.chat,
-```
-
-`╭━━〔 👑 GUERRA CODE AI 👑 〕━━⬣
-┃ ⚡ API NodeJS
-┣━━━━━━━━━━━━━━━━━━⬣
-┃ import express
-┃ from 'express'
-┃
-┃ const app = express()
-┃
-┃ app.get('/', (req,res)=>{
-┃   res.json({
-┃     status: true
-┃   })
-┃ })
-┃
-┃ app.listen(3000)
-╰━━━━━━━━━━━━━━━━━━⬣`,
-
-```
-                m
-
-            )
-
-        }
-
-        // =========================================
-        // 🌐 IA REAL
-        // =========================================
-
-        let answer = null
 
         try {
 
-            const api =
-```
+            // =========================================
+            // 💻 REACT
+            // =========================================
 
-`${global.url_api}/chat?q=${encodeURIComponent(text)}&apikey=${global.key || key}`
+            await m.react('💻')
 
-```
-            const res =
-            await fetch(api)
+            const lower =
+            text.toLowerCase()
 
-            if (res.ok) {
+            let answer = null
 
-                const json =
-                await res.json()
+            // =========================================
+            // 👑 RESPUESTA CREADOR
+            // =========================================
+
+            if (
+
+                lower.includes('quien te creo') ||
+                lower.includes('quién te creó') ||
+                lower.includes('creador') ||
+                lower.includes('developer')
+
+            ) {
 
                 answer =
+`👑 Mi creador oficial es Kevin Guerra.
 
-                json?.data?.content ||
-                json?.data?.response ||
-                json?.result ||
-                json?.response ||
-                json?.message ||
-                json?.answer ||
-                json?.content ||
-                null
+⚡ Soy GUERRA CODE AI
+💻 Especializado en programación.`
 
             }
 
-        } catch {}
+            // =========================================
+            // 🔥 ERRORES BAILEYS
+            // =========================================
 
-        // =========================================
-        // 🔥 FALLBACK INTELIGENTE
-        // =========================================
+            else if (
 
-        if (!answer) {
+                lower.includes('cannot use') ||
+                lower.includes('contextinfo') ||
+                lower.includes('baileys')
+
+            ) {
+
+                answer =
+`💡 Ese error ocurre porque estás enviando texto directamente en vez de un objeto válido.
+
+✅ Correcto:
+
+conn.sendMessage(m.chat, {
+   text: 'Hola'
+})
+
+❌ Incorrecto:
+
+conn.sendMessage(m.chat, 'Hola')
+
+Baileys necesita objetos JSON válidos.`
+
+            }
+
+            // =========================================
+            // 🔥 MENU
+            // =========================================
+
+            else if (
+
+                lower.includes('menu') ||
+                lower.includes('menú')
+
+            ) {
+
+                answer =
+`export default {
+
+   name: 'menu',
+
+   async run(m,{ conn }) {
+
+      conn.reply(
+         m.chat,
+         'Hola Mundo',
+         m
+      )
+
+   }
+
+}`
+
+            }
+
+            // =========================================
+            // 🔥 API EXPRESS
+            // =========================================
+
+            else if (
+
+                lower.includes('api') ||
+                lower.includes('express')
+
+            ) {
+
+                answer =
+`import express from 'express'
+
+const app = express()
+
+app.get('/', (req,res) => {
+
+   res.json({
+      status: true
+   })
+
+})
+
+app.listen(3000)`
+
+            }
+
+            // =========================================
+            // 🌐 IA EXTERNA
+            // =========================================
+
+            if (!answer) {
+
+                try {
+
+                    const api =
+
+`${global.url_api}/chat?q=${encodeURIComponent(text)}&apikey=${global.key || key}`
+
+                    const res =
+                    await fetch(api)
+
+                    if (res.ok) {
+
+                        const json =
+                        await res.json()
+
+                        answer =
+
+                        json?.data?.content ||
+                        json?.data?.response ||
+                        json?.result ||
+                        json?.response ||
+                        json?.message ||
+                        json?.answer ||
+                        json?.content ||
+                        null
+
+                    }
+
+                } catch {}
+
+            }
+
+            // =========================================
+            // ❌ FALLBACK
+            // =========================================
+
+            if (!answer) {
+
+                answer =
+`No pude generar una respuesta exacta.
+
+💡 Intenta ser más específico.
+
+Ejemplos:
+
+- crea un menú
+- arregla TypeError
+- crea una api express
+- haz un comando baileys`
+
+            }
+
+            // =========================================
+            // 📱 FORMATO
+            // =========================================
 
             answer =
-```
+            String(answer).trim()
 
-`No pude generar código exacto para esa consulta.
+            const formatted =
 
-Intenta especificar:
+            answer
+            .split('\n')
+            .map(v => `┃ ${v}`)
+            .join('\n')
 
-* lenguaje
-* error
-* framework
-* librería
-
-Ejemplo:
-"crea un menú en baileys"
-"arregla TypeError en nodejs"
-"haz una api express"`
-
-```
-        }
-
-        answer =
-        String(answer).trim()
-
-        // =========================================
-        // 📱 FORMATO
-        // =========================================
-
-        const formatted =
-
-        answer
-        .split('\n')
-        .map(v => `┃ ${v}`)
-        .join('\n')
-
-        const finalText =
-```
+            const finalText =
 
 `╭━━〔 👑 GUERRA CODE AI 👑 〕━━⬣
 ┃ 💻 Developer Assistant
@@ -333,54 +259,49 @@ ${formatted}
 ┃ ⚡ Powered By Kevin Guerra
 ╰━━━━━━━━━━━━━━━━━━⬣`
 
-```
-        // =========================================
-        // ✅ SEND
-        // =========================================
+            // =========================================
+            // ✅ SEND
+            // =========================================
 
-        await m.react('✅')
+            await m.react('✅')
 
-        return conn.sendMessage(
+            return conn.sendMessage(
 
-            m.chat,
+                m.chat,
 
-            {
-                text: finalText
-            },
+                {
+                    text: finalText
+                },
 
-            {
-                quoted: m
-            }
+                {
+                    quoted: m
+                }
 
-        )
+            )
 
-    } catch (err) {
+        } catch (err) {
 
-        console.error(err)
+            console.error(err)
 
-        await m.react('❌')
+            await m.react('❌')
 
-        return conn.reply(
+            return conn.reply(
 
-            m.chat,
-```
+                m.chat,
 
 `╭━━〔 ⚠️ GUERRA CODE AI ⚠️ 〕━━⬣
 ┃ ❌ Error en el sistema
 ┃
-┃ Intenta nuevamente
-┃ en unos segundos.
+┃ Intenta nuevamente.
 ╰━━━━━━━━━━━━━━━━━━⬣`,
 
-```
-            m
+                m
 
-        )
+            )
+
+        }
 
     }
-
-}
-```
 
 }
 
