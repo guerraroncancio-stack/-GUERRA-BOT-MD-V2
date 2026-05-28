@@ -68,6 +68,7 @@ const antiSpamGroup = {
 
         user.groupSpamData = {
           count: 0,
+          warned: false,
           time: now
         }
 
@@ -80,12 +81,49 @@ const antiSpamGroup = {
       ) {
 
         user.groupSpamData.count = 0
+        user.groupSpamData.warned = false
         user.groupSpamData.time = now
 
       }
 
       user.groupSpamData.count += 1
 
+      // ⚠️ AVISO EN 10 MENSAJES
+      if (
+        user.groupSpamData.count >= 10 &&
+        !user.groupSpamData.warned
+      ) {
+
+        user.groupSpamData.warned = true
+
+        await conn.sendMessage(
+          m.chat,
+          {
+            text:
+`╭━━〔 ⚠️ ANTI SPAM ⚠️ 〕━━⬣
+┃
+┃ 👤 Usuario:
+┃ ➥ @${m.sender.split('@')[0]}
+┃
+┃ 📊 Mensajes:
+┃ ➥ ${user.groupSpamData.count}/50
+┃
+┃ 🚫 El sistema anti spam
+┃ elimina automáticamente
+┃ usuarios con exceso
+┃ de mensajes.
+┃
+┃ ⚡ Reduce el spam.
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`,
+            mentions: [m.sender]
+          },
+          { quoted: m }
+        )
+
+      }
+
+      // 🚨 ELIMINAR EN 50
       if (
         user.groupSpamData.count > 50
       ) {
@@ -118,6 +156,7 @@ const antiSpamGroup = {
         )
 
         user.groupSpamData.count = 0
+        user.groupSpamData.warned = false
         user.groupSpamData.time = now
 
       }
