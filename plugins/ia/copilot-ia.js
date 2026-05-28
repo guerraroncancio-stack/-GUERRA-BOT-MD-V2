@@ -595,7 +595,7 @@ const copilotCommand = {
 
                 m.chat,
 
-`┏━━━〔 👑 GUERRA COPILOT 👑 〕━━━⬣
+`┏━━〔 👑 GUERRA COPILOT 👑 〕━⬣
 ┃
 ┃ ✦ IA Microsoft activada
 ┃ ✦ Modelo: Copilot AI
@@ -646,7 +646,7 @@ const copilotCommand = {
 
             const finalText =
 
-`┏━━━〔 👑 GUERRA COPILOT 👑 〕━━━⬣
+`┏━━〔 👑 GUERRA COPILOT 👑 〕━━⬣
 ┃ 🤖 Microsoft Copilot
 ┃ 👤 ${m.pushName || 'Usuario'}
 ┣━━━━━━━━━━━━━━━━━━⬣
@@ -720,7 +720,7 @@ ${formatted}
                 {
 
                     text:
-`┏━━━〔 ⚠️ GUERRA COPILOT ⚠️ 〕━━━⬣
+`┏━━〔 ⚠️ GUERRA COPILOT ⚠️ 〕━━⬣
 ┃
 ┃ Error al conectar
 ┃ con Microsoft Copilot.
