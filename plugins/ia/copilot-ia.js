@@ -743,4 +743,4 @@ ${formatted}
 
 }
 
-export default copilotCommands
+export default copilotCommand
