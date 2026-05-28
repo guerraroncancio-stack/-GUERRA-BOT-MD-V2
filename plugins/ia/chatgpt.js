@@ -30,12 +30,14 @@ const chatgptCommand = {
 
                 m.chat,
 
-`┏━━━〔 🤖 IA GUERRA BOT 〕━━━⬣
+`┏━━━〔 🤖 IA - GUERRA BOT 〕━━━⬣
 ┃
 ┃ ✦ Escribe una pregunta
-┃ ✦ Ejemplo:
+┃
+┃ ✦ Ejemplos:
 ┃ ➥ .ia hola
 ┃ ➥ .gpt quien eres
+┃ ➥ .chat explica javascript
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
@@ -46,51 +48,70 @@ const chatgptCommand = {
 
         try {
 
-            // =========================================
-            // ⏳ REACCIÓN
-            // =========================================
-
             await m.react('🧠')
 
             // =========================================
-            // 🌐 API
+            // 🌐 API URL
             // =========================================
 
             const api =
 `${global.url_api}/chat?q=${encodeURIComponent(text)}&apikey=${global.key || key}`
 
-            const response =
+            const res =
             await fetch(api)
 
-            const json =
-            await response.json()
-
             // =========================================
-            // ❌ ERROR API
+            // ❌ ERROR FETCH
             // =========================================
 
-            if (
-                !json ||
-                !json.success ||
-                !json.data ||
-                !json.data.content
-            ) {
+            if (!res.ok) {
 
                 throw new Error(
-                    'API inválida'
+                    `HTTP ${res.status}`
                 )
 
             }
 
+            const json =
+            await res.json()
+
+            console.log(json)
+
             // =========================================
-            // ✅ RESPUESTA IA
+            // 🔍 DETECTAR RESPUESTA
             // =========================================
 
-            const ai =
-            json.data.content
-            .trim()
+            let answer =
 
-            const result =
+            json?.data?.content ||
+            json?.data?.response ||
+            json?.result ||
+            json?.response ||
+            json?.message ||
+            json?.answer ||
+            json?.content ||
+            null
+
+            // =========================================
+            // ❌ NO RESPONSE
+            // =========================================
+
+            if (!answer) {
+
+                throw new Error(
+                    'La API no devolvió respuesta'
+                )
+
+            }
+
+            answer =
+            String(answer).trim()
+
+            // =========================================
+            // ✅ RESPONSE
+            // =========================================
+
+            const txt =
 
 `┏━━━〔 🤖 IA - GUERRA BOT 〕━━━⬣
 ┃
@@ -99,7 +120,7 @@ const chatgptCommand = {
 ┃
 ┣━━━━━━━━━━━━━━━━━━⬣
 ┃
-${ai
+${answer
 .split('\n')
 .map(v => `┃ ${v}`)
 .join('\n')}
@@ -108,16 +129,12 @@ ${ai
 
             await m.react('✅')
 
-            // =========================================
-            // 📤 ENVIAR
-            // =========================================
-
-            await conn.sendMessage(
+            return conn.sendMessage(
 
                 m.chat,
 
                 {
-                    text: result
+                    text: txt
                 },
 
                 {
@@ -126,9 +143,9 @@ ${ai
 
             )
 
-        } catch (e) {
+        } catch (err) {
 
-            console.error(e)
+            console.error(err)
 
             await m.react('❌')
 
@@ -138,11 +155,11 @@ ${ai
 
 `┏━━━〔 ⚠️ ERROR IA 〕━━━⬣
 ┃
-┃ No pude conectar
-┃ con el sistema IA
+┃ No pude conectarme
+┃ correctamente a la IA
 ┃
 ┃ Intenta nuevamente
-┃ en unos segundos
+┃ más tarde
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
