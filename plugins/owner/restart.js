@@ -1,42 +1,99 @@
+import { exec } from 'child_process'
+
 const restartCommand = {
+
     name: 'restart',
-    alias: ['reiniciar', 'reboot'],
+
+    alias: [
+        'reiniciar',
+        'reboot'
+    ],
+
     category: 'owner',
 
-    run: async (m, { conn, isROwner }) => {
+    run: async (m, {
+        conn,
+        isROwner
+    }) => {
 
-        if (!isROwner) return;
+        if (!isROwner) return
 
-        const ui = `╭─〔 🔄 *REINICIO DEL SISTEMA* 〕─╮
+        const ui = `
+╭─〔 🔄 REINICIO DEL SISTEMA 〕─╮
 │
-│ ⚙️ Estado: Reiniciando...
-│ ⏳ Tiempo estimado: 2s
-│ 📡 Proceso: Cerrando sesión
+│ ⚙️ Estado: Reiniciando bot
+│ 🚀 Método: Soft Restart
+│ 📡 Servidor: Activo
+│ ⏳ Tiempo: 2 segundos
 │
 ╰──────────────────────╯
-_El sistema volverá en breve..._`;
+
+> GUERRA BOT MD volverá automáticamente
+`
 
         try {
-            await m.reply(ui);
 
-            await new Promise(r => setTimeout(r, 2000));
-
-            try {
-                if (conn.ws?.readyState === 1) {
-                    await conn.logout().catch(() => {});
-                }
-            } catch {}
-
-            process.exit(0);
-
-        } catch (error) {
-            return conn.reply(
+            await conn.sendMessage(
                 m.chat,
-                `❌ *REINICIO FALLIDO*\n\n⚠️ ${error.message}`,
-                m
-            );
-        }
-    }
-};
+                {
+                    text: ui
+                },
+                {
+                    quoted: m
+                }
+            )
 
-export default restartCommand;
+            await m.react('⚙️')
+
+            // =====================================
+            // 🔥 RESTART SIN APAGAR VPS
+            // =====================================
+
+            setTimeout(() => {
+
+                console.log(
+                    '\n🔄 Reiniciando GUERRA BOT...\n'
+                )
+
+                // PM2
+                if (process.env.pm_id) {
+
+                    exec(
+                        `pm2 restart ${process.env.pm_id}`
+                    )
+
+                }
+
+                // PTERODACTYL / NODEMON
+                else {
+
+                    process.exit(1)
+
+                }
+
+            }, 2000)
+
+        } catch (e) {
+
+            console.log(e)
+
+            return conn.sendMessage(
+                m.chat,
+                {
+                    text:
+`❌ ERROR AL REINICIAR
+
+⚠️ ${e.message}`
+                },
+                {
+                    quoted: m
+                }
+            )
+
+        }
+
+    }
+
+}
+
+export default restartCommand
