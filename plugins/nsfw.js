@@ -1,121 +1,169 @@
-import fetch from 'node-fetch';
-
-const handler = async (m, { conn, command, usedPrefix }) => {
+const handler = async (m, { conn, command }) => {
 
   // =========================
   // 🔥 FIX DATABASE
   // =========================
 
+  global.db.data = global.db.data || {}
   global.db.data.chats = global.db.data.chats || {}
-  global.db.data.chats[m.chat] = global.db.data.chats[m.chat] || {}
+
+  if (!global.db.data.chats[m.chat]) {
+    global.db.data.chats[m.chat] = {}
+  }
 
   if (!('nsfw' in global.db.data.chats[m.chat])) {
     global.db.data.chats[m.chat].nsfw = false
   }
 
   // =========================
-  // 🔞 NSFW ACTIVADO
+  // 🔞 NSFW CHECK
   // =========================
 
   if (!global.db.data.chats[m.chat].nsfw && m.isGroup) {
-    throw '🚩 *¡Estos comandos están desactivados!*'
+    throw '🚩 *¡Los comandos NSFW están desactivados!*'
   }
 
-  switch (command) {
+  try {
 
-    case 'pack': {
+    switch (command) {
 
-      const url =
-      pack[Math.floor(Math.random() * pack.length)]
+      // =========================
+      // 🥵 PACK
+      // =========================
 
-      await conn.sendMessage(
-        m.chat,
-        {
-          image: { url },
-          caption: `*🥵 Pack 🥵*`
-        },
-        { quoted: m }
-      )
+      case 'pack': {
+
+        const url =
+        global.pack[
+          Math.floor(Math.random() * global.pack.length)
+        ]
+
+        await conn.sendMessage(
+          m.chat,
+          {
+            image: { url },
+            caption: '🥵 Pack 🥵'
+          },
+          { quoted: m }
+        )
+
+      }
+      break
+
+      // =========================
+      // 🥵 PACK 2
+      // =========================
+
+      case 'pack2': {
+
+        const url =
+        global.packgirl[
+          Math.floor(Math.random() * global.packgirl.length)
+        ]
+
+        await conn.sendMessage(
+          m.chat,
+          {
+            image: { url },
+            caption: '🥵 Pack 2 🥵'
+          },
+          { quoted: m }
+        )
+
+      }
+      break
+
+      // =========================
+      // 🥵 PACK 3
+      // =========================
+
+      case 'pack3': {
+
+        const url =
+        global.packmen[
+          Math.floor(Math.random() * global.packmen.length)
+        ]
+
+        await conn.sendMessage(
+          m.chat,
+          {
+            image: { url },
+            caption: '🥵 Pack 3 🥵'
+          },
+          { quoted: m }
+        )
+
+      }
+      break
+
+      // =========================
+      // 🎥 VIDEO XXX
+      // =========================
+
+      case 'videoxxx':
+      case 'vídeoxxx': {
+
+        const url =
+        global.videosxxxc[
+          Math.floor(Math.random() * global.videosxxxc.length)
+        ]
+
+        await conn.sendMessage(
+          m.chat,
+          {
+            video: { url },
+            caption: '🥵 VIDEO XXX 🥵',
+            gifPlayback: false
+          },
+          { quoted: m }
+        )
+
+      }
+      break
+
+      // =========================
+      // 🎥 VIDEO LESBI
+      // =========================
+
+      case 'videoxxxlesbi':
+      case 'videolesbixxx':
+      case 'pornolesbivid':
+      case 'pornolesbianavid':
+      case 'pornolesbiv':
+      case 'pornolesbianav':
+      case 'pornolesv': {
+
+        const url =
+        global.videosxxxc2[
+          Math.floor(Math.random() * global.videosxxxc2.length)
+        ]
+
+        await conn.sendMessage(
+          m.chat,
+          {
+            video: { url },
+            caption: '🥵 VIDEO LESBI 🥵',
+            gifPlayback: false
+          },
+          { quoted: m }
+        )
+
+      }
+      break
 
     }
-    break
 
-    case 'pack2': {
+  } catch (e) {
 
-      const url2 =
-      packgirl[Math.floor(Math.random() * packgirl.length)]
+    console.log(e)
 
-      await conn.sendMessage(
-        m.chat,
-        {
-          image: { url: url2 },
-          caption: `*🥵 Pack 2 🥵*`
-        },
-        { quoted: m }
-      )
-
-    }
-    break
-
-    case 'pack3': {
-
-      const url3 =
-      packmen[Math.floor(Math.random() * packmen.length)]
-
-      await conn.sendMessage(
-        m.chat,
-        {
-          image: { url: url3 },
-          caption: `*🥵 Pack 3 🥵*`
-        },
-        { quoted: m }
-      )
-
-    }
-    break
-
-    case 'videoxxx':
-    case 'vídeoxxx': {
-
-      const url4 =
-      videosxxxc[Math.floor(Math.random() * videosxxxc.length)]
-
-      await conn.sendMessage(
-        m.chat,
-        {
-          video: { url: url4 },
-          caption: `*ᴅɪsғʀᴜᴛᴀ ᴅᴇʟ ᴠɪᴅᴇᴏ 🥵*`,
-          gifPlayback: false
-        },
-        { quoted: m }
-      )
-
-    }
-    break
-
-    case 'videoxxxlesbi':
-    case 'videolesbixxx':
-    case 'pornolesbivid':
-    case 'pornolesbianavid':
-    case 'pornolesbiv':
-    case 'pornolesbianav':
-    case 'pornolesv': {
-
-      const url5 =
-      videosxxxc2[Math.floor(Math.random() * videosxxxc2.length)]
-
-      await conn.sendMessage(
-        m.chat,
-        {
-          video: { url: url5 },
-          caption: `*ᴅɪsғʀᴜᴛᴀ ᴅᴇʟ ᴠɪᴅᴇᴏ 🥵*`,
-          gifPlayback: false
-        },
-        { quoted: m }
-      )
-
-    }
-    break
+    return conn.sendMessage(
+      m.chat,
+      {
+        text: '❌ Error al ejecutar el comando.'
+      },
+      { quoted: m }
+    )
 
   }
 
@@ -154,33 +202,28 @@ handler.command = [
 handler.tags = ['nsfw']
 
 export default handler
+
+// =========================================
+// 📦 LINKS DE IMÁGENES Y VIDEOS
+// PEGA TUS LINKS ABAJO
+// =========================================
+
 global.pack = [
-  'LINK1',
-  'LINK2'
+  // LINKS PACK
 ]
 
 global.packgirl = [
-  'LINK1',
-  'LINK2'
+  // LINKS PACK GIRL
 ]
 
 global.packmen = [
-  'LINK1',
-  'LINK2'
+  // LINKS PACK MEN
 ]
 
 global.videosxxxc = [
-  'VIDEO1',
-  'VIDEO2'
+  // LINKS VIDEOS XXX
 ]
 
 global.videosxxxc2 = [
-"https://telegra.ph/file/2dfb1ad0cab22951e30d1.mp4",
-"https://telegra.ph/file/c430651857023968d3a76.mp4",
-"https://telegra.ph/file/1ba17f6230dd1ea2de48c.mp4",
-"https://telegra.ph/file/e04b802f12aafee3d314e.mp4",
-"https://telegra.ph/file/a58661697d519d3d0acbd.mp4",
-"https://telegra.ph/file/9ed60b18e79fcfebcd76c.mp4",
-"https://telegra.ph/file/d58096000ad5eaef0b05e.mp4",
-"https://telegra.ph/file/60b4c8ebeadebb7e0da06.mp4"
-];
+  // LINKS VIDEOS LESBI
+]
