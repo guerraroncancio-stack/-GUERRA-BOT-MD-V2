@@ -8,7 +8,8 @@ const chatgptCommand = {
         'ia',
         'gpt',
         'chat',
-        'openai'
+        'openai',
+        'guerraia'
     ],
 
     category: 'ai',
@@ -30,14 +31,16 @@ const chatgptCommand = {
 
                 m.chat,
 
-`┏━━━〔 🤖 IA - GUERRA BOT 〕━━━⬣
+`┏━━━〔 👑 GUERRA IA 👑 〕━━━⬣
 ┃
-┃ ✦ Escribe una pregunta
+┃ ✦ Sistema inteligente activado
+┃ ✦ Modelo: ChatGPT AI
+┃ ✦ Creador: Kevin Guerra
 ┃
 ┃ ✦ Ejemplos:
 ┃ ➥ .ia hola
 ┃ ➥ .gpt quien eres
-┃ ➥ .chat explica javascript
+┃ ➥ .chat explica nodejs
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
@@ -48,10 +51,14 @@ const chatgptCommand = {
 
         try {
 
+            // =========================================
+            // 🧠 REACCIÓN
+            // =========================================
+
             await m.react('🧠')
 
             // =========================================
-            // 🌐 API URL
+            // 🌐 API
             // =========================================
 
             const api =
@@ -59,10 +66,6 @@ const chatgptCommand = {
 
             const res =
             await fetch(api)
-
-            // =========================================
-            // ❌ ERROR FETCH
-            // =========================================
 
             if (!res.ok) {
 
@@ -75,10 +78,8 @@ const chatgptCommand = {
             const json =
             await res.json()
 
-            console.log(json)
-
             // =========================================
-            // 🔍 DETECTAR RESPUESTA
+            // 🔍 RESPUESTA IA
             // =========================================
 
             let answer =
@@ -92,14 +93,10 @@ const chatgptCommand = {
             json?.content ||
             null
 
-            // =========================================
-            // ❌ NO RESPONSE
-            // =========================================
-
             if (!answer) {
 
                 throw new Error(
-                    'La API no devolvió respuesta'
+                    'Sin respuesta'
                 )
 
             }
@@ -108,14 +105,20 @@ const chatgptCommand = {
             String(answer).trim()
 
             // =========================================
-            // ✅ RESPONSE
+            // 👑 DISEÑO GUERRA IA
             // =========================================
 
             const txt =
 
-`┏━━━〔 🤖 IA - GUERRA BOT 〕━━━⬣
+`┏━━━〔 👑 GUERRA IA 👑 〕━━━⬣
 ┃
-┃ ✦ Pregunta:
+┃ 🤖 Modelo:
+┃ ➥ ChatGPT Intelligence
+┃
+┃ 👤 Usuario:
+┃ ➥ ${m.pushName || 'Usuario'}
+┃
+┃ ❓ Pregunta:
 ┃ ➥ ${text}
 ┃
 ┣━━━━━━━━━━━━━━━━━━⬣
@@ -125,7 +128,14 @@ ${answer
 .map(v => `┃ ${v}`)
 .join('\n')}
 ┃
+┣━━━━━━━━━━━━━━━━━━⬣
+┃ ⚡ Powered By:
+┃ ➥ Kevin Guerra
 ┗━━━━━━━━━━━━━━━━━━━━⬣`
+
+            // =========================================
+            // ✅ ENVIAR
+            // =========================================
 
             await m.react('✅')
 
@@ -153,13 +163,13 @@ ${answer
 
                 m.chat,
 
-`┏━━━〔 ⚠️ ERROR IA 〕━━━⬣
+`┏━━━〔 ⚠️ GUERRA IA ⚠️ 〕━━━⬣
 ┃
-┃ No pude conectarme
-┃ correctamente a la IA
+┃ Error al conectar
+┃ con el sistema IA
 ┃
 ┃ Intenta nuevamente
-┃ más tarde
+┃ en unos segundos
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
