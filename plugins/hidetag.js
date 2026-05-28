@@ -269,60 +269,71 @@ export default {
 
       }
 
-      /* =======================
-         QUOTED TEXT
-      ======================= */
+     /* =======================
+   QUOTED TEXT
+======================= */
 
-      if (m.quoted) {
+if (m.quoted) {
 
-        let content =
-          q?.message?.[mtype]
+  const content =
+    q?.message?.[mtype]
 
-        if (
-          !content ||
-          typeof content !== 'object'
-        ) {
+  // 🔥 SI NO EXISTE
+  if (!content) {
 
-          content = {
-            text: finalCaption
-          }
-
-        }
-
-        const newMsg =
-          conn.cMod(
-            m.chat,
-            generateWAMessageFromContent(
-              m.chat,
-              {
-                [mtype || 'extendedTextMessage']:
-                {
-                  ...content,
-                  text: finalCaption
-                }
-              },
-              {
-                quoted: fkontak,
-                userJid: conn.user.id
-              }
-            ),
-            finalCaption,
-            conn.user.jid,
-            {
-              mentions: users
-            }
-          )
-
-        return await conn.relayMessage(
-          m.chat,
-          newMsg.message,
-          {
-            messageId:
-            newMsg.key.id
-          }
-        )
-
+    return await conn.sendMessage(
+      m.chat,
+      {
+        text: finalCaption,
+        mentions: users
+      },
+      {
+        quoted: fkontak
       }
+    )
+
+  }
+
+  // 🔥 AGREGAR TEXTO Y MENCIONES
+  if (
+    typeof content === 'object'
+  ) {
+
+    content.caption =
+      finalCaption
+
+    content.text =
+      finalCaption
+
+    content.contextInfo = {
+      ...(content.contextInfo || {}),
+      mentionedJid: users
+    }
+
+  }
+
+  const newMsg =
+    generateWAMessageFromContent(
+      m.chat,
+      {
+        [mtype]: content
+      },
+      {
+        quoted: fkontak,
+        userJid: conn.user.id
+      }
+    )
+
+  return await conn.relayMessage(
+    m.chat,
+    newMsg.message,
+    {
+      messageId:
+        newMsg.key.id
+    }
+  )
+
+}
 
       /* =======================
          NORMAL TEXT
