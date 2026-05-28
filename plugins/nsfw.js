@@ -2,8 +2,22 @@ export default {
 
   name: 'nsfw',
 
+  alias: [
+    'pack',
+    'pack2',
+    'pack3',
+    'videoxxx',
+    'vídeoxxx',
+    'videoxxxlesbi',
+    'videolesbixxx',
+    'pornolesbivid',
+    'pornolesbianavid',
+    'pornolesbiv',
+    'pornolesbianav',
+    'pornolesv'
+  ],
+
   command: [
-    'nsfw',
     'pack',
     'pack2',
     'pack3',
@@ -20,15 +34,14 @@ export default {
 
   tags: ['nsfw'],
 
-  async run(m, { conn, command, args, isAdmin, isOwner }) {
+  async run(m, { conn, command, args }) {
 
     try {
 
       // =========================
-      // 🔥 FIX DATABASE
+      // 🔥 DATABASE FIX
       // =========================
 
-      global.db = global.db || {}
       global.db.data = global.db.data || {}
       global.db.data.chats = global.db.data.chats || {}
 
@@ -40,25 +53,40 @@ export default {
 
       }
 
-      const chat =
-      global.db.data.chats[m.chat]
+      const chat = global.db.data.chats[m.chat]
 
       // =========================
-      // 🔞 ACTIVAR / DESACTIVAR
+      // 🔞 ON / OFF
       // =========================
 
-      if (command === 'nsfw') {
-
-        if (!m.isGroup) {
-          return m.reply('❌ Solo para grupos.')
-        }
-
-        if (!isAdmin && !isOwner) {
-          return m.reply('❌ Solo admins.')
-        }
+      if (
+        command === 'nsfw'
+      ) {
 
         const option =
         (args[0] || '').toLowerCase()
+
+        if (!option) {
+
+          return conn.sendMessage(
+            m.chat,
+            {
+              text:
+`╭━━〔 🔞 NSFW SYSTEM 🔞 〕━━⬣
+┃
+┃ Estado:
+┃ ➥ ${chat.nsfw ? 'Activado ✅' : 'Desactivado ❌'}
+┃
+┃ Ejemplos:
+┃ ➥ .nsfw on
+┃ ➥ .nsfw off
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+            },
+            { quoted: m }
+          )
+
+        }
 
         if (option === 'on') {
 
@@ -68,10 +96,9 @@ export default {
             m.chat,
             {
               text:
-`╭━━〔 🔞 NSFW 🔞 〕━━⬣
+`╭━━〔 🔞 NSFW SYSTEM 🔞 〕━━⬣
 ┃
-┃ Estado:
-┃ ➥ ACTIVADO ✅
+┃ NSFW activado ✅
 ┃
 ╰━━━━━━━━━━━━━━━━━━⬣`
             },
@@ -88,10 +115,9 @@ export default {
             m.chat,
             {
               text:
-`╭━━〔 🔞 NSFW 🔞 〕━━⬣
+`╭━━〔 🔞 NSFW SYSTEM 🔞 〕━━⬣
 ┃
-┃ Estado:
-┃ ➥ DESACTIVADO ❌
+┃ NSFW desactivado ❌
 ┃
 ╰━━━━━━━━━━━━━━━━━━⬣`
             },
@@ -100,25 +126,10 @@ export default {
 
         }
 
-        return conn.sendMessage(
-          m.chat,
-          {
-            text:
-`╭━━〔 🔞 NSFW SYSTEM 🔞 〕━━⬣
-┃
-┃ Uso correcto:
-┃ ➥ .nsfw on
-┃ ➥ .nsfw off
-┃
-╰━━━━━━━━━━━━━━━━━━⬣`
-          },
-          { quoted: m }
-        )
-
       }
 
       // =========================
-      // 🔞 CHECK NSFW
+      // 🔒 CHECK NSFW
       // =========================
 
       if (!chat.nsfw && m.isGroup) {
@@ -127,10 +138,10 @@ export default {
           m.chat,
           {
             text:
-`╭━━〔 🔞 NSFW 🔞 〕━━⬣
+`╭━━〔 🔞 NSFW SYSTEM 🔞 〕━━⬣
 ┃
-┃ El sistema NSFW
-┃ está desactivado.
+┃ Los comandos NSFW
+┃ están desactivados.
 ┃
 ┃ Usa:
 ┃ ➥ .nsfw on
@@ -149,6 +160,9 @@ export default {
       switch (command) {
 
         case 'pack': {
+
+          if (!global.pack.length)
+          return m.reply('❌ No hay links en global.pack')
 
           const url =
           global.pack[
@@ -173,6 +187,9 @@ export default {
 
         case 'pack2': {
 
+          if (!global.packgirl.length)
+          return m.reply('❌ No hay links en global.packgirl')
+
           const url =
           global.packgirl[
             Math.floor(Math.random() * global.packgirl.length)
@@ -195,6 +212,9 @@ export default {
         // =========================
 
         case 'pack3': {
+
+          if (!global.packmen.length)
+          return m.reply('❌ No hay links en global.packmen')
 
           const url =
           global.packmen[
@@ -219,6 +239,9 @@ export default {
 
         case 'videoxxx':
         case 'vídeoxxx': {
+
+          if (!global.videosxxxc.length)
+          return m.reply('❌ No hay links en global.videosxxxc')
 
           const url =
           global.videosxxxc[
@@ -250,6 +273,9 @@ export default {
         case 'pornolesbianav':
         case 'pornolesv': {
 
+          if (!global.videosxxxc2.length)
+          return m.reply('❌ No hay links en global.videosxxxc2')
+
           const url =
           global.videosxxxc2[
             Math.floor(Math.random() * global.videosxxxc2.length)
@@ -277,7 +303,7 @@ export default {
       return conn.sendMessage(
         m.chat,
         {
-          text: '❌ Error al ejecutar el comando.'
+          text: `❌ Error:\n${e}`
         },
         { quoted: m }
       )
@@ -290,25 +316,35 @@ export default {
 
 // =========================================
 // 📦 LINKS
+// PEGA TUS LINKS AQUÍ
 // =========================================
 
 global.pack = [
-  // "LINK.jpg"
+
+  // 'https://....jpg'
+
 ]
 
 global.packgirl = [
-  // "LINK.jpg"
+
+  // 'https://....jpg'
+
 ]
 
 global.packmen = [
-  // "LINK.jpg"
+
+  // 'https://....jpg'
+
 ]
 
 global.videosxxxc = [
-  // "LINK.mp4"
+
+  // 'https://....mp4'
+
 ]
 
 global.videosxxxc2 = [
+
 "https://telegra.ph/file/2dfb1ad0cab22951e30d1.mp4",
 "https://telegra.ph/file/c430651857023968d3a76.mp4",
 "https://telegra.ph/file/1ba17f6230dd1ea2de48c.mp4",
@@ -317,4 +353,5 @@ global.videosxxxc2 = [
 "https://telegra.ph/file/9ed60b18e79fcfebcd76c.mp4",
 "https://telegra.ph/file/d58096000ad5eaef0b05e.mp4",
 "https://telegra.ph/file/60b4c8ebeadebb7e0da06.mp4"
-];
+
+]
