@@ -1,55 +1,261 @@
-import { exec } from 'child_process';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { exec } from 'child_process'
+import path from 'path'
+import fs from 'fs'
+import { promisify } from 'util'
+import { fileURLToPath } from 'url'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const execAsync = promisify(exec)
 
-const runCmd = (cmd) => new Promise((resolve, reject) => {
-    exec(cmd, (err, stdout, stderr) => {
-        if (err) return reject(stderr || err.message);
-        resolve(stdout);
-    });
-});
+const __dirname =
+path.dirname(
+  fileURLToPath(import.meta.url)
+)
 
 const updateCommand = {
-    name: 'update',
-    alias: ['actualizar', 'up', 'sync'],
-    category: 'owner',
-    rowner: true,
-    run: async (m, { conn, args }) => {
-        try {
-            await m.react("🔄");
-            const output = await runCmd(`git pull ${args[0] || ''}`);
 
-            if (/Already up[ -]to[ -]date/i.test(output)) {
-                await m.react("✅");
-                return conn.sendMessage(m.chat, { text: '『 ✅ 』 El sistema ya está actualizado.' }, { quoted: m });
-            }
+  name: 'update',
 
-            const updateMsg = `『 📦 ACTUALIZACIÓN COMPLETA 』\n\n\`\`\`${output.trim()}\`\`\`\n\n◈ *Sincronizando nuevos comandos...*`;
-            await conn.sendMessage(m.chat, { text: updateMsg }, { quoted: m });
+  alias: [
+    'actualizar',
+    'up',
+    'sync'
+  ],
 
-            const pluginDir = path.join(__dirname, '../plugins');
-            
-            if (global.reloadHandler) {
-                await global.reloadHandler(true);
-            }
+  category: 'owner',
 
-            await m.react("⚙️");
-            return m.reply("『 ✨ 』 Comandos recargados con éxito. Los cambios ya están vivos.");
+  rowner: true,
 
-        } catch (error) {
-            let status = '';
-            try { status = await runCmd('git status --porcelain'); } catch { status = 'Error de repo.'; }
+  async run(m, { conn, args }) {
 
-            const conflictMsg = status.trim() 
-                ? `⚠️ Conflictos:\n\`\`\`${status.trim()}\`\`\`` 
-                : error.toString();
+    try {
 
-            await conn.sendMessage(m.chat, { text: `💀 *ERROR:* \n\n${conflictMsg}` }, { quoted: m });
-            await m.react("❌");
-        }
+      await m.react('🔄')
+
+      // =========================
+      // 📦 GIT PULL
+      // =========================
+
+      const { stdout, stderr } =
+      await execAsync(
+        `git pull ${args.join(' ')}`
+      )
+
+      const output =
+      `${stdout}\n${stderr}`.trim()
+
+      // =========================
+      // ⚠️ SIN CAMBIOS
+      // =========================
+
+      if (
+        /Already up[ -]to[ -]date/i
+        .test(output)
+      ) {
+
+        // 🔥 AUN ASÍ RECARGA
+        await reloadPlugins(conn)
+
+        await m.react('✅')
+
+        return conn.sendMessage(
+          m.chat,
+          {
+            text:
+`╭━━〔 ✅ SYSTEM UPDATE 〕━━⬣
+┃
+┃ ⚡ Sistema actualizado
+┃ 📦 No había cambios nuevos
+┃ 🔄 Plugins recargados
+┃ 🚀 Bot optimizado
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+          },
+          { quoted: m }
+        )
+
+      }
+
+      // =========================
+      // 🔥 MENSAJE UPDATE
+      // =========================
+
+      await conn.sendMessage(
+        m.chat,
+        {
+          text:
+`╭━━〔 📦 UPDATE COMPLETO 〕━━⬣
+┃
+┃ ⚡ Nuevos cambios detectados
+┃ 🔄 Recargando comandos...
+┃ 🚀 Aplicando optimización
+┃
+┣━━━━━━━━━━━━━━━━━━⬣
+${output.slice(0, 3500)}
+╰━━━━━━━━━━━━━━━━━━⬣`
+        },
+        { quoted: m }
+      )
+
+      // =========================
+      // 🔥 RECARGAR PLUGINS
+      // =========================
+
+      await reloadPlugins(conn)
+
+      await m.react('✅')
+
+      return conn.sendMessage(
+        m.chat,
+        {
+          text:
+`╭━━〔 🚀 UPDATE FINALIZADO 〕━━⬣
+┃
+┃ ✅ Plugins recargados
+┃ ✅ Nuevos comandos activos
+┃ ✅ Sistema sincronizado
+┃ ✅ Hot Reload completado
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+        },
+        { quoted: m }
+      )
+
+    } catch (e) {
+
+      console.log(e)
+
+      await m.react('❌')
+
+      return conn.sendMessage(
+        m.chat,
+        {
+          text:
+`╭━━〔 ❌ UPDATE ERROR 〕━━⬣
+┃
+┃ ⚠️ Error al actualizar
+┃
+┣━━━━━━━━━━━━━━━━━━⬣
+${String(e).slice(0, 3000)}
+╰━━━━━━━━━━━━━━━━━━⬣`
+        },
+        { quoted: m }
+      )
+
     }
-};
 
-export default updateCommand;
+  }
+
+}
+
+export default updateCommand
+
+// =========================================
+// 🔥 HOT RELOAD REAL
+// =========================================
+
+async function reloadPlugins(conn) {
+
+  try {
+
+    const pluginFolder =
+    path.join(
+      process.cwd(),
+      'plugins'
+    )
+
+    const files =
+    getFiles(pluginFolder)
+
+    for (const file of files) {
+
+      if (!file.endsWith('.js'))
+      continue
+
+      try {
+
+        const modulePath =
+        path.resolve(file)
+
+        // 🔥 BORRAR CACHE
+        const resolved =
+        await import(
+          `file://${modulePath}?update=${Date.now()}`
+        )
+
+        // 🔥 SI EXISTE HANDLER
+        if (
+          resolved?.default?.name
+        ) {
+
+          console.log(
+            '[ HOT-RELOAD ]',
+            resolved.default.name
+          )
+
+        }
+
+      } catch (err) {
+
+        console.log(
+          '[ ERROR LOADING ]',
+          file
+        )
+
+        console.log(err)
+
+      }
+
+    }
+
+    // 🔥 RELOAD HANDLER GLOBAL
+    if (global.reloadHandler) {
+
+      await global.reloadHandler(true)
+
+    }
+
+  } catch (e) {
+
+    console.log(e)
+
+  }
+
+}
+
+// =========================================
+// 📂 LEER ARCHIVOS RECURSIVOS
+// =========================================
+
+function getFiles(dir) {
+
+  let results = []
+
+  const list =
+  fs.readdirSync(dir)
+
+  for (const file of list) {
+
+    const full =
+    path.join(dir, file)
+
+    const stat =
+    fs.statSync(full)
+
+    if (stat && stat.isDirectory()) {
+
+      results =
+      results.concat(
+        getFiles(full)
+      )
+
+    } else {
+
+      results.push(full)
+
+    }
+
+  }
+
+  return results
+
+}
