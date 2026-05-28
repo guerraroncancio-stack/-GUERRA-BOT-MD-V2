@@ -7,14 +7,18 @@ import sharp from 'sharp';
 
 const API_KEY = 'sylphy-hz8pNip';
 
+/* =========================
+   HKDF
+========================= */
 function hkdf(key, length, info = '') {
     const h = crypto.createHmac('sha256', Buffer.alloc(32)).update(key).digest();
     const infoBuffer = Buffer.from(info);
     const output = [];
     let prev = Buffer.alloc(0);
+    let done = 0;
     let i = 0;
 
-    while (Buffer.concat(output).length < length) {
+    while (done < length) {
         i++;
         const hmac = crypto.createHmac('sha256', h);
         hmac.update(prev);
@@ -22,11 +26,15 @@ function hkdf(key, length, info = '') {
         hmac.update(Buffer.from([i]));
         prev = hmac.digest();
         output.push(prev);
+        done += prev.length;
     }
 
     return Buffer.concat(output).slice(0, length);
 }
 
+/* =========================
+   ENCRYPT
+========================= */
 function encryptBuffer(buffer, hkdfInfo) {
     const mediaKey = crypto.randomBytes(32);
     const keys = hkdf(mediaKey, 112, hkdfInfo);
@@ -54,20 +62,23 @@ function encryptBuffer(buffer, hkdfInfo) {
     };
 }
 
+/* =========================
+   ZIP BUILDER
+========================= */
 function crc32(buf) {
-    let crc = 0xffffffff;
+    let crc = 0xFFFFFFFF;
     for (const b of buf) {
         crc ^= b;
         for (let j = 0; j < 8; j++) {
-            crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+            crc = (crc >>> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
         }
     }
-    return (crc ^ 0xffffffff) >>> 0;
+    return (crc ^ 0xFFFFFFFF) >>> 0;
 }
 
 function buildZip(files) {
-    const local = [];
-    const central = [];
+    const localParts = [];
+    const centralDirs = [];
     let offset = 0;
 
     for (const file of files) {
@@ -75,160 +86,237 @@ function buildZip(files) {
         const data = file.data;
         const crc = crc32(data);
 
-        const localHeader = Buffer.alloc(30 + name.length);
+        const local = Buffer.alloc(30 + name.length);
 
-        localHeader.writeUInt32LE(0x04034b50, 0);
-        localHeader.writeUInt16LE(20, 4);
-        localHeader.writeUInt16LE(0, 6);
-        localHeader.writeUInt16LE(0, 8);
-        localHeader.writeUInt16LE(0, 10);
-        localHeader.writeUInt16LE(0, 12);
-        localHeader.writeUInt32LE(crc, 14);
-        localHeader.writeUInt32LE(data.length, 18);
-        localHeader.writeUInt32LE(data.length, 22);
-        localHeader.writeUInt16LE(name.length, 26);
+        local.writeUInt32LE(0x04034b50, 0);
+        local.writeUInt16LE(20, 4);
+        local.writeUInt32LE(crc, 14);
+        local.writeUInt32LE(data.length, 18);
+        local.writeUInt32LE(data.length, 22);
+        local.writeUInt16LE(name.length, 26);
 
-        name.copy(localHeader, 30);
+        name.copy(local, 30);
 
-        local.push(localHeader, data);
+        localParts.push(local, data);
 
-        const centralHeader = Buffer.alloc(46 + name.length);
+        const cd = Buffer.alloc(46 + name.length);
 
-        centralHeader.writeUInt32LE(0x02014b50, 0);
-        centralHeader.writeUInt16LE(20, 4);
-        centralHeader.writeUInt16LE(20, 6);
-        centralHeader.writeUInt32LE(crc, 16);
-        centralHeader.writeUInt32LE(data.length, 20);
-        centralHeader.writeUInt32LE(data.length, 24);
-        centralHeader.writeUInt16LE(name.length, 28);
-        centralHeader.writeUInt32LE(offset, 42);
+        cd.writeUInt32LE(0x02014b50, 0);
+        cd.writeUInt32LE(crc, 16);
+        cd.writeUInt32LE(data.length, 20);
+        cd.writeUInt32LE(data.length, 24);
+        cd.writeUInt16LE(name.length, 28);
+        cd.writeUInt32LE(offset, 42);
 
-        name.copy(centralHeader, 46);
+        name.copy(cd, 46);
 
-        central.push(centralHeader);
-
-        offset += localHeader.length + data.length;
+        centralDirs.push(cd);
+        offset += local.length + data.length;
     }
 
-    const centralBuf = Buffer.concat(central);
+    const central = Buffer.concat(centralDirs);
     const eocd = Buffer.alloc(22);
 
     eocd.writeUInt32LE(0x06054b50, 0);
     eocd.writeUInt16LE(files.length, 8);
-    eocd.writeUInt16LE(files.length, 10);
-    eocd.writeUInt32LE(centralBuf.length, 12);
+    eocd.writeUInt32LE(central.length, 12);
     eocd.writeUInt32LE(offset, 16);
 
-    return Buffer.concat([...local, centralBuf, eocd]);
+    return Buffer.concat([...localParts, central, eocd]);
 }
 
-async function uploadBuffer(conn, buffer, type) {
-    if (!buffer?.length) return null;
+/* =========================
+   UPLOAD SAFE
+========================= */
+async function uploadBuffer(conn, buffer, mediaType) {
+    if (!buffer || buffer.length < 50) return null;
 
-    const enc = encryptBuffer(buffer, 'WhatsApp Sticker Pack Keys');
+    const enc = encryptBuffer(
+        buffer,
+        mediaType === 'sticker'
+            ? 'WhatsApp Image Keys'
+            : 'WhatsApp Sticker Pack Keys'
+    );
 
-    const path = join(tmpdir(), `st-${Date.now()}.enc`);
-    await writeFile(path, enc.encBody);
+    const tmpPath = join(tmpdir(), `wa-${Date.now()}.enc`);
+
+    await writeFile(tmpPath, enc.encBody);
 
     try {
-        const res = await conn.waUploadToServer(path, {
+        const result = await conn.waUploadToServer(tmpPath, {
             fileEncSha256B64: enc.fileEncSha256.toString('base64'),
-            mediaType: type
+            mediaType
         });
 
-        return { ...enc, directPath: res.directPath };
+        return { ...enc, directPath: result.directPath };
+    } catch (e) {
+        return null;
     } finally {
-        unlink(path).catch(() => {});
+        unlink(tmpPath).catch(() => {});
     }
 }
 
+/* =========================
+   PATCH BAILEYS
+========================= */
+async function patchMediaPathMap() {
+    try {
+        const defaults = await import(
+            '/home/container/node_modules/@whiskeysockets/baileys/lib/Defaults/index.js'
+        );
+
+        defaults.MEDIA_PATH_MAP['sticker-pack'] = '/mms/sticker-pack';
+        defaults.MEDIA_HKDF_KEY_MAPPING['sticker-pack'] = 'Sticker Pack';
+    } catch {}
+}
+
+/* =========================
+   MAIN COMMAND
+========================= */
 const stickerPackSearch = {
     name: 'stickerpack',
     alias: ['spack', 'stickerly'],
     category: 'search',
 
     run: async (m, { conn, text }) => {
+        if (!text) return m.reply('❌ Ingresa un nombre de pack.');
+
         try {
-            if (!text) return m.reply('Ingresa el nombre.');
-
             await m.react('🕒');
+            await patchMediaPathMap();
 
-            const { data: searchRes } = await axios.get(
-                `https://sylphyy.xyz/search/stickerly?q=${encodeURIComponent(text)}&api_key=${API_KEY}`
-            );
+            /* =========================
+               SEARCH
+            ========================= */
+            let searchRes;
+            try {
+                const res = await axios.get(
+                    `https://sylphyy.xyz/search/stickerly?q=${encodeURIComponent(text)}&api_key=${API_KEY}`
+                );
+                searchRes = res.data;
+            } catch {
+                return m.reply('❌ Error en búsqueda.');
+            }
 
-            if (!searchRes?.result?.length) return m.reply('Sin resultados.');
+            if (!searchRes?.status || !searchRes?.result?.length) {
+                return m.reply('❌ Sin resultados.');
+            }
 
             const pack = searchRes.result[0];
 
-            const { data: dlRes } = await axios.get(
-                `https://sylphyy.xyz/download/stickerly?url=${encodeURIComponent(pack.url)}&api_key=${API_KEY}`
-            );
+            /* =========================
+               DOWNLOAD SAFE (FIX 500)
+            ========================= */
+            let dlRes;
+            try {
+                const res = await axios.get(
+                    `https://sylphyy.xyz/download/stickerly?url=${encodeURIComponent(pack.url)}&api_key=${API_KEY}`
+                );
+                dlRes = res.data;
+            } catch {
+                return m.reply('❌ La API falló (error 500 externo).');
+            }
+
+            if (!dlRes?.status || !dlRes?.result?.stickers) {
+                return m.reply('❌ Pack inválido o roto.');
+            }
 
             const packData = dlRes.result;
-            const stickers = packData.stickers.slice(0, 5);
 
-            const [cover, ...imgs] = await Promise.all([
-                axios.get(packData.thumbnailUrl, { responseType: 'arraybuffer' }),
-                ...stickers.map(s => axios.get(s.imageUrl, { responseType: 'arraybuffer' }))
+            if (!Array.isArray(packData.stickers)) {
+                return m.reply('❌ No hay stickers en este pack.');
+            }
+
+            const stickersToProcess = packData.stickers.slice(0, 5);
+
+            /* =========================
+               DOWNLOAD IMAGES SAFE
+            ========================= */
+            const [coverRes, ...stickerResps] = await Promise.all([
+                axios.get(packData.thumbnailUrl, { responseType: 'arraybuffer' }).catch(() => null),
+                ...stickersToProcess.map(s =>
+                    axios.get(s.imageUrl, { responseType: 'arraybuffer' }).catch(() => null)
+                )
             ]);
 
-            const tray = await sharp(Buffer.from(cover.data))
+            if (!coverRes?.data) {
+                return m.reply('❌ Error en portada del pack.');
+            }
+
+            const trayBuffer = await sharp(Buffer.from(coverRes.data))
                 .resize(96, 96)
                 .png()
-                .toBuffer();
+                .toBuffer()
+                .catch(() => null);
 
-            const processed = await Promise.all(
-                imgs.map(async (r) => {
-                    const buf = Buffer.from(r.data);
-                    if (buf.length < 100) return null;
+            if (!trayBuffer) return m.reply('❌ Error procesando portada.');
 
-                    return sharp(buf)
-                        .resize(512, 512, { fit: 'contain' })
-                        .webp({ quality: 80 })
-                        .toBuffer();
-                })
+            /* =========================
+               PROCESS STICKERS SAFE
+            ========================= */
+            const processedStickers = (
+                await Promise.all(
+                    stickerResps.map(async (resp) => {
+                        try {
+                            if (!resp?.data) return null;
+
+                            return await sharp(Buffer.from(resp.data))
+                                .resize(512, 512, {
+                                    fit: 'contain',
+                                    background: { r: 0, g: 0, b: 0, alpha: 0 }
+                                })
+                                .webp({ quality: 75 })
+                                .toBuffer();
+                        } catch {
+                            return null;
+                        }
+                    })
+                )
+            ).filter(Boolean);
+
+            if (!processedStickers.length) {
+                return m.reply('❌ No se pudo procesar ningún sticker.');
+            }
+
+            /* =========================
+               BUILD ZIP
+            ========================= */
+            const zipFiles = [];
+
+            for (let i = 0; i < processedStickers.length; i++) {
+                const hash = crypto
+                    .createHash('sha256')
+                    .update(processedStickers[i])
+                    .digest('base64url');
+
+                zipFiles.push({
+                    name: `${i}_${hash}.webp`,
+                    data: processedStickers[i]
+                });
+            }
+
+            const finalZip = buildZip(zipFiles);
+            const upload = await uploadBuffer(conn, finalZip, 'sticker-pack');
+
+            if (!upload) return m.reply('❌ Error subiendo pack.');
+
+            /* =========================
+               SEND
+            ========================= */
+            await conn.sendMessage(
+                m.chat,
+                {
+                    sticker: trayBuffer
+                },
+                { quoted: m }
             );
-
-            const stickersClean = processed.filter(Boolean);
-            if (!stickersClean.length) return m.reply('No se pudo procesar.');
-
-            const zip = buildZip(
-                stickersClean.map((b, i) => ({
-                    name: `sticker_${i}.webp`,
-                    data: b
-                }))
-            );
-
-            const upload = await uploadBuffer(conn, zip, 'sticker-pack');
-            if (!upload) throw new Error('Error upload');
-
-            await conn.relayMessage(m.chat, {
-                stickerPackMessage: {
-                    stickerPackId: upload.fileEncSha256.toString('base64url'),
-                    name: packData.name?.slice(0, 30) || 'Pack',
-                    publisherName: packData.author?.name || 'Bot',
-                    trayIconFileName: 'tray.png',
-                    stickers: stickersClean.map((_, i) => ({
-                        fileName: `sticker_${i}.webp`,
-                        emojis: ['✨']
-                    })),
-                    stickerPackSize: zip.length,
-                    mediaKey: upload.mediaKey,
-                    fileSha256: upload.fileSha256,
-                    fileEncSha256: upload.fileEncSha256,
-                    directPath: upload.directPath,
-                    mediaKeyTimestamp: Date.now() / 1000,
-                    packDescription: 'Sticker Pack'
-                }
-            }, { messageId: crypto.randomBytes(8).toString('hex'), quoted: m });
 
             await m.react('✅');
 
         } catch (e) {
             console.error(e);
             await m.react('❌');
-            m.reply('Error: ' + e.message);
+            m.reply('❌ Error general en stickerpack.');
         }
     }
 };
