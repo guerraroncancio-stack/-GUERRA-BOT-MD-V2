@@ -27,7 +27,15 @@ async function makeFkontak() {
     }
 
   } catch {
-    return undefined
+    return {
+      key: {
+        participants: '0@s.whatsapp.net',
+        remoteJid: 'status@broadcast',
+        fromMe: false,
+        id: 'GUERRA'
+      },
+      message: { conversation: '👑 GUERRA BOT' }
+    }
   }
 }
 
@@ -55,6 +63,7 @@ async function run(m, { conn, usedPrefix }) {
 ┃ ◈ Engine » Online
 ┃ ◈ Database » Connected
 ┃ ◈ Response » Fast
+┃ ◈ Security » Stable
 ╰════════════════⬣
 
 > ⚡ Powered By Kevin Guerra
@@ -63,30 +72,20 @@ async function run(m, { conn, usedPrefix }) {
 
   const fkontak = await makeFkontak()
 
-  // =========================
-  // 🎥 MENÚ CON ANIMACIÓN + THUMBNAIL
-  // =========================
   await conn.sendMessage(
     m.chat,
     {
-      video: {
-        url: 'https://cdn.dix.lat/me/b267_a8edfc35-d71b-47a0-a1ef-58e28aec4312.mp4'
+      image: {
+        url: 'https://cdn.dix.lat/me/bb174465-aa94-4844-8b89-ff4bc5f77f17.jpg'
       },
-
-      gifPlayback: true,
       caption: menu,
-
       contextInfo: {
-        externalAdReply: {
-          title: '⚔️ GUERRA BOT MD',
-          body: 'Sistema activo',
-          thumbnailUrl: 'https://cdn.dix.lat/me/bb174465-aa94-4844-8b89-ff4bc5f77f17.jpg',
-          mediaType: 1,
-          renderLargerThumbnail: true
-        }
+        mentionedJid: [m.sender]
       }
     },
-    { quoted: fkontak }
+    {
+      quoted: fkontak
+    }
   )
 }
 
