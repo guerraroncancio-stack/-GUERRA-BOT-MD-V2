@@ -47,10 +47,12 @@ export default {
       // =========================
       // 🔥 OBTENER USUARIO
       // =========================
-      let user =
-        m.quoted?.sender ||
-        m.mentionedJid?.[0] ||
-        null
+   let user =
+  m.quoted?.sender ||
+  m.quoted?.participant ||
+  m.quoted?.key?.participant ||
+  m.mentionedJid?.[0] ||
+  null
 
       // =========================
       // 🔥 SI VIENE POR TEXTO
