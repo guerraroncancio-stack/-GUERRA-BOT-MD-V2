@@ -6,80 +6,109 @@ import { fileTypeFromBuffer } from 'file-type'
 // 👑 GUERRA DIX UPLOADER
 // =========================================
 
-async function uploadToDix(buffer, fileName, mime) {
+async function uploadFile(buffer, fileName, mime) {
 
-    try {
+    const apis = [
 
-        const form = new FormData()
+        'https://api.dix.lat/upload2',
 
-        const blob =
-        new Blob(
-            [buffer],
-            {
-                type: mime
-            }
-        )
+        'https://tmpfiles.org/api/v1/upload'
 
-        form.append(
-            'file',
-            blob,
-            fileName
-        )
+    ]
 
-        const res = await fetch(
+    for (const api of apis) {
 
-            'https://api.dix.lat/upload2',
+        try {
 
-            {
-                method: 'POST',
+            const form =
+            new FormData()
 
-                body: form,
+            const blob =
+            new Blob(
+                [buffer],
+                {
+                    type: mime
+                }
+            )
 
-                headers: {
+            form.append(
+                'file',
+                blob,
+                fileName
+            )
 
-                    'User-Agent':
-                    'GUERRA-BOT-UPLOADER'
+            const res = await fetch(
+
+                api,
+
+                {
+                    method: 'POST',
+                    body: form
+                }
+
+            )
+
+            if (!res.ok) continue
+
+            const json =
+            await res.json()
+
+            // =========================================
+            // 📌 DIX
+            // =========================================
+
+            if (
+
+                json?.status &&
+                json?.data?.url
+
+            ) {
+
+                return {
+
+                    url:
+                    json.data.url,
+
+                    size:
+                    json.data.size ||
+
+                    `${(
+                        buffer.length / 1024 / 1024
+                    ).toFixed(2)} MB`
 
                 }
 
             }
 
-        )
+            // =========================================
+            // 📌 TMPFILES
+            // =========================================
 
-        if (!res.ok) {
+            if (json?.data?.url) {
 
-            throw new Error(
-                `HTTP ${res.status}`
-            )
+                return {
 
-        }
+                    url:
+                    json.data.url
+                    .replace(
+                        'tmpfiles.org/',
+                        'tmpfiles.org/dl/'
+                    ),
 
-        const json =
-        await res.json()
+                    size:
+                    `${(
+                        buffer.length / 1024 / 1024
+                    ).toFixed(2)} MB`
 
-        if (
+                }
 
-            !json ||
-            !json.status ||
-            !json.data
+            }
 
-        ) {
-
-            throw new Error(
-                'Respuesta inválida'
-            )
-
-        }
-
-        return json.data
-
-    } catch (err) {
-
-        console.error(err)
-
-        return null
+        } catch {}
 
     }
+
+    return null
 
 }
 
@@ -94,7 +123,6 @@ const dixCommand = {
     alias: [
 
         'tourl',
-        'tourl2',
         'upload',
         'imgurl'
 
@@ -110,10 +138,6 @@ const dixCommand = {
 
         try {
 
-            // =========================================
-            // 📌 QUOTED
-            // =========================================
-
             const q =
             m.quoted
             ? m.quoted
@@ -121,10 +145,6 @@ const dixCommand = {
 
             const mime =
             (q.msg || q).mimetype || ''
-
-            // =========================================
-            // ❌ NO MEDIA
-            // =========================================
 
             if (!mime) {
 
@@ -134,8 +154,7 @@ const dixCommand = {
 
 `┏━━━〔 👑 GUERRA DIX 👑 〕━━━⬣
 ┃
-┃ ❌ Responde a un:
-┃
+┃ ❌ Responde a:
 ┃ 🖼️ Imagen
 ┃ 🎥 Video
 ┃ 🎵 Audio
@@ -148,10 +167,6 @@ const dixCommand = {
                 )
 
             }
-
-            // =========================================
-            // ⏳ REACT
-            // =========================================
 
             await m.react('📤')
 
@@ -171,7 +186,7 @@ const dixCommand = {
             }
 
             // =========================================
-            // 📂 FILE TYPE
+            // 📂 TYPE
             // =========================================
 
             const type =
@@ -191,7 +206,7 @@ const dixCommand = {
             // =========================================
 
             const result =
-            await uploadToDix(
+            await uploadFile(
 
                 buffer,
                 fileName,
@@ -199,38 +214,13 @@ const dixCommand = {
 
             )
 
-            // =========================================
-            // ❌ ERROR API
-            // =========================================
-
-            if (
-
-                !result ||
-                !result.url
-
-            ) {
+            if (!result) {
 
                 throw new Error(
-                    'La API no devolvió URL'
+                    'Todas las APIs fallaron'
                 )
 
             }
-
-            // =========================================
-            // 📊 INFO
-            // =========================================
-
-            const size =
-
-            result.size ||
-            `${(
-                buffer.length / 1024 / 1024
-            ).toFixed(2)} MB`
-
-            const finalMime =
-
-            result.mime ||
-            mime
 
             // =========================================
             // 👑 DESIGN
@@ -241,29 +231,22 @@ const dixCommand = {
 `┏━━━〔 👑 GUERRA DIX 👑 〕━━━⬣
 ┃
 ┃ ✅ Archivo subido
-┃ correctamente
+┃ exitosamente
 ┃
 ┣━━━━━━━━━━━━━━━━━━⬣
-┃ 📄 Nombre:
+┃ 📄 Archivo:
 ┃ ➥ ${fileName}
 ┃
 ┃ 📦 Peso:
-┃ ➥ ${size}
+┃ ➥ ${result.size}
 ┃
-┃ 🧩 Tipo:
-┃ ➥ ${finalMime}
-┃
-┣━━━━━━━━━━━━━━━━━━⬣
 ┃ 🌐 URL:
-┃ ${result.url}
+┃ ➥ ${result.url}
+┃
 ┣━━━━━━━━━━━━━━━━━━⬣
-┃ ⚡ Powered By:
+┃ ⚡ Powered By
 ┃ ➥ Kevin Guerra
 ┗━━━━━━━━━━━━━━━━━━━━⬣`
-
-            // =========================================
-            // ✅ SEND
-            // =========================================
 
             await m.react('✅')
 
@@ -296,8 +279,7 @@ const dixCommand = {
 ┃ ❌ Error al subir
 ┃ el archivo.
 ┃
-┃ 🔧 Detalles:
-┃ ${err.message}
+┃ 🔧 ${err.message}
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
