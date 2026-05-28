@@ -165,7 +165,8 @@ async function run(m, { conn, usedPrefix }) {
   await makeFkontak()
 
   // =========================================
-  // 📸 FOTO PRINCIPAL
+  // 📸 MENU PRINCIPAL CON FOTO
+  // + ANIMACIÓN INTEGRADA
   // =========================================
 
   await conn.sendMessage(
@@ -175,31 +176,27 @@ async function run(m, { conn, usedPrefix }) {
         url: 'https://api.dix.lat/media2/1777431468205.jpg'
       },
 
-      caption: `
-ㅤㅤㅤㅤ⚔️ *GUERRA BOT MD* ⚔️
-ㅤㅤㅤSistema avanzado iniciado
-`
-    },
-    {
-      quoted: fkontak
-    }
-  )
+      caption: menu,
 
-  // =========================================
-  // 🎥 VIDEO / ANIMACIÓN
-  // =========================================
+      contextInfo: {
+        externalAdReply: {
+          title: '⚔️ GUERRA BOT MD ⚔️',
+          body: 'Sistema avanzado activo',
+          mediaType: 2,
+          renderLargerThumbnail: true,
+          showAdAttribution: false,
 
-  await conn.sendMessage(
-    m.chat,
-    {
-      video: {
-        url: 'https://cdn.dix.lat/me/b267_a8edfc35-d71b-47a0-a1ef-58e28aec4312.mp4'
-      },
+          thumbnailUrl:
+            'https://api.dix.lat/media2/1777431468205.jpg',
 
-      gifPlayback: true,
-      autoplay: true,
+          mediaUrl:
+            'https://cdn.dix.lat/me/b267_a8edfc35-d71b-47a0-a1ef-58e28aec4312.mp4',
 
-      caption: menu
+          sourceUrl:
+            'https://cdn.dix.lat/me/b267_a8edfc35-d71b-47a0-a1ef-58e28aec4312.mp4'
+        }
+      }
+
     },
     {
       quoted: fkontak
@@ -234,7 +231,7 @@ function clockString(ms) {
   Math.floor(ms / 1000) % 60
 
   return [h, m, s]
-  .map(v => v.toString().padStart(2, '0'))
-  .join(':')
+    .map(v => v.toString().padStart(2, '0'))
+    .join(':')
 
 }
