@@ -9,11 +9,11 @@ const codeAICommand = {
     name: 'codeai',
 
     alias: [
-        'coder',
         'dev',
-        'programar',
         'codigo',
-        'fix'
+        'fix',
+        'coder',
+        'programar'
     ],
 
     category: 'ai',
@@ -37,17 +37,17 @@ const codeAICommand = {
 
 `┏━━━〔 👑 GUERRA CODE AI 👑 〕━━━⬣
 ┃
-┃ 🤖 Especialista en programación
-┃ ⚡ Modelo avanzado para desarrollo
-┃ 👑 Creado por Kevin Guerra
+┃ 🤖 Asistente de programación
+┃ 💻 Especialista en código
+┃ 👑 Creador: Kevin Guerra
 ┃
 ┣━━━━━━━━━━━━━━━━━━⬣
 ┃ 📌 Ejemplos:
 ┃
-┃ ➥ .codeai crea un menú
-┃ ➥ .dev arregla este error
-┃ ➥ .fix TypeError undefined
+┃ ➥ .dev crea un menú
+┃ ➥ .fix TypeError
 ┃ ➥ .codigo bot whatsapp
+┃ ➥ .coder api nodejs
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
@@ -60,83 +60,129 @@ const codeAICommand = {
         try {
 
             // =========================================
-            // 🧠 REACTION
+            // 💻 REACT
             // =========================================
 
             await m.react('💻')
 
             // =========================================
-            // 👑 PROMPT
+            // 👑 SYSTEM PROMPT
             // =========================================
 
             const systemPrompt = `
 
 Eres GUERRA CODE AI.
 
-Una inteligencia artificial
-experta en:
+Especialista en:
 
 - JavaScript
 - NodeJS
 - Baileys
-- WhatsApp Bots
-- MongoDB
 - APIs
+- MongoDB
 - HTML
 - CSS
-- Python
 - React
-- Errores y debugging
+- Python
+- Bots WhatsApp
+- Debugging
 
-Normas:
+Reglas:
 
-- Explica claro.
 - Da código funcional.
-- No des código roto.
-- Optimiza siempre.
-- Mantén formato limpio.
-- Tu creador es Kevin Guerra.
+- Explica claro.
+- No uses markdown raro.
+- Optimiza el código.
 - Si preguntan quién te creó:
 responde Kevin Guerra.
 
 `
 
             // =========================================
-            // 🌐 API
+            // 🌐 API URL
             // =========================================
 
-            const api =
+            const query = encodeURIComponent(
 
-`${global.url_api}/chat?q=${encodeURIComponent(`${systemPrompt}\nUsuario: ${text}`)}&apikey=${global.key || key}`
+`${systemPrompt}
 
-            const res =
-            await fetch(api)
+Usuario:
+${text}`
 
-            if (!res.ok) {
+            )
 
-                throw new Error(
-                    `HTTP ${res.status}`
-                )
+            // =========================================
+            // 🔥 API PRINCIPAL
+            // =========================================
+
+            let answer = null
+
+            try {
+
+                const api =
+
+`${global.url_api}/chat?q=${query}&apikey=${global.key || key}`
+
+                const res =
+                await fetch(api)
+
+                if (res.ok) {
+
+                    const json =
+                    await res.json()
+
+                    answer =
+
+                    json?.data?.content ||
+                    json?.data?.response ||
+                    json?.result ||
+                    json?.response ||
+                    json?.message ||
+                    json?.answer ||
+                    json?.content ||
+                    null
+
+                }
+
+            } catch {}
+
+            // =========================================
+            // 🔥 API FALLBACK
+            // =========================================
+
+            if (!answer) {
+
+                try {
+
+                    const backup =
+
+`https://api.siputzx.my.id/api/ai/gpt4?prompt=${query}`
+
+                    const res2 =
+                    await fetch(backup)
+
+                    if (res2.ok) {
+
+                        const json2 =
+                        await res2.json()
+
+                        answer =
+
+                        json2?.data ||
+                        json2?.result ||
+                        json2?.response ||
+                        json2?.answer ||
+                        null
+
+                    }
+
+                } catch {}
 
             }
 
-            const json =
-            await res.json()
-
             // =========================================
-            // 📥 RESPUESTA
+            // ❌ SIN RESPUESTA
             // =========================================
-
-            let answer =
-
-            json?.data?.content ||
-            json?.data?.response ||
-            json?.result ||
-            json?.response ||
-            json?.message ||
-            json?.answer ||
-            json?.content ||
-            null
 
             if (!answer) {
 
@@ -150,7 +196,7 @@ responde Kevin Guerra.
             String(answer).trim()
 
             // =========================================
-            // 👑 RESPUESTA CREADOR
+            // 👑 FORZAR CREADOR
             // =========================================
 
             const lower =
@@ -173,12 +219,12 @@ responde Kevin Guerra.
             ) {
 
                 answer =
-'👑 Mi creador y desarrollador es Kevin Guerra.'
+'👑 Mi creador oficial es Kevin Guerra.'
 
             }
 
             // =========================================
-            // 📱 FORMATO MOBILE
+            // 📱 FORMATO
             // =========================================
 
             const formatted =
@@ -234,8 +280,8 @@ ${formatted}
 
 `┏━━━〔 ⚠️ GUERRA CODE AI ⚠️ 〕━━━⬣
 ┃
-┃ Error al procesar
-┃ la solicitud del código.
+┃ No se pudo conectar
+┃ con el sistema IA.
 ┃
 ┃ Intenta nuevamente.
 ┃
