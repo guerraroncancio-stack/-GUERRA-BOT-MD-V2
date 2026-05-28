@@ -40,7 +40,8 @@ const chatgptCommand = {
 ┃ ✦ Ejemplos:
 ┃ ➥ .ia hola
 ┃ ➥ .gpt quien eres
-┃ ➥ .chat explica nodejs
+┃ ➥ .chat explica javascript
+┃ ➥ .ia crea una historia
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
@@ -58,40 +59,59 @@ const chatgptCommand = {
             await m.react('🧠')
 
             // =========================================
-            // 👑 SISTEMA PERSONALIDAD
+            // 🧹 LIMPIAR TEXTO
+            // =========================================
+
+            text = String(text)
+            .trim()
+            .slice(0, 4000)
+
+            // =========================================
+            // 👑 PERSONALIDAD IA
             // =========================================
 
             const systemPrompt = `
 
-Eres GUERRA IA, una inteligencia artificial avanzada creada por Kevin Guerra.
+Eres GUERRA IA.
 
-Normas importantes:
+Una inteligencia artificial moderna,
+inteligente y avanzada creada por Kevin Guerra.
 
-- Si alguien pregunta:
-"quien te creo"
-"quien es tu creador"
-"quien hizo esta ia"
-"quien desarrollo esta ia"
-"quien hizo guerra ia"
-o preguntas similares...
+Reglas importantes:
 
-SIEMPRE debes responder que tu creador es Kevin Guerra.
-
-- Nunca digas otro nombre.
-- Nunca niegues a Kevin Guerra.
-- Habla de forma amigable, moderna y elegante.
 - Tu nombre es GUERRA IA.
+- Tu creador y desarrollador es Kevin Guerra.
+- Si preguntan quién te creó,
+siempre responde Kevin Guerra.
+- Responde de manera clara,
+inteligente y amigable.
+- Puedes responder cualquier tema:
+programación, historia, matemáticas,
+tecnología, juegos, ayuda general,
+conversaciones normales y más.
+- Nunca respondas vacío.
+- Nunca digas que no tienes respuesta
+sin intentar ayudar.
 `
 
             // =========================================
-            // 🌐 API
+            // 🌐 API URL
             // =========================================
 
             const api =
-`${global.url_api}/chat?q=${encodeURIComponent(`${systemPrompt}\nUsuario: ${text}`)}&apikey=${global.key || key}`
+`${global.url_api}/chat?q=${encodeURIComponent(`${systemPrompt}\n\nUsuario: ${text}`)}&apikey=${global.key || key}`
+
+            // =========================================
+            // 🌐 FETCH
+            // =========================================
 
             const res =
-            await fetch(api)
+            await fetch(api, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
 
             if (!res.ok) {
 
@@ -101,37 +121,71 @@ SIEMPRE debes responder que tu creador es Kevin Guerra.
 
             }
 
-            const json =
-            await res.json()
+            // =========================================
+            // 📦 JSON
+            // =========================================
+
+            let json = null
+
+            try {
+
+                json = await res.json()
+
+            } catch {
+
+                throw new Error(
+                    'La API no devolvió JSON válido'
+                )
+
+            }
+
+            console.log(json)
 
             // =========================================
-            // 🔍 RESPUESTA IA
+            // 🔍 DETECTAR RESPUESTA
             // =========================================
 
             let answer =
 
             json?.data?.content ||
             json?.data?.response ||
+            json?.data?.message ||
+
             json?.result ||
             json?.response ||
             json?.message ||
             json?.answer ||
             json?.content ||
+
+            json?.data ||
+
             null
 
-            if (!answer) {
+            // =========================================
+            // ❌ SIN RESPUESTA
+            // =========================================
 
-                throw new Error(
-                    'Sin respuesta'
-                )
+            if (
+                !answer ||
+                answer === '[object Object]'
+            ) {
+
+                answer =
+'⚠️ No pude generar una respuesta válida.'
 
             }
 
+            // =========================================
+            // 🧹 FORMATEAR RESPUESTA
+            // =========================================
+
             answer =
-            String(answer).trim()
+            String(answer)
+            .replace(/^\s+|\s+$/g, '')
+            .slice(0, 3500)
 
             // =========================================
-            // 👑 FORZAR RESPUESTA CREADOR
+            // 👑 RESPUESTA CREADOR
             // =========================================
 
             const creatorQuestions = [
@@ -151,8 +205,9 @@ SIEMPRE debes responder que tu creador es Kevin Guerra.
                 'quien desarrollo esta ia',
                 'quién desarrolló esta ia',
 
-                'creador de guerra ia',
-                'developer'
+                'developer',
+                'creador',
+                'owner'
             ]
 
             const lowerText =
@@ -167,37 +222,37 @@ SIEMPRE debes responder que tu creador es Kevin Guerra.
             ) {
 
                 answer =
-'👑 Mi creador y desarrollador es Kevin Guerra.'
+'👑 Mi creador y desarrollador oficial es Kevin Guerra.'
 
             }
 
             // =========================================
-            // 👑 DISEÑO
+            // 📱 FORMATO MÓVIL
+            // =========================================
+
+            const formattedAnswer =
+
+            answer
+            .split('\n')
+            .filter(v => v.trim())
+            .map(v => `┃ ${v}`)
+            .join('\n')
+
+            // =========================================
+            // 👑 MENSAJE FINAL
             // =========================================
 
             const txt =
 
 `┏━━━〔 👑 GUERRA IA 👑 〕━━━⬣
-┃
-┃ 🤖 Modelo:
-┃ ➥ ChatGPT Intelligence
-┃
-┃ 👤 Usuario:
-┃ ➥ ${m.pushName || 'Usuario'}
-┃
-┃ ❓ Pregunta:
-┃ ➥ ${text}
-┃
+┃ 🤖 ChatGPT Intelligence
+┃ 👤 ${m.pushName || 'Usuario'}
 ┣━━━━━━━━━━━━━━━━━━⬣
-┃
-${answer
-.split('\n')
-.map(v => `┃ ${v}`)
-.join('\n')}
-┃
+┃ ❓ ${text}
 ┣━━━━━━━━━━━━━━━━━━⬣
-┃ ⚡ Powered By:
-┃ ➥ Kevin Guerra
+${formattedAnswer}
+┣━━━━━━━━━━━━━━━━━━⬣
+┃ ⚡ Powered By Kevin Guerra
 ┗━━━━━━━━━━━━━━━━━━━━⬣`
 
             // =========================================
@@ -232,11 +287,10 @@ ${answer
 
 `┏━━━〔 ⚠️ GUERRA IA ⚠️ 〕━━━⬣
 ┃
-┃ Error al conectar
-┃ con el sistema IA
+┃ Ocurrió un error al
+┃ conectar con la IA.
 ┃
-┃ Intenta nuevamente
-┃ en unos segundos
+┃ Intenta nuevamente.
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
