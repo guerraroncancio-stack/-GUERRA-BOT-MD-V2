@@ -1,29 +1,39 @@
 export default {
 
-  async all(m, { conn, isOwner }) {
+  name: 'anti-privado',
+
+  async all(m, { conn }) {
 
     try {
 
       // =========================
-      // 👑 OWNER BYPASS
+      // IGNORAR MENSAJES
       // =========================
+
+      if (!m.chat) return
+      if (m.isGroup) return
+      if (m.fromMe) return
+      if (m.key?.fromMe) return
+
+      // =========================
+      // OWNER
+      // =========================
+
+      const owners = global.owner || []
+
+      const sender =
+      (m.sender || '')
+      .replace(/[^0-9]/g, '')
+
+      const isOwner =
+      owners.some(v =>
+        sender === String(v[0])
+      )
 
       if (isOwner) return
 
       // =========================
-      // 👥 IGNORAR GRUPOS
-      // =========================
-
-      if (m.isGroup) return
-
-      // =========================
-      // 🤖 IGNORAR BOTS
-      // =========================
-
-      if (m.fromMe) return
-
-      // =========================
-      // ⚠️ MENSAJE
+      // MENSAJE
       // =========================
 
       await conn.sendMessage(
@@ -32,11 +42,13 @@ export default {
           text:
 `╭━━〔 🚫 ACCESO DENEGADO 🚫 〕━━⬣
 ┃
-┃ Solo el owner puede
-┃ escribirle al bot
-┃ por privado.
+┃ ❌ No puedes escribir
+┃ al privado del bot.
 ┃
-┃ Serás bloqueado.
+┃ 👑 Solo el owner
+┃ tiene acceso.
+┃
+┃ 🚷 Serás bloqueado.
 ┃
 ╰━━━━━━━━━━━━━━━━━━⬣`
         },
@@ -44,31 +56,29 @@ export default {
       )
 
       // =========================
-      // ⏳ ESPERA
-      // =========================
-
-      await new Promise(resolve =>
-        setTimeout(resolve, 2000)
-      )
-
-      // =========================
-      // ❌ ELIMINAR CONTACTO
-      // =========================
-
-      if (conn.contacts?.[m.sender]) {
-
-        delete conn.contacts[m.sender]
-
-      }
-
-      // =========================
-      // ⛔ BLOQUEAR
+      // BLOQUEAR
       // =========================
 
       await conn.updateBlockStatus(
-        m.sender,
+        m.chat,
         'block'
       )
+
+      // =========================
+      // ELIMINAR CHAT
+      // =========================
+
+      if (conn.chatModify) {
+
+        await conn.chatModify(
+          {
+            delete: true,
+            lastMessages: []
+          },
+          m.chat
+        ).catch(() => {})
+
+      }
 
     } catch (e) {
 
