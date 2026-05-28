@@ -153,26 +153,24 @@ const menu = `
 > 🚀 GUERRA BOT MD - Ultimate Edition
 `
   const fkontak =
-await conn.sendMessage(
-  m.chat,
-  {
-    video: {
-      url: 'https://cdn.dix.lat/me/b267_a8edfc35-d71b-47a0-a1ef-58e28aec4312.mp4'
+  await makeFkontak()
+
+  await conn.sendMessage(
+    m.chat,
+    {
+      image: {
+        url: 'https://api.dix.lat/media2/1777431468205.jpg'
+      },
+
+      caption: menu
     },
-
-    gifPlayback: true,
-
-    contextInfo: {
-      externalAdReply: {
-        title: '⚔️ GUERRA BOT MD',
-        body: 'Sistema activo - Ultimate Edition',
-        thumbnailUrl: 'https://cdn.dix.lat/me/bb174465-aa94-4844-8b89-ff4bc5f77f17.jpg',
-        mediaType: 1,
-        renderLargerThumbnail: true
-      }
+    {
+      quoted: fkontak
     }
-  }
-)
+  )
+
+}
+
 export default {
 
   name: 'menu',
