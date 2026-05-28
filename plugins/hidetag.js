@@ -269,55 +269,25 @@ export default {
 
       }
 
-     /* =======================
+/* =======================
    QUOTED TEXT
 ======================= */
 
 if (m.quoted) {
 
-  const content =
-    q?.message?.[mtype]
-
-  // 🔥 SI NO EXISTE
-  if (!content) {
-
-    return await conn.sendMessage(
-      m.chat,
-      {
-        text: finalCaption,
-        mentions: users
-      },
-      {
-        quoted: fkontak
+  const message = {
+    extendedTextMessage: {
+      text: finalCaption,
+      contextInfo: {
+        mentionedJid: users
       }
-    )
-
-  }
-
-  // 🔥 AGREGAR TEXTO Y MENCIONES
-  if (
-    typeof content === 'object'
-  ) {
-
-    content.caption =
-      finalCaption
-
-    content.text =
-      finalCaption
-
-    content.contextInfo = {
-      ...(content.contextInfo || {}),
-      mentionedJid: users
     }
-
   }
 
   const newMsg =
     generateWAMessageFromContent(
       m.chat,
-      {
-        [mtype]: content
-      },
+      message,
       {
         quoted: fkontak,
         userJid: conn.user.id
@@ -328,8 +298,7 @@ if (m.quoted) {
     m.chat,
     newMsg.message,
     {
-      messageId:
-        newMsg.key.id
+      messageId: newMsg.key.id
     }
   )
 
