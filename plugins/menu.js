@@ -1,10 +1,34 @@
+import { promises } from 'fs'
+import { join } from 'path'
 import fetch from 'node-fetch'
 
-async function makeThumb() {
-  const res = await fetch(
-    'https://cdn.dix.lat/me/bb174465-aa94-4844-8b89-ff4bc5f77f17.jpg'
-  )
-  return Buffer.from(await res.arrayBuffer())
+async function makeFkontak() {
+  try {
+    const res = await fetch(
+      'https://cdn.dix.lat/me/bb174465-aa94-4844-8b89-ff4bc5f77f17.jpg'
+    )
+
+    const thumb = Buffer.from(await res.arrayBuffer())
+
+    return {
+      key: {
+        participants: '0@s.whatsapp.net',
+        remoteJid: 'status@broadcast',
+        fromMe: false,
+        id: 'GUERRA'
+      },
+      message: {
+        locationMessage: {
+          name: '👑 GUERRA BOT',
+          jpegThumbnail: thumb
+        }
+      },
+      participant: '0@s.whatsapp.net'
+    }
+
+  } catch {
+    return undefined
+  }
 }
 
 async function run(m, { conn, usedPrefix }) {
@@ -13,27 +37,35 @@ async function run(m, { conn, usedPrefix }) {
   const uptime = clockString(process.uptime() * 1000)
 
   const menu = `
-╭━━━━━━━━━━━━━━━━━━━━⬣
-┃        ⚔️ GUERRA BOT MD ⚔️
-╰━━━━━━━━━━━━━━━━━━━━⬣
+╭═〔 ⚔️ GUERRA BOT MD ⚔️ 〕═⬣
+┃ ◈ Usuario » ${name}
+┃ ◈ Tiempo » ${uptime}
+┃ ◈ Prefijo » ${usedPrefix}
+┃ ◈ Modo » Public
+╰════════════════⬣
 
-╭━━〔 👤 USER INFO 〕━━⬣
-┃ ✦ Usuario: ${name}
-┃ ✦ Runtime: ${uptime}
-┃ ✦ Prefix: ${usedPrefix}
-╰━━━━━━━━━━━━━━━━━━━━⬣
-
-╭━━〔 🌌 MENU 〕━━⬣
+╭═〔 🌌 CORE 〕═⬣
 ┃ ⬡ ${usedPrefix}menu
+┃ ⬡ ${usedPrefix}allmenu
 ┃ ⬡ ${usedPrefix}owner
 ┃ ⬡ ${usedPrefix}ping
-╰━━━━━━━━━━━━━━━━━━━━⬣
+╰════════════════⬣
 
-> ⚡ GUERRA BOT MD
+╭═〔 📡 STATUS 〕═⬣
+┃ ◈ Engine » Online
+┃ ◈ Database » Connected
+┃ ◈ Response » Fast
+╰════════════════⬣
+
+> ⚡ Powered By Kevin Guerra
+> 🚀 GUERRA BOT MD - Ultimate Edition
 `
 
-  const thumb = await makeThumb()
+  const fkontak = await makeFkontak()
 
+  // =========================
+  // 🎥 MENÚ CON ANIMACIÓN + THUMBNAIL
+  // =========================
   await conn.sendMessage(
     m.chat,
     {
@@ -42,25 +74,29 @@ async function run(m, { conn, usedPrefix }) {
       },
 
       gifPlayback: true,
-
       caption: menu,
 
       contextInfo: {
         externalAdReply: {
           title: '⚔️ GUERRA BOT MD',
           body: 'Sistema activo',
-          thumbnail: thumb,
+          thumbnailUrl: 'https://cdn.dix.lat/me/bb174465-aa94-4844-8b89-ff4bc5f77f17.jpg',
           mediaType: 1,
-          renderLargerThumbnail: true,
-          sourceUrl: 'https://cdn.dix.lat'
+          renderLargerThumbnail: true
         }
       }
     },
-    { quoted: m }
+    { quoted: fkontak }
   )
 }
 
-export default { command: ['menu'], run }
+export default {
+  name: 'menu',
+  aliases: ['help'],
+  tags: ['main'],
+  command: ['menu'],
+  run
+}
 
 function clockString(ms) {
   const h = Math.floor(ms / 3600000)
