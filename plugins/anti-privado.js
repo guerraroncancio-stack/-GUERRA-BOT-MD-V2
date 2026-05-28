@@ -1,45 +1,31 @@
-export default {
+export async function before(m, { conn, isOwner, isROwner }) {
 
-  name: 'anti-privado',
+  try {
 
-  async all(m, { conn }) {
+    // =========================
+    // IGNORAR
+    // =========================
 
-    try {
+    if (!m.message) return false
+    if (m.isGroup) return false
+    if (m.fromMe) return false
+    if (m.key?.fromMe) return false
+    if (m.chat === 'status@broadcast') return false
 
-      // =========================
-      // IGNORAR MENSAJES
-      // =========================
+    // =========================
+    // OWNER CHECK
+    // =========================
 
-      if (!m.chat) return
-      if (m.isGroup) return
-      if (m.fromMe) return
-      if (m.key?.fromMe) return
+    if (isOwner || isROwner) return false
 
-      // =========================
-      // OWNER
-      // =========================
+    // =========================
+    // MENSAJE
+    // =========================
 
-      const owners = global.owner || []
-
-      const sender =
-      (m.sender || '')
-      .replace(/[^0-9]/g, '')
-
-      const isOwner =
-      owners.some(v =>
-        sender === String(v[0])
-      )
-
-      if (isOwner) return
-
-      // =========================
-      // MENSAJE
-      // =========================
-
-      await conn.sendMessage(
-        m.chat,
-        {
-          text:
+    await conn.sendMessage(
+      m.chat,
+      {
+        text:
 `╭━━〔 🚫 ACCESO DENEGADO 🚫 〕━━⬣
 ┃
 ┃ ❌ No puedes escribir
@@ -51,41 +37,52 @@ export default {
 ┃ 🚷 Serás bloqueado.
 ┃
 ╰━━━━━━━━━━━━━━━━━━⬣`
+      },
+      { quoted: m }
+    )
+
+    // =========================
+    // ESPERA
+    // =========================
+
+    await new Promise(resolve =>
+      setTimeout(resolve, 1500)
+    )
+
+    // =========================
+    // BLOQUEAR
+    // =========================
+
+    await conn.updateBlockStatus(
+      m.sender,
+      'block'
+    )
+
+    // =========================
+    // ELIMINAR CHAT
+    // =========================
+
+    if (conn.chatModify) {
+
+      await conn.chatModify(
+        {
+          delete: true,
+          lastMessages: []
         },
-        { quoted: m }
-      )
-
-      // =========================
-      // BLOQUEAR
-      // =========================
-
-      await conn.updateBlockStatus(
-        m.chat,
-        'block'
-      )
-
-      // =========================
-      // ELIMINAR CHAT
-      // =========================
-
-      if (conn.chatModify) {
-
-        await conn.chatModify(
-          {
-            delete: true,
-            lastMessages: []
-          },
-          m.chat
-        ).catch(() => {})
-
-      }
-
-    } catch (e) {
-
-      console.log(e)
+        m.chat
+      ).catch(() => {})
 
     }
 
+  } catch (e) {
+
+    console.log(
+      '[ ANTI PRIVADO ERROR ]',
+      e
+    )
+
   }
+
+  return false
 
 }
