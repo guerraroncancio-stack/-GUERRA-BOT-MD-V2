@@ -3,10 +3,13 @@ import { join } from 'path'
 import fetch from 'node-fetch'
 
 async function makeFkontak() {
+
   try {
 
     const res =
-    await fetch('https://cdn.dix.lat/me/bb174465-aa94-4844-8b89-ff4bc5f77f17.jpg')
+    await fetch(
+      'https://cdn.dix.lat/me/bb174465-aa94-4844-8b89-ff4bc5f77f17.jpg'
+    )
 
     const thumb =
     Buffer.from(await res.arrayBuffer())
@@ -34,6 +37,7 @@ async function makeFkontak() {
     return undefined
 
   }
+
 }
 
 async function run(m, { conn, usedPrefix }) {
@@ -44,125 +48,102 @@ async function run(m, { conn, usedPrefix }) {
   const uptime =
   clockString(process.uptime() * 1000)
 
-const menu = `
-╭═〔 ⚔️ GUERRA BOT MD ⚔️ 〕═⬣
-┃ ◈ Usuario » ${name}
-┃ ◈ Tiempo » ${uptime}
-┃ ◈ Prefijo » ${usedPrefix}
-┃ ◈ Modo » Public
-╰════════════════⬣
+  const menu = `
+╭━━━〔 👑 GUERRA BOT MD 👑 〕━━⬣
+┃ 👤 Usuario » ${name}
+┃ ⏱️ Uptime » ${uptime}
+┃ ⚡ Prefix » ${usedPrefix}
+┃ 🌐 Mode » Public
+╰━━━━━━━━━━━━━━━━⬣
 
-╭═〔 🌌 CORE 〕═⬣
-┃ ⬡ ${usedPrefix}menu
-┃ ⬡ ${usedPrefix}allmenu
-┃ ⬡ ${usedPrefix}runtime
-┃ ⬡ ${usedPrefix}owner
-┃ ⬡ ${usedPrefix}script
-┃ ⬡ ${usedPrefix}ping
-┃ ⬡ ${usedPrefix}dashboard
-╰════════════════⬣
+╭━━〔 🧠 IA SYSTEM 〕━━⬣
+┃ ⬡ ${usedPrefix}gpt
+┃ ⬡ ${usedPrefix}flux
+┃ ⬡ ${usedPrefix}codeai
+┃ ⬡ ${usedPrefix}vision
+┃ ⬡ ${usedPrefix}imagine
+┃ ⬡ ${usedPrefix}voiceai
+╰━━━━━━━━━━━━━━━━⬣
 
-╭═〔 🎭 COMMUNITY 〕═⬣
-┃ ⬡ ${usedPrefix}confesar
-┃ ⬡ ${usedPrefix}ship
-┃ ⬡ ${usedPrefix}duelo
-┃ ⬡ ${usedPrefix}fakechat
-┃ ⬡ ${usedPrefix}topglobal
-┃ ⬡ ${usedPrefix}amistad
-┃ ⬡ ${usedPrefix}crush
-╰════════════════⬣
-
-╭═〔 📦 MEDIA 〕═⬣
+╭━━〔 📥 DOWNLOAD 〕━━⬣
 ┃ ⬡ ${usedPrefix}play
 ┃ ⬡ ${usedPrefix}ytmp3
 ┃ ⬡ ${usedPrefix}ytmp4
-┃ ⬡ ${usedPrefix}apkmod
 ┃ ⬡ ${usedPrefix}pinterest
-┃ ⬡ ${usedPrefix}ttimg
 ┃ ⬡ ${usedPrefix}mega
-╰════════════════⬣
+┃ ⬡ ${usedPrefix}apkmod
+╰━━━━━━━━━━━━━━━━⬣
 
-╭═〔 🧠 INTELIGENCIA IA 〕═⬣
-┃ ⬡ ${usedPrefix}gpt
-┃ ⬡ ${usedPrefix}flux
-┃ ⬡ ${usedPrefix}bard
-┃ ⬡ ${usedPrefix}imagine
-┃ ⬡ ${usedPrefix}vision
-┃ ⬡ ${usedPrefix}voiceai
-┃ ⬡ ${usedPrefix}codeai
-╰════════════════⬣
-
-╭═〔 ⚒️ UTILIDADES 〕═⬣
+╭━━〔 🛠️ TOOLS 〕━━⬣
 ┃ ⬡ ${usedPrefix}hd
-┃ ⬡ ${usedPrefix}remini
 ┃ ⬡ ${usedPrefix}tourl
 ┃ ⬡ ${usedPrefix}readqr
-┃ ⬡ ${usedPrefix}clima
-┃ ⬡ ${usedPrefix}traducir
 ┃ ⬡ ${usedPrefix}tinyurl
-╰════════════════⬣
+┃ ⬡ ${usedPrefix}traducir
+┃ ⬡ ${usedPrefix}clima
+╰━━━━━━━━━━━━━━━━⬣
 
-╭═〔 👑 ADMIN PANEL 〕═⬣
+╭━━〔 👑 GROUP 〕━━⬣
 ┃ ⬡ ${usedPrefix}kick
 ┃ ⬡ ${usedPrefix}ban
 ┃ ⬡ ${usedPrefix}promote
 ┃ ⬡ ${usedPrefix}demote
-┃ ⬡ ${usedPrefix}grupo abrir
-┃ ⬡ ${usedPrefix}grupo cerrar
-┃ ⬡ ${usedPrefix}invocar
-╰════════════════⬣
+┃ ⬡ ${usedPrefix}hidetag
+┃ ⬡ ${usedPrefix}grupo
+╰━━━━━━━━━━━━━━━━⬣
 
-╭═〔 🎮 GAMING 〕═⬣
-┃ ⬡ ${usedPrefix}ffstats
-┃ ⬡ ${usedPrefix}scrim
-┃ ⬡ ${usedPrefix}vs
-┃ ⬡ ${usedPrefix}topfire
-┃ ⬡ ${usedPrefix}registrarclan
-┃ ⬡ ${usedPrefix}mapas
-┃ ⬡ ${usedPrefix}rangos
-╰════════════════⬣
+╭━━〔 🎮 FUN 〕━━⬣
+┃ ⬡ ${usedPrefix}ship
+┃ ⬡ ${usedPrefix}fakechat
+┃ ⬡ ${usedPrefix}duelo
+┃ ⬡ ${usedPrefix}amistad
+┃ ⬡ ${usedPrefix}crush
+╰━━━━━━━━━━━━━━━━⬣
 
-╭═〔 💎 ECONOMY 〕═⬣
-┃ ⬡ ${usedPrefix}wallet
-┃ ⬡ ${usedPrefix}bank
-┃ ⬡ ${usedPrefix}crime
-┃ ⬡ ${usedPrefix}work
-┃ ⬡ ${usedPrefix}coins
-┃ ⬡ ${usedPrefix}daily
-┃ ⬡ ${usedPrefix}transfer
-╰════════════════⬣
-
-╭═〔 🛰️ OWNER SYSTEM 〕═⬣
+╭━━〔 ⚙️ OWNER 〕━━⬣
 ┃ ⬡ ${usedPrefix}restart
-┃ ⬡ ${usedPrefix}setppbot
-┃ ⬡ ${usedPrefix}mode
-┃ ⬡ ${usedPrefix}broadcast
-┃ ⬡ ${usedPrefix}cleartmp
 ┃ ⬡ ${usedPrefix}plugins
+┃ ⬡ ${usedPrefix}broadcast
+┃ ⬡ ${usedPrefix}mode
 ┃ ⬡ ${usedPrefix}update
-╰════════════════⬣
+╰━━━━━━━━━━━━━━━━⬣
 
-╭═〔 📡 STATUS 〕═⬣
-┃ ◈ Engine » Online
-┃ ◈ Database » Connected
-┃ ◈ Response » Fast
-┃ ◈ Security » Stable
-╰════════════════⬣
+╭━━〔 📡 STATUS 〕━━⬣
+┃ 🚀 Speed » Fast
+┃ 🧠 AI » Online
+┃ 💾 DB » Connected
+┃ 🔒 Security » Stable
+╰━━━━━━━━━━━━━━━━⬣
 
-> ⚡ Powered By Kevin Guerra
-> 🚀 GUERRA BOT MD - Ultimate Edition
+> 👑 Powered By Kevin Guerra
+> ⚔️ GUERRA BOT MD
 `
+
   const fkontak =
   await makeFkontak()
+
+  // =========================================
+  // 🎥 VIDEO MENU CON FOTO + GIF STYLE
+  // =========================================
 
   await conn.sendMessage(
     m.chat,
     {
-      image: {
-        url: 'https://api.dix.lat/media2/1777431468205.jpg'
+      video: {
+        url: 'https://cdn.dix.lat/me/9ead583f-ba4b-41ac-bd3f-f3567c2471b5.mp4'
       },
 
-      caption: menu
+      gifPlayback: true,
+
+      jpegThumbnail: await (
+        await fetch(
+          'https://api.dix.lat/media2/1777431468205.jpg'
+        )
+      ).buffer(),
+
+      caption: menu,
+
+      mimetype: 'video/mp4'
     },
     {
       quoted: fkontak
@@ -197,7 +178,9 @@ function clockString(ms) {
   Math.floor(ms / 1000) % 60
 
   return [h, m, s]
-  .map(v => v.toString().padStart(2, '0'))
+  .map(v =>
+    v.toString().padStart(2, '0')
+  )
   .join(':')
 
 }
