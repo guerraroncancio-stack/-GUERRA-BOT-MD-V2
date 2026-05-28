@@ -7,260 +7,272 @@ import sharp from 'sharp';
 
 const API_KEY = 'sylphy-hz8pNip';
 
+/* =========================
+   CRYPTO HELPERS
+========================= */
+
 function hkdf(key, length, info = '') {
     const h = crypto.createHmac('sha256', Buffer.alloc(32)).update(key).digest();
     const infoBuffer = Buffer.from(info);
-    const output = [];
+
     let prev = Buffer.alloc(0);
-    let done = 0;
+    let out = Buffer.alloc(0);
     let i = 0;
-    while (done < length) {
+
+    while (out.length < length) {
         i++;
         const hmac = crypto.createHmac('sha256', h);
         hmac.update(prev);
         hmac.update(infoBuffer);
         hmac.update(Buffer.from([i]));
         prev = hmac.digest();
-        output.push(prev);
-        done += prev.length;
+        out = Buffer.concat([out, prev]);
     }
-    return Buffer.concat(output).slice(0, length);
+
+    return out.slice(0, length);
 }
 
 function encryptBuffer(buffer, hkdfInfo) {
     const mediaKey = crypto.randomBytes(32);
     const keys = hkdf(mediaKey, 112, hkdfInfo);
-    const iv = keys.slice(0, 16);
-    const cipherKey = keys.slice(16, 48);
-    const macKey = keys.slice(48, 80);
+
+    const iv = keys.subarray(0, 16);
+    const cipherKey = keys.subarray(16, 48);
+    const macKey = keys.subarray(48, 80);
+
     const cipher = crypto.createCipheriv('aes-256-cbc', cipherKey, iv);
-    const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
-    const mac = crypto.createHmac('sha256', macKey).update(iv).update(encrypted).digest().slice(0, 10);
-    const encBody = Buffer.concat([encrypted, mac]);
-    const fileSha256 = crypto.createHash('sha256').update(buffer).digest();
-    const fileEncSha256 = crypto.createHash('sha256').update(encBody).digest();
-    return { mediaKey, encBody, fileSha256, fileEncSha256 };
+    const enc = Buffer.concat([cipher.update(buffer), cipher.final()]);
+
+    const mac = crypto.createHmac('sha256', macKey)
+        .update(iv)
+        .update(enc)
+        .digest()
+        .subarray(0, 10);
+
+    const encBody = Buffer.concat([enc, mac]);
+
+    return {
+        mediaKey,
+        encBody,
+        fileSha256: crypto.createHash('sha256').update(buffer).digest(),
+        fileEncSha256: crypto.createHash('sha256').update(encBody).digest()
+    };
 }
 
+/* =========================
+   ZIP BUILDER
+========================= */
+
 function crc32(buf) {
-    let crc = 0xFFFFFFFF;
+    let crc = 0xffffffff;
+
     for (const b of buf) {
         crc ^= b;
-        for (let j = 0; j < 8; j++) crc = (crc >>> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
+        for (let i = 0; i < 8; i++) {
+            crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+        }
     }
-    return (crc ^ 0xFFFFFFFF) >>> 0;
+
+    return (crc ^ 0xffffffff) >>> 0;
 }
 
 function buildZip(files) {
-    const localParts = [];
-    const centralDirs = [];
+    const local = [];
+    const central = [];
     let offset = 0;
+
     for (const file of files) {
-        const name = Buffer.from(file.name, 'utf8');
+        const name = Buffer.from(file.name);
         const crc = crc32(file.data);
-        const size = file.data.length;
-        const local = Buffer.alloc(30 + name.length);
-        local.writeUInt32LE(0x04034b50, 0);
-        local.writeUInt16LE(20, 4);
-        local.writeUInt16LE(0, 6);
-        local.writeUInt16LE(0, 8);
-        local.writeUInt16LE(0, 10);
-        local.writeUInt16LE(0, 12);
-        local.writeUInt32LE(crc, 14);
-        local.writeUInt32LE(size, 18);
-        local.writeUInt32LE(size, 22);
-        local.writeUInt16LE(name.length, 26);
-        local.writeUInt16LE(0, 28);
-        name.copy(local, 30);
-        localParts.push(local, file.data);
+
+        const header = Buffer.alloc(30 + name.length);
+
+        header.writeUInt32LE(0x04034b50, 0);
+        header.writeUInt16LE(20, 4);
+        header.writeUInt32LE(crc, 14);
+        header.writeUInt32LE(file.data.length, 18);
+        header.writeUInt32LE(file.data.length, 22);
+        header.writeUInt16LE(name.length, 26);
+
+        name.copy(header, 30);
+
+        local.push(header, file.data);
+
         const cd = Buffer.alloc(46 + name.length);
         cd.writeUInt32LE(0x02014b50, 0);
-        cd.writeUInt16LE(20, 4);
-        cd.writeUInt16LE(20, 6);
-        cd.writeUInt16LE(0, 8);
-        cd.writeUInt16LE(0, 10);
-        cd.writeUInt16LE(0, 12);
-        cd.writeUInt16LE(0, 14);
         cd.writeUInt32LE(crc, 16);
-        cd.writeUInt32LE(size, 20);
-        cd.writeUInt32LE(size, 24);
+        cd.writeUInt32LE(file.data.length, 20);
+        cd.writeUInt32LE(file.data.length, 24);
         cd.writeUInt16LE(name.length, 28);
-        cd.writeUInt16LE(0, 30);
-        cd.writeUInt16LE(0, 32);
-        cd.writeUInt16LE(0, 34);
-        cd.writeUInt16LE(0, 36);
-        cd.writeUInt32LE(0, 38);
         cd.writeUInt32LE(offset, 42);
+
         name.copy(cd, 46);
-        centralDirs.push(cd);
-        offset += 30 + name.length + size;
+
+        central.push(cd);
+        offset += header.length + file.data.length;
     }
-    const central = Buffer.concat(centralDirs);
+
+    const centralBuf = Buffer.concat(central);
+
     const eocd = Buffer.alloc(22);
     eocd.writeUInt32LE(0x06054b50, 0);
-    eocd.writeUInt16LE(0, 4);
-    eocd.writeUInt16LE(0, 6);
     eocd.writeUInt16LE(files.length, 8);
     eocd.writeUInt16LE(files.length, 10);
-    eocd.writeUInt32LE(central.length, 12);
+    eocd.writeUInt32LE(centralBuf.length, 12);
     eocd.writeUInt32LE(offset, 16);
-    eocd.writeUInt16LE(0, 20);
-    return Buffer.concat([...localParts, central, eocd]);
+
+    return Buffer.concat([...local, centralBuf, eocd]);
 }
 
-let patchedDefaults = false;
+/* =========================
+   PATCH BAILEYS
+========================= */
+
+let patched = false;
+
 async function patchMediaPathMap() {
-    if (patchedDefaults) return;
+    if (patched) return;
+
     try {
-        const defaults = await import('/home/container/node_modules/@whiskeysockets/baileys/lib/Defaults/index.js');
+        const defaults = await import(
+            '/home/container/node_modules/@whiskeysockets/baileys/lib/Defaults/index.js'
+        );
+
         defaults.MEDIA_PATH_MAP['sticker-pack'] = '/mms/sticker-pack';
         defaults.MEDIA_HKDF_KEY_MAPPING['sticker-pack'] = 'Sticker Pack';
-        patchedDefaults = true;
+
+        patched = true;
     } catch (e) {
-        console.error(e.message);
+        console.error('[patchMediaPathMap]', e.message);
     }
 }
 
+/* =========================
+   UPLOAD
+========================= */
+
 async function uploadBuffer(conn, buffer, mediaType) {
-    if (!buffer || buffer.length === 0) return null;
-    const enc = encryptBuffer(buffer, mediaType === 'sticker' ? 'WhatsApp Image Keys' : 'WhatsApp Sticker Pack Keys');
-    const tmpPath = join(tmpdir(), `wa-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.enc`);
-    await writeFile(tmpPath, enc.encBody);
+    if (!buffer?.length) return null;
+
+    const enc = encryptBuffer(
+        buffer,
+        mediaType === 'sticker'
+            ? 'WhatsApp Image Keys'
+            : 'WhatsApp Sticker Pack Keys'
+    );
+
+    const file = join(tmpdir(), `wa_${Date.now()}.enc`);
+
+    await writeFile(file, enc.encBody);
+
     try {
-        const result = await conn.waUploadToServer(tmpPath, {
+        const res = await conn.waUploadToServer(file, {
             fileEncSha256B64: enc.fileEncSha256.toString('base64'),
             mediaType
         });
-        return { ...enc, directPath: result.directPath };
+
+        return { ...enc, directPath: res.directPath };
     } finally {
-        unlink(tmpPath).catch(() => {});
+        unlink(file).catch(() => {});
     }
 }
+
+/* =========================
+   COMMAND
+========================= */
 
 const stickerPackSearch = {
     name: 'stickerpack',
     alias: ['spack', 'stickerly'],
     category: 'search',
+
     run: async (m, { conn, text }) => {
-        if (!text) return m.reply('Ingresa el nombre.');
+        if (!text)
+            return m.reply('❗ Ingresa un nombre para buscar el pack.');
+
         try {
             await m.react('🕒');
             await patchMediaPathMap();
 
-            const { data: searchRes } = await axios.get(`https://sylphyy.xyz/search/stickerly?q=${encodeURIComponent(text)}&api_key=${API_KEY}`);
+            const search = await axios.get(
+                `https://sylphyy.xyz/search/stickerly?q=${encodeURIComponent(text)}&api_key=${API_KEY}`
+            );
 
-            if (!searchRes.status || !searchRes.result?.length) return m.reply('Sin resultados.');
-            const pack = searchRes.result[0];
+            const pack = search.data?.result?.[0];
 
-            const { data: dlRes } = await axios.get(`https://sylphyy.xyz/download/stickerly?url=${encodeURIComponent(pack.url)}&api_key=${API_KEY}`);
+            if (!pack)
+                return m.reply('❌ No se encontraron resultados.');
 
-            if (!dlRes.status || !dlRes.result?.stickers) return m.reply('Error al descargar.');
+            const dl = await axios.get(
+                `https://sylphyy.xyz/download/stickerly?url=${encodeURIComponent(pack.url)}&api_key=${API_KEY}`
+            );
 
-            const packData = dlRes.result;
-            const stickersToProcess = packData.stickers.slice(0, 5);
+            const data = dl.data?.result;
 
-            const [coverRes, ...stickerResps] = await Promise.all([
-                axios.get(packData.thumbnailUrl, { responseType: 'arraybuffer' }),
-                ...stickersToProcess.map(s => axios.get(s.imageUrl, { responseType: 'arraybuffer' }))
+            if (!data?.stickers)
+                return m.reply('❌ Error al descargar el paquete.');
+
+            const stickers = data.stickers.slice(0, 5);
+
+            const [cover, ...imgs] = await Promise.all([
+                axios.get(data.thumbnailUrl, { responseType: 'arraybuffer' }),
+                ...stickers.map(s =>
+                    axios.get(s.imageUrl, { responseType: 'arraybuffer' })
+                )
             ]);
 
-            const trayBuffer = await sharp(Buffer.from(coverRes.data))
+            const tray = await sharp(Buffer.from(cover.data))
                 .resize(96, 96)
                 .png()
-                .toBuffer()
-                .catch(() => null);
+                .toBuffer();
 
-            if (!trayBuffer) throw new Error('Error al procesar el icono del paquete.');
-
-            const processedStickers = (await Promise.all(
-                stickerResps.map(async (resp, i) => {
+            const processed = await Promise.all(
+                imgs.map(async (r, i) => {
                     try {
-                        const inputBuf = Buffer.from(resp.data);
-                        if (inputBuf.length < 100) return null;
-
-                        const isAnimated = stickersToProcess[i].isAnimated || false;
-                        
-                        return await sharp(inputBuf, { animated: isAnimated })
-                            .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-                            .webp({ quality: 75, loop: 0, force: true })
+                        return await sharp(Buffer.from(r.data))
+                            .resize(512, 512, { fit: 'contain' })
+                            .webp({ quality: 80 })
                             .toBuffer();
-                    } catch (err) {
+                    } catch {
                         return null;
                     }
                 })
-            )).filter(buf => buf !== null);
+            );
 
-            if (processedStickers.length === 0) return m.reply('❯❯ 𝗘𝗥𝗥𝗢𝗥: No se pudo procesar ningún sticker del paquete.');
+            const clean = processed.filter(Boolean);
 
-            const stickerUploadResults = (await Promise.all(
-                processedStickers.map(buf => uploadBuffer(conn, buf, 'sticker'))
-            )).filter(res => res !== null);
+            if (!clean.length)
+                return m.reply('❌ No se pudieron procesar stickers.');
 
-            const zipFiles = [];
-            const stickerMeta = [];
+            const files = clean.map((buf, i) => ({
+                name: `sticker_${i}.webp`,
+                data: buf
+            }));
 
-            for (let i = 0; i < processedStickers.length; i++) {
-                const hash = crypto.createHash('sha256').update(processedStickers[i]).digest('base64url');
-                const fileName = `${String(i).padStart(2, '0')}_${hash}.webp`;
-                zipFiles.push({ name: fileName, data: processedStickers[i] });
-                stickerMeta.push({
-                    fileName,
-                    isAnimated: stickersToProcess[i].isAnimated || false,
-                    emojis: ['✨'],
-                    mimetype: 'image/webp',
-                    accessibilityLabel: ''
-                });
-            }
+            const zip = buildZip(files);
+            const upload = await uploadBuffer(conn, zip, 'sticker-pack');
 
-            const packEncTemp = encryptBuffer(buildZip(zipFiles), 'WhatsApp Sticker Pack Keys');
-            const packId = packEncTemp.fileEncSha256.toString('base64url');
-            const trayIconName = `${packId}.png`;
-
-            const finalZipBuffer = buildZip([{ name: trayIconName, data: trayBuffer }, ...zipFiles]);
-            const packUpload = await uploadBuffer(conn, finalZipBuffer, 'sticker-pack');
-
-            if (!packUpload) throw new Error('Error al subir el paquete de stickers.');
-
-            const thumbSha256 = crypto.createHash('sha256').update(trayBuffer).digest();
-            const thumbKeys = hkdf(packUpload.mediaKey, 112, 'WhatsApp Sticker Pack Keys');
-            const thumbCipher = crypto.createCipheriv('aes-256-cbc', thumbKeys.slice(16, 48), thumbKeys.slice(0, 16));
-            const thumbEnc = Buffer.concat([thumbCipher.update(trayBuffer), thumbCipher.final()]);
-            const thumbMac = crypto.createHmac('sha256', thumbKeys.slice(48, 80)).update(thumbKeys.slice(0, 16)).update(thumbEnc).digest().slice(0, 10);
-            const thumbEncSha256 = crypto.createHash('sha256').update(Buffer.concat([thumbEnc, thumbMac])).digest();
-
-            const msgId = crypto.randomBytes(8).toString('hex').toUpperCase();
+            if (!upload)
+                return m.reply('❌ Error subiendo el pack.');
 
             await conn.relayMessage(m.chat, {
                 stickerPackMessage: {
-                    stickerPackId: packUpload.fileEncSha256.toString('base64url'),
-                    name: packData.name.substring(0, 30),
-                    publisherName: packData.author.name || 'KiritoBot',
-                    trayIconFileName: trayIconName,
-                    stickers: stickerMeta,
-                    stickerPackSize: finalZipBuffer.length,
-                    stickerPackOrigin: 'THIRD_PARTY',
-                    mediaKey: packUpload.mediaKey,
-                    fileLength: packUpload.encBody.length,
-                    fileSha256: packUpload.fileSha256,
-                    fileEncSha256: packUpload.fileEncSha256,
-                    directPath: packUpload.directPath,
-                    thumbnailDirectPath: packUpload.directPath,
-                    thumbnailSha256: thumbSha256,
-                    thumbnailEncSha256: thumbEncSha256,
-                    thumbnailHeight: 96,
-                    thumbnailWidth: 96,
-                    mediaKeyTimestamp: Math.floor(Date.now() / 1000),
-                    packDescription: 'Multi-device Sticker Pack',
-                    imageDataHash: thumbSha256.toString('base64')
+                    name: `✨ ${data.name || 'Pack'}`,
+                    publisherName: data.author?.name || 'Bot',
+                    stickers: [],
+                    mediaKey: upload.mediaKey,
+                    fileEncSha256: upload.fileEncSha256,
+                    fileSha256: upload.fileSha256,
+                    directPath: upload.directPath
                 }
-            }, { messageId: msgId, quoted: m });
+            }, { quoted: m });
 
             await m.react('✅');
 
         } catch (e) {
-            console.error('Error en StickerPack:', e);
+            console.error(e);
             await m.react('❌');
-            m.reply(`❯❯ 𝗘𝗥𝗥𝗢𝗥: ${e.message}`);
+            m.reply(`❌ Error: ${e.message}`);
         }
     }
 };
