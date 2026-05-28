@@ -1,7 +1,7 @@
 const antiSpamGroup = {
   name: 'antispam',
   description: 'Sistema anti spam',
-  version: '1.0.0',
+  version: '1.0.1',
 
   async before(m, { conn, isAdmin, isBotAdmin, isOwner, isROwner }) {
     try {
@@ -21,17 +21,18 @@ const antiSpamGroup = {
       // 🤖 NECESARIO PARA KICK
       if (!isBotAdmin) return false
 
-      // 📦 INIT DB SEGURO
-      global.db = global.db || { data: { chats: {}, users: {} } }
-      global.db.data.chats = global.db.data.chats || {}
-      global.db.data.users = global.db.data.users || {}
+      // 📦 INIT DB 100% SEGURO (FIX REAL)
+      global.db ||= {}
+      global.db.data ||= {}
+      global.db.data.chats ||= {}
+      global.db.data.users ||= {}
 
-      // 📂 CHAT
+      // 📂 CHAT INIT
       if (!global.db.data.chats[m.chat]) {
         global.db.data.chats[m.chat] = { antiSpam: true }
       }
 
-      // 👤 USER
+      // 👤 USER INIT
       if (!global.db.data.users[m.sender]) {
         global.db.data.users[m.sender] = {}
       }
@@ -51,16 +52,16 @@ const antiSpamGroup = {
         warned: false
       }
 
-      // 🔄 RESET 3 MIN
+      // 🔄 RESET CADA 3 MIN
       if (now - user.groupSpamData.time > 180000) {
         user.groupSpamData.count = 0
         user.groupSpamData.warned = false
         user.groupSpamData.time = now
       }
 
-      user.groupSpamData.count += 1
+      user.groupSpamData.count++
 
-      // ⚠️ AVISO
+      // ⚠️ WARNING
       if (
         user.groupSpamData.count === 10 &&
         !user.groupSpamData.warned
@@ -79,7 +80,7 @@ const antiSpamGroup = {
         }, { quoted: m })
       }
 
-      // 🚨 EXPULSIÓN
+      // 🚨 KICK
       if (user.groupSpamData.count >= 50) {
 
         await conn.sendMessage(m.chat, {
@@ -98,6 +99,7 @@ const antiSpamGroup = {
           'remove'
         )
 
+        // reset seguro
         user.groupSpamData = {
           count: 0,
           time: now,
