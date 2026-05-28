@@ -1,10 +1,15 @@
-```js
 import { exec } from 'child_process'
 import path from 'path'
 import fs from 'fs'
 import { promisify } from 'util'
+import { fileURLToPath } from 'url'
 
 const execAsync = promisify(exec)
+
+const __dirname =
+path.dirname(
+  fileURLToPath(import.meta.url)
+)
 
 const updateCommand = {
 
@@ -26,9 +31,9 @@ const updateCommand = {
 
       await m.react('🔄')
 
-      // =====================================
+      // =========================
       // 📦 GIT PULL
-      // =====================================
+      // =========================
 
       const { stdout, stderr } =
       await execAsync(
@@ -38,16 +43,64 @@ const updateCommand = {
       const output =
       `${stdout}\n${stderr}`.trim()
 
-      // =====================================
-      // 🔥 HOT RELOAD
-      // =====================================
+      // =========================
+      // ⚠️ SIN CAMBIOS
+      // =========================
 
-      const total =
-      await reloadPlugins()
+      if (
+        /Already up[ -]to[ -]date/i
+        .test(output)
+      ) {
 
-      // =====================================
-      // ✅ MENSAJE FINAL
-      // =====================================
+        // 🔥 AUN ASÍ RECARGA
+        await reloadPlugins(conn)
+
+        await m.react('✅')
+
+        return conn.sendMessage(
+          m.chat,
+          {
+            text:
+`╭━━〔 ✅ SYSTEM UPDATE 〕━━⬣
+┃
+┃ ⚡ Sistema actualizado
+┃ 📦 No había cambios nuevos
+┃ 🔄 Plugins recargados
+┃ 🚀 Bot optimizado
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+          },
+          { quoted: m }
+        )
+
+      }
+
+      // =========================
+      // 🔥 MENSAJE UPDATE
+      // =========================
+
+      await conn.sendMessage(
+        m.chat,
+        {
+          text:
+`╭━━〔 📦 UPDATE COMPLETO 〕━━⬣
+┃
+┃ ⚡ Nuevos cambios detectados
+┃ 🔄 Recargando comandos...
+┃ 🚀 Aplicando optimización
+┃
+┣━━━━━━━━━━━━━━━━━━⬣
+${output.slice(0, 3500)}
+╰━━━━━━━━━━━━━━━━━━⬣`
+        },
+        { quoted: m }
+      )
+
+      // =========================
+      // 🔥 RECARGAR PLUGINS
+      // =========================
+
+      await reloadPlugins(conn)
 
       await m.react('✅')
 
@@ -55,15 +108,13 @@ const updateCommand = {
         m.chat,
         {
           text:
-`╭━━〔 🚀 SYSTEM UPDATE 〕━━⬣
+`╭━━〔 🚀 UPDATE FINALIZADO 〕━━⬣
 ┃
-┃ ✅ Actualización completada
-┃ 🔄 Plugins recargados
-┃ 📦 Total cargados: ${total}
-┃ ⚡ Sistema sincronizado
+┃ ✅ Plugins recargados
+┃ ✅ Nuevos comandos activos
+┃ ✅ Sistema sincronizado
+┃ ✅ Hot Reload completado
 ┃
-┣━━━━━━━━━━━━━━━━━━⬣
-${output.slice(0, 3000) || 'Sin cambios nuevos'}
 ╰━━━━━━━━━━━━━━━━━━⬣`
         },
         { quoted: m }
@@ -81,7 +132,7 @@ ${output.slice(0, 3000) || 'Sin cambios nuevos'}
           text:
 `╭━━〔 ❌ UPDATE ERROR 〕━━⬣
 ┃
-┃ ⚠️ Error durante update
+┃ ⚠️ Error al actualizar
 ┃
 ┣━━━━━━━━━━━━━━━━━━⬣
 ${String(e).slice(0, 3000)}
@@ -98,112 +149,86 @@ ${String(e).slice(0, 3000)}
 
 export default updateCommand
 
-// =====================================
-// 🔥 HOT RELOAD UNIVERSAL
-// =====================================
+// =========================================
+// 🔥 HOT RELOAD REAL
+// =========================================
 
-async function reloadPlugins() {
+async function reloadPlugins(conn) {
 
   try {
 
-    // =====================================
-    // 📂 POSIBLES CARPETAS
-    // =====================================
+    const pluginFolder =
+    path.join(
+      process.cwd(),
+      'plugins'
+    )
 
-    const folders = [
-      'plugins',
-      'handler',
-      'commands',
-      'src/plugins',
-      'src/handler'
-    ]
+    const files =
+    getFiles(pluginFolder)
 
-    let totalLoaded = 0
+    for (const file of files) {
 
-    for (const folder of folders) {
-
-      const fullPath =
-      path.join(process.cwd(), folder)
-
-      // ✅ SI NO EXISTE NO ROMPE
-      if (!fs.existsSync(fullPath))
+      if (!file.endsWith('.js'))
       continue
 
-      const files =
-      getFiles(fullPath)
+      try {
 
-      for (const file of files) {
+        const modulePath =
+        path.resolve(file)
 
-        if (!file.endsWith('.js'))
-        continue
+        // 🔥 BORRAR CACHE
+        const resolved =
+        await import(
+          `file://${modulePath}?update=${Date.now()}`
+        )
 
-        try {
-
-          const modulePath =
-          path.resolve(file)
-
-          // 🔥 IMPORT FRESCO
-          const imported =
-          await import(
-            `file://${modulePath}?reload=${Date.now()}`
-          )
-
-          if (imported?.default?.name) {
-
-            totalLoaded++
-
-            console.log(
-              `[ HOT-RELOAD ] ${imported.default.name}`
-            )
-
-          }
-
-        } catch (err) {
+        // 🔥 SI EXISTE HANDLER
+        if (
+          resolved?.default?.name
+        ) {
 
           console.log(
-            `[ ERROR ] ${file}`
+            '[ HOT-RELOAD ]',
+            resolved.default.name
           )
 
-          console.log(err)
-
         }
+
+      } catch (err) {
+
+        console.log(
+          '[ ERROR LOADING ]',
+          file
+        )
+
+        console.log(err)
 
       }
 
     }
 
-    // =====================================
-    // 🔥 RELOAD GLOBAL
-    // =====================================
-
+    // 🔥 RELOAD HANDLER GLOBAL
     if (global.reloadHandler) {
 
       await global.reloadHandler(true)
 
     }
 
-    return totalLoaded
-
   } catch (e) {
 
     console.log(e)
-
-    return 0
 
   }
 
 }
 
-// =====================================
+// =========================================
 // 📂 LEER ARCHIVOS RECURSIVOS
-// =====================================
+// =========================================
 
 function getFiles(dir) {
 
   let results = []
-
-  if (!fs.existsSync(dir))
-  return results
 
   const list =
   fs.readdirSync(dir)
@@ -213,20 +238,10 @@ function getFiles(dir) {
     const full =
     path.join(dir, file)
 
-    let stat
+    const stat =
+    fs.statSync(full)
 
-    try {
-
-      stat =
-      fs.statSync(full)
-
-    } catch {
-
-      continue
-
-    }
-
-    if (stat.isDirectory()) {
+    if (stat && stat.isDirectory()) {
 
       results =
       results.concat(
@@ -244,4 +259,3 @@ function getFiles(dir) {
   return results
 
 }
-```
