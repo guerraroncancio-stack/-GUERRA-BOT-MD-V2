@@ -1,61 +1,60 @@
+```js
 const antiSpamGroup = {
 
   name: 'antispam',
 
-  async before(m, { conn, isAdmin, isBotAdmin, isOwner, isROwner }) {
+  async before(
+    m,
+    {
+      conn,
+      isAdmin,
+      isBotAdmin,
+      isOwner,
+      isROwner
+    }
+  ) {
 
     try {
 
-      // =========================================
+      // =====================================
       // 🚫 SOLO GRUPOS
-      // =========================================
+      // =====================================
 
       if (!m.isGroup) return false
       if (!m.sender) return false
       if (!m.message) return false
 
-      // =========================================
+      // =====================================
       // 👑 IGNORAR OWNERS
-      // =========================================
+      // =====================================
 
-      if (isOwner || isROwner) return false
+      if (isOwner || isROwner)
+      return false
 
-      // =========================================
+      // =====================================
       // 👑 IGNORAR ADMINS
-      // =========================================
+      // =====================================
 
-      if (isAdmin) return false
+      if (isAdmin)
+      return false
 
-      // =========================================
+      // =====================================
       // 🤖 BOT ADMIN
-      // =========================================
+      // =====================================
 
-      if (!isBotAdmin) return false
+      if (!isBotAdmin)
+      return false
 
-      // =========================================
+      // =====================================
       // 🔥 DATABASE FIX
-      // =========================================
+      // =====================================
 
-      global.db.data =
-      global.db.data || {}
+      global.db.data ||= {}
+      global.db.data.chats ||= {}
+      global.db.data.users ||= {}
 
-      global.db.data.chats =
-      global.db.data.chats || {}
-
-      global.db.data.users =
-      global.db.data.users || {}
-
-      if (!global.db.data.chats[m.chat]) {
-
-        global.db.data.chats[m.chat] = {}
-
-      }
-
-      if (!global.db.data.users[m.sender]) {
-
-        global.db.data.users[m.sender] = {}
-
-      }
+      global.db.data.chats[m.chat] ||= {}
+      global.db.data.users[m.sender] ||= {}
 
       const chat =
       global.db.data.chats[m.chat]
@@ -63,40 +62,41 @@ const antiSpamGroup = {
       const user =
       global.db.data.users[m.sender]
 
-      // =========================================
-      // ⚙️ ACTIVAR / DESACTIVAR
-      // =========================================
+      // =====================================
+      // ⚙️ ACTIVAR ANTI-SPAM
+      // =====================================
 
-      if (!('antiSpam' in chat)) {
+      if (
+        typeof chat.antiSpam !==
+        'boolean'
+      ) {
 
         chat.antiSpam = true
 
       }
 
-      if (!chat.antiSpam) return false
+      if (!chat.antiSpam)
+      return false
 
-      // =========================================
-      // 📊 CONTADOR
-      // =========================================
+      // =====================================
+      // 📊 CONTROL SPAM
+      // =====================================
 
       const now = Date.now()
 
-      if (!user.groupSpamData) {
-
-        user.groupSpamData = {
-          count: 0,
-          time: now
-        }
-
+      user.groupSpamData ||= {
+        count: 0,
+        time: now
       }
 
-      // =========================================
-      // ⏳ RESET CADA 3 MIN
-      // =========================================
+      // =====================================
+      // 🔄 RESET 3 MIN
+      // =====================================
 
       if (
-        now - user.groupSpamData.time >
-        3 * 60 * 1000
+        now -
+        user.groupSpamData.time >
+        180000
       ) {
 
         user.groupSpamData.count = 0
@@ -104,24 +104,26 @@ const antiSpamGroup = {
 
       }
 
-      // =========================================
-      // ➕ SUMAR MENSAJE
-      // =========================================
+      // =====================================
+      // ➕ SUMAR
+      // =====================================
 
-      user.groupSpamData.count += 1
+      user.groupSpamData.count++
 
-      // =========================================
-      // 🚨 SPAM DETECTADO
-      // =========================================
+      // =====================================
+      // 🚨 LIMITE
+      // =====================================
 
-      if (user.groupSpamData.count > 50) {
+      const LIMIT = 50
 
-        const reason =
-        '🚫 SPAM EXCESIVO'
+      if (
+        user.groupSpamData.count >=
+        LIMIT
+      ) {
 
-        // =========================================
+        // =====================================
         // 📢 AVISO
-        // =========================================
+        // =====================================
 
         await conn.sendMessage(
           m.chat,
@@ -129,8 +131,8 @@ const antiSpamGroup = {
             text:
 `╭━━〔 🚨 ANTI SPAM 🚨 〕━━⬣
 ┃
-┃ Usuario eliminado
-┃ por exceso de spam.
+┃ ❌ Usuario eliminado
+┃ por spam excesivo
 ┃
 ┃ 👤 Usuario:
 ┃ ➥ @${m.sender.split('@')[0]}
@@ -138,8 +140,8 @@ const antiSpamGroup = {
 ┃ 📊 Mensajes:
 ┃ ➥ ${user.groupSpamData.count}
 ┃
-┃ 📝 Motivo:
-┃ ➥ ${reason}
+┃ ⚠️ Límite:
+┃ ➥ ${LIMIT}
 ┃
 ╰━━━━━━━━━━━━━━━━━━⬣`,
             mentions: [m.sender]
@@ -147,9 +149,9 @@ const antiSpamGroup = {
           { quoted: m }
         )
 
-        // =========================================
-        // ❌ ELIMINAR
-        // =========================================
+        // =====================================
+        // ❌ REMOVE
+        // =====================================
 
         await conn.groupParticipantsUpdate(
           m.chat,
@@ -157,22 +159,19 @@ const antiSpamGroup = {
           'remove'
         )
 
-        // =========================================
+        // =====================================
         // 🔄 RESET
-        // =========================================
+        // =====================================
 
         user.groupSpamData.count = 0
         user.groupSpamData.time = now
 
       }
 
-    } catch (e) {
+    } catch {
 
-      console.log(
-        '[ ANTI-SPAM ERROR ]'
-      )
-
-      console.log(e)
+      // 🔥 SILENCIOSO
+      // NO MANDA NADA A CONSOLA
 
     }
 
@@ -183,3 +182,4 @@ const antiSpamGroup = {
 }
 
 export default antiSpamGroup
+```
