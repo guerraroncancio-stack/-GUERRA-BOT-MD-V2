@@ -1,32 +1,67 @@
-export async function before(m, { conn, isOwner, isROwner }) {
+const antiPrivateCommand = {
 
-  try {
+    name: 'antiprivado',
+    alias: ['antipriv', 'privado'],
 
-    // =========================
-    // IGNORAR
-    // =========================
+    category: 'owner',
 
-    if (!m.message) return false
-    if (m.isGroup) return false
-    if (m.fromMe) return false
-    if (m.key?.fromMe) return false
-    if (m.chat === 'status@broadcast') return false
+    async before(m, { conn, isOwner, isROwner }) {
 
-    // =========================
-    // OWNER CHECK
-    // =========================
+        try {
 
-    if (isOwner || isROwner) return false
+            // =========================
+            // IGNORAR
+            // =========================
 
-    // =========================
-    // MENSAJE
-    // =========================
+            if (!m.message) return false;
+            if (m.isGroup) return false;
+            if (m.fromMe) return false;
+            if (m.key?.fromMe) return false;
+            if (m.chat === 'status@broadcast') return false;
 
-    await conn.sendMessage(
-      m.chat,
-      {
-        text:
-`╭━━〔 🚫 ACCESO DENEGADO 🚫 〕━━⬣
+            // =========================
+            // OWNER
+            // =========================
+
+            if (isOwner || isROwner) return false;
+
+            // =========================
+            // FIX DATABASE
+            // =========================
+
+            global.db.data = global.db.data || {};
+            global.db.data.settings = global.db.data.settings || {};
+
+            const botNumber =
+                conn.user?.jid || conn.user?.id;
+
+            if (!global.db.data.settings[botNumber]) {
+
+                global.db.data.settings[botNumber] = {
+                    antiPrivate: true
+                };
+
+            }
+
+            const botSettings =
+                global.db.data.settings[botNumber];
+
+            // =========================
+            // SISTEMA APAGADO
+            // =========================
+
+            if (!botSettings.antiPrivate)
+                return false;
+
+            // =========================
+            // MENSAJE
+            // =========================
+
+            await conn.sendMessage(
+                m.chat,
+                {
+                    text:
+`╭━━〔 🚫 ANTI PRIVADO 🚫 〕━━⬣
 ┃
 ┃ ❌ No puedes escribir
 ┃ al privado del bot.
@@ -37,52 +72,164 @@ export async function before(m, { conn, isOwner, isROwner }) {
 ┃ 🚷 Serás bloqueado.
 ┃
 ╰━━━━━━━━━━━━━━━━━━⬣`
-      },
-      { quoted: m }
-    )
+                },
+                { quoted: m }
+            );
 
-    // =========================
-    // ESPERA
-    // =========================
+            // =========================
+            // ESPERA
+            // =========================
 
-    await new Promise(resolve =>
-      setTimeout(resolve, 1500)
-    )
+            await new Promise(resolve =>
+                setTimeout(resolve, 1500)
+            );
 
-    // =========================
-    // BLOQUEAR
-    // =========================
+            // =========================
+            // BLOQUEAR
+            // =========================
 
-    await conn.updateBlockStatus(
-      m.sender,
-      'block'
-    )
+            await conn.updateBlockStatus(
+                m.sender,
+                'block'
+            );
 
-    // =========================
-    // ELIMINAR CHAT
-    // =========================
+            // =========================
+            // BORRAR CHAT
+            // =========================
 
-    if (conn.chatModify) {
+            if (conn.chatModify) {
 
-      await conn.chatModify(
-        {
-          delete: true,
-          lastMessages: []
-        },
-        m.chat
-      ).catch(() => {})
+                await conn.chatModify(
+                    {
+                        delete: true,
+                        lastMessages: []
+                    },
+                    m.chat
+                ).catch(() => {});
+
+            }
+
+        } catch (e) {
+
+            console.log(
+                '[ ANTIPRIVADO ERROR ]',
+                e
+            );
+
+        }
+
+        return false;
+
+    },
+
+    async run(m, { conn, args }) {
+
+        try {
+
+            global.db.data = global.db.data || {};
+            global.db.data.settings = global.db.data.settings || {};
+
+            const botNumber =
+                conn.user?.jid || conn.user?.id;
+
+            if (!global.db.data.settings[botNumber]) {
+
+                global.db.data.settings[botNumber] = {
+                    antiPrivate: true
+                };
+
+            }
+
+            const botSettings =
+                global.db.data.settings[botNumber];
+
+            const option =
+                (args[0] || '').toLowerCase();
+
+            // =========================
+            // ON
+            // =========================
+
+            if (option === 'on') {
+
+                botSettings.antiPrivate = true;
+
+                await conn.sendMessage(
+                    m.chat,
+                    {
+                        text:
+`╭━━〔 🚫 ANTI PRIVADO 🚫 〕━━⬣
+┃
+┃ ✅ Sistema activado.
+┃
+┃ El bot bloqueará
+┃ automáticamente
+┃ los privados.
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+                    },
+                    { quoted: m }
+                );
+
+                return;
+
+            }
+
+            // =========================
+            // OFF
+            // =========================
+
+            if (option === 'off') {
+
+                botSettings.antiPrivate = false;
+
+                await conn.sendMessage(
+                    m.chat,
+                    {
+                        text:
+`╭━━〔 🚫 ANTI PRIVADO 🚫 〕━━⬣
+┃
+┃ ❌ Sistema desactivado.
+┃
+┃ El bot ya no
+┃ bloqueará privados.
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+                    },
+                    { quoted: m }
+                );
+
+                return;
+
+            }
+
+            // =========================
+            // USO
+            // =========================
+
+            return conn.sendMessage(
+                m.chat,
+                {
+                    text:
+`╭━━〔 🚫 ANTI PRIVADO 🚫 〕━━⬣
+┃
+┃ Uso:
+┃ ➥ .antiprivado on
+┃ ➥ .antiprivado off
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+                },
+                { quoted: m }
+            );
+
+        } catch (e) {
+
+            console.log(e);
+
+        }
 
     }
 
-  } catch (e) {
+};
 
-    console.log(
-      '[ ANTI PRIVADO ERROR ]',
-      e
-    )
-
-  }
-
-  return false
-
-}
+export default antiPrivateCommand;
