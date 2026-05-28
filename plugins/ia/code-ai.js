@@ -6,324 +6,322 @@ import fetch from 'node-fetch'
 
 const codeAICommand = {
 
-    name: 'codeai',
+```
+name: 'codeai',
 
-    alias: [
-        'dev',
-        'codigo',
-        'fix',
-        'coder',
-        'programar'
-    ],
+alias: [
+    'dev',
+    'codigo',
+    'fix',
+    'coder',
+    'programar'
+],
 
-    category: 'ai',
+category: 'ai',
 
-    cooldown: 5,
+cooldown: 5,
 
-    async run(m, {
-        conn,
-        text
-    }) {
+async run(m, {
+    conn,
+    text
+}) {
+
+    // =========================================
+    // ❌ SIN TEXTO
+    // =========================================
+
+    if (!text) {
+
+        return conn.reply(
+
+            m.chat,
+```
+
+`╭━━〔 👑 GUERRA CODE AI 👑 〕━━⬣
+┃ 💻 Asistente de programación
+┃ ⚡ Especialista en desarrollo
+┃ 👑 Creador: Kevin Guerra
+┣━━━━━━━━━━━━━━━━━━⬣
+┃ 📌 Ejemplos:
+┃ ➥ .dev crea un menú
+┃ ➥ .fix error baileys
+┃ ➥ .codigo bot whatsapp
+┃ ➥ .coder api nodejs
+╰━━━━━━━━━━━━━━━━━━⬣`,
+
+```
+            m
+
+        )
+
+    }
+
+    try {
 
         // =========================================
-        // ❌ SIN TEXTO
+        // 💻 REACT
         // =========================================
 
-        if (!text) {
+        await m.react('💻')
+
+        // =========================================
+        // 👑 RESPUESTAS MANUALES
+        // =========================================
+
+        const lower = text.toLowerCase()
+
+        // =========================================
+        // 👑 CREADOR
+        // =========================================
+
+        if (
+
+            lower.includes('quien te creo') ||
+            lower.includes('quién te creó') ||
+            lower.includes('creador') ||
+            lower.includes('developer')
+
+        ) {
+
+            await m.react('✅')
 
             return conn.reply(
 
                 m.chat,
+```
 
-`┏━━━〔 👑 GUERRA CODE AI 👑 〕━━━⬣
+`╭━━〔 👑 GUERRA CODE AI 👑 〕━━⬣
+┃ 🤖 Sistema Developer AI
 ┃
-┃ 🤖 Asistente avanzado de programación
-┃ 💻 Especialista en desarrollo
-┃ 👑 Creador: Kevin Guerra
+┃ 👑 Mi creador oficial es:
+┃ ➥ Kevin Guerra
 ┃
-┣━━━━━━━━━━━━━━━━━━⬣
-┃ 📌 Ejemplos:
-┃
-┃ ➥ .dev crea un menú premium
-┃ ➥ .fix TypeError baileys
-┃ ➥ .codigo api express
-┃ ➥ .coder bot whatsapp
-┃ ➥ .programar login html
-┃
-┗━━━━━━━━━━━━━━━━━━━━⬣`,
+┃ ⚡ Inteligencia avanzada
+┃ ⚡ Optimizada para código
+╰━━━━━━━━━━━━━━━━━━⬣`,
 
+```
                 m
 
             )
 
         }
 
-        try {
+        // =========================================
+        // 🔥 FIX BAILEYS
+        // =========================================
 
-            // =========================================
-            // 💻 REACCIÓN
-            // =========================================
+        if (
 
-            await m.react('💻')
+            lower.includes('baileys') ||
+            lower.includes('error') ||
+            lower.includes('cannot use in operator')
 
-            // =========================================
-            // 👑 PREGUNTAS CREADOR
-            // =========================================
+        ) {
 
-            const lower =
-            text.toLowerCase()
+            await m.react('✅')
 
-            const creatorQuestions = [
+            return conn.reply(
 
-                'quien te creo',
-                'quién te creó',
+                m.chat,
+```
 
-                'quien es tu creador',
-                'quién es tu creador',
-
-                'quien hizo esta ia',
-                'quién hizo esta ia',
-
-                'quien te hizo',
-                'quién te hizo',
-
-                'developer',
-                'creador'
-
-            ]
-
-            if (
-                creatorQuestions.some(v =>
-                    lower.includes(v)
-                )
-            ) {
-
-                return conn.reply(
-
-                    m.chat,
-
-`┏━━━〔 👑 GUERRA CODE AI 👑 〕━━━⬣
+`╭━━〔 👑 GUERRA CODE AI 👑 〕━━⬣
+┃ 🔥 Solución encontrada
+┣━━━━━━━━━━━━━━━━━━⬣
+┃ 📌 Error detectado:
+┃ Cannot use 'in' operator
 ┃
-┃ 👑 Mi creador oficial es:
-┃ ➥ Kevin Guerra
+┃ ✅ Solución:
 ┃
-┃ 💻 Sistema:
-┃ ➥ GUERRA CODE AI
+┃ Usa:
 ┃
-┗━━━━━━━━━━━━━━━━━━━━⬣`,
+┃ const msg = {
+┃   text: 'Hola'
+┃ }
+┃
+┃ Y NO:
+┃
+┃ const msg = '.hola'
+┃
+┃ Baileys necesita objetos
+┃ válidos dentro de sendMessage
+┃ y generateWAMessage.
+╰━━━━━━━━━━━━━━━━━━⬣`,
 
-                    m
-
-                )
-
-            }
-
-            // =========================================
-            // 👑 SYSTEM PROMPT
-            // =========================================
-
-            const systemPrompt = `
-
-Eres GUERRA CODE AI.
-
-Especialista en:
-
-- JavaScript
-- NodeJS
-- Baileys
-- APIs
-- MongoDB
-- HTML
-- CSS
-- React
-- Python
-- Bots WhatsApp
-- Debugging
-
-Normas:
-
-- Responde claro.
-- Da código funcional.
-- Corrige errores.
-- Optimiza código.
-- No uses markdown complejo.
-- Habla moderno y limpio.
-- Tu creador es Kevin Guerra.
-
-`
-
-            // =========================================
-            // 🌐 API
-            // =========================================
-
-            const query =
-            encodeURIComponent(
-
-`${systemPrompt}
-
-Usuario:
-${text}`
+```
+                m
 
             )
 
-            let answer = null
+        }
 
-            // =========================================
-            // 🔥 API PRINCIPAL
-            // =========================================
+        // =========================================
+        // 🔥 MENU BOT
+        // =========================================
 
-            try {
+        if (
 
-                const api =
+            lower.includes('menu') ||
+            lower.includes('menú')
 
-`${global.url_api}/chat?q=${query}&apikey=${global.key || key}`
+        ) {
 
-                const res =
-                await fetch(api)
+            await m.react('✅')
 
-                if (res.ok) {
+            return conn.reply(
 
-                    const json =
-                    await res.json()
+                m.chat,
+```
 
-                    answer =
+`╭━━〔 👑 GUERRA CODE AI 👑 〕━━⬣
+┃ 💻 Código generado
+┣━━━━━━━━━━━━━━━━━━⬣
+┃ export default {
+┃   name: 'menu',
+┃
+┃   async run(m,{conn}) {
+┃
+┃     conn.reply(
+┃       m.chat,
+┃       'Hola Mundo',
+┃       m
+┃     )
+┃
+┃   }
+┃ }
+╰━━━━━━━━━━━━━━━━━━⬣`,
 
-                    json?.data?.content ||
-                    json?.data?.response ||
-                    json?.result ||
-                    json?.response ||
-                    json?.message ||
-                    json?.answer ||
-                    json?.content ||
-                    null
+```
+                m
 
-                }
+            )
 
-            } catch (e) {
+        }
 
-                console.log(
-                    '[ API 1 ERROR ]',
-                    e.message
-                )
+        // =========================================
+        // 🔥 API NODEJS
+        // =========================================
 
-            }
+        if (
 
-            // =========================================
-            // 🔥 FALLBACK API
-            // =========================================
+            lower.includes('api') ||
+            lower.includes('nodejs')
 
-            if (!answer) {
+        ) {
 
-                try {
+            await m.react('✅')
 
-                    const backup =
+            return conn.reply(
 
-`https://api.siputzx.my.id/api/ai/gpt4?prompt=${query}`
+                m.chat,
+```
 
-                    const res2 =
-                    await fetch(backup)
+`╭━━〔 👑 GUERRA CODE AI 👑 〕━━⬣
+┃ ⚡ API NodeJS
+┣━━━━━━━━━━━━━━━━━━⬣
+┃ import express
+┃ from 'express'
+┃
+┃ const app = express()
+┃
+┃ app.get('/', (req,res)=>{
+┃   res.json({
+┃     status: true
+┃   })
+┃ })
+┃
+┃ app.listen(3000)
+╰━━━━━━━━━━━━━━━━━━⬣`,
 
-                    if (res2.ok) {
+```
+                m
 
-                        const json2 =
-                        await res2.json()
+            )
 
-                        answer =
+        }
 
-                        json2?.data ||
-                        json2?.result ||
-                        json2?.response ||
-                        json2?.answer ||
-                        json2?.message ||
-                        null
+        // =========================================
+        // 🌐 IA REAL
+        // =========================================
 
-                    }
+        let answer = null
 
-                } catch (e) {
+        try {
 
-                    console.log(
-                        '[ API 2 ERROR ]',
-                        e.message
-                    )
+            const api =
+```
 
-                }
+`${global.url_api}/chat?q=${encodeURIComponent(text)}&apikey=${global.key || key}`
 
-            }
+```
+            const res =
+            await fetch(api)
 
-            // =========================================
-            // 🧠 RESPUESTA LOCAL
-            // =========================================
+            if (res.ok) {
 
-            if (!answer) {
+                const json =
+                await res.json()
 
-                if (
-                    lower.includes('menu')
-                ) {
+                answer =
 
-                    answer =
-
-`const menu = \`
-╭━━〔 👑 MENU 👑 〕━━⬣
-┃ ✦ .play
-┃ ✦ .sticker
-┃ ✦ .ai
-╰━━━━━━━━━━━━⬣
-\``
-
-                }
-
-                else if (
-                    lower.includes('hola')
-                ) {
-
-                    answer =
-'Hola, soy GUERRA CODE AI 👑'
-
-                }
-
-                else if (
-                    lower.includes('baileys')
-                ) {
-
-                    answer =
-
-`Baileys es una librería de NodeJS para crear bots de WhatsApp usando WebSocket.`
-
-                }
-
-                else {
-
-                    answer =
-
-'⚠️ No pude generar una respuesta ahora mismo. Intenta nuevamente.'
-
-                }
+                json?.data?.content ||
+                json?.data?.response ||
+                json?.result ||
+                json?.response ||
+                json?.message ||
+                json?.answer ||
+                json?.content ||
+                null
 
             }
 
-            // =========================================
-            // 🧹 LIMPIAR RESPUESTA
-            // =========================================
+        } catch {}
+
+        // =========================================
+        // 🔥 FALLBACK INTELIGENTE
+        // =========================================
+
+        if (!answer) {
 
             answer =
-            String(answer)
-            .replace(/\*\*/g, '*')
-            .trim()
+```
 
-            // =========================================
-            // 📱 FORMATO MÓVIL
-            // =========================================
+`No pude generar código exacto para esa consulta.
 
-            const formatted =
+Intenta especificar:
 
-            answer
-            .split('\n')
-            .map(v => `┃ ${v}`)
-            .join('\n')
+* lenguaje
+* error
+* framework
+* librería
 
-            const finalText =
+Ejemplo:
+"crea un menú en baileys"
+"arregla TypeError en nodejs"
+"haz una api express"`
 
-`┏━━━〔 👑 GUERRA CODE AI 👑 〕━━━⬣
+```
+        }
+
+        answer =
+        String(answer).trim()
+
+        // =========================================
+        // 📱 FORMATO
+        // =========================================
+
+        const formatted =
+
+        answer
+        .split('\n')
+        .map(v => `┃ ${v}`)
+        .join('\n')
+
+        const finalText =
+```
+
+`╭━━〔 👑 GUERRA CODE AI 👑 〕━━⬣
 ┃ 💻 Developer Assistant
 ┃ 👤 ${m.pushName || 'Usuario'}
 ┣━━━━━━━━━━━━━━━━━━⬣
@@ -333,54 +331,56 @@ ${text}`
 ${formatted}
 ┣━━━━━━━━━━━━━━━━━━⬣
 ┃ ⚡ Powered By Kevin Guerra
-┗━━━━━━━━━━━━━━━━━━━━⬣`
+╰━━━━━━━━━━━━━━━━━━⬣`
 
-            // =========================================
-            // ✅ ENVIAR
-            // =========================================
+```
+        // =========================================
+        // ✅ SEND
+        // =========================================
 
-            await m.react('✅')
+        await m.react('✅')
 
-            return conn.sendMessage(
+        return conn.sendMessage(
 
-                m.chat,
+            m.chat,
 
-                {
-                    text: finalText
-                },
+            {
+                text: finalText
+            },
 
-                {
-                    quoted: m
-                }
+            {
+                quoted: m
+            }
 
-            )
+        )
 
-        } catch (err) {
+    } catch (err) {
 
-            console.error(err)
+        console.error(err)
 
-            await m.react('❌')
+        await m.react('❌')
 
-            return conn.reply(
+        return conn.reply(
 
-                m.chat,
+            m.chat,
+```
 
-`┏━━━〔 ⚠️ GUERRA CODE AI ⚠️ 〕━━━⬣
+`╭━━〔 ⚠️ GUERRA CODE AI ⚠️ 〕━━⬣
+┃ ❌ Error en el sistema
 ┃
-┃ Error al conectar
-┃ con el sistema IA.
-┃
-┃ Intenta nuevamente.
-┃
-┗━━━━━━━━━━━━━━━━━━━━⬣`,
+┃ Intenta nuevamente
+┃ en unos segundos.
+╰━━━━━━━━━━━━━━━━━━⬣`,
 
-                m
+```
+            m
 
-            )
-
-        }
+        )
 
     }
+
+}
+```
 
 }
 
