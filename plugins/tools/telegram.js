@@ -1,22 +1,31 @@
-import fs from 'fs'
 import fetch from 'node-fetch'
 import FormData from 'form-data'
 
 export default {
 
   name: 'tourl',
-  alias: ['upload', 'telegraph'],
+
+  alias: [
+    'telegraph',
+    'upload',
+    'url'
+  ],
 
   tags: ['tools'],
 
-  command: ['tourl', 'upload', 'telegraph'],
+  command: [
+    'tourl',
+    'telegraph',
+    'upload',
+    'url'
+  ],
 
   async run(m, { conn }) {
 
     try {
 
       // =========================
-      // 📥 MEDIA CHECK
+      // 📥 QUOTED
       // =========================
 
       const q =
@@ -25,7 +34,9 @@ export default {
         : m
 
       const mime =
-      (q.msg || q).mimetype || ''
+      q.mimetype ||
+      q.msg?.mimetype ||
+      ''
 
       if (!mime) {
 
@@ -43,11 +54,19 @@ export default {
         '📤 Subiendo archivo...'
       )
 
-      const media =
+      const buffer =
       await q.download()
 
+      if (!buffer) {
+
+        return m.reply(
+          '❌ No se pudo descargar el archivo'
+        )
+
+      }
+
       // =========================
-      // ☁️ TELEGRAPH UPLOAD
+      // ☁️ FORM DATA
       // =========================
 
       const form =
@@ -55,37 +74,58 @@ export default {
 
       form.append(
         'file',
-        media,
-        'file'
+        buffer,
+        {
+          filename:
+          mime.includes('video')
+            ? 'video.mp4'
+            : 'image.jpg',
+
+          contentType: mime
+        }
       )
+
+      // =========================
+      // ☁️ UPLOAD
+      // =========================
 
       const res =
       await fetch(
         'https://telegra.ph/upload',
         {
           method: 'POST',
-          body: form
+          body: form,
+          headers: form.getHeaders()
         }
       )
 
       const data =
       await res.json()
 
-      if (!data[0]?.src) {
+      // =========================
+      // ❌ ERROR
+      // =========================
+
+      if (
+        !Array.isArray(data) ||
+        !data[0]?.src
+      ) {
+
+        console.log(data)
 
         return m.reply(
-          '❌ Error al subir archivo'
+          '❌ Error al subir a Telegraph'
         )
 
       }
 
+      // =========================
+      // ✅ URL
+      // =========================
+
       const url =
       'https://telegra.ph' +
       data[0].src
-
-      // =========================
-      // ✅ SEND URL
-      // =========================
 
       await conn.sendMessage(
         m.chat,
@@ -108,7 +148,7 @@ export default {
       console.log(e)
 
       return m.reply(
-        '❌ Error al subir archivo'
+        `❌ Error:\n${e}`
       )
 
     }
