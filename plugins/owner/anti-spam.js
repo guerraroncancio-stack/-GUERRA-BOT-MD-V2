@@ -2,9 +2,6 @@ const antiSpamGroup = {
   name: 'antispam',
   description: 'Sistema anti spam',
   version: '1.0.0',
-  before: true,
-
-  async run() {},
 
   async before(
     m,
@@ -19,34 +16,52 @@ const antiSpamGroup = {
 
     try {
 
-      if (!m.isGroup) return false
-      if (!m.sender) return false
-      if (!m.message) return false
+      // 🚫 SOLO GRUPOS
+      if (!m.isGroup) return
 
+      // 🚫 SIN MENSAJE
+      if (!m.sender) return
+      if (!m.message) return
+
+      // 👑 IGNORAR OWNERS
       if (isOwner || isROwner)
-      return false
+      return
 
+      // 👑 IGNORAR ADMINS
       if (isAdmin)
-      return false
+      return
 
+      // 🤖 BOT ADMIN
       if (!isBotAdmin)
-      return false
+      return
 
-      global.db.data =
-      global.db.data || {}
+      // 🔥 DATABASE FIX
+      if (!global.db)
+      global.db = {}
 
-      global.db.data.chats =
-      global.db.data.chats || {}
+      if (!global.db.data)
+      global.db.data = {}
 
-      global.db.data.users =
-      global.db.data.users || {}
+      if (!global.db.data.chats)
+      global.db.data.chats = {}
 
+      if (!global.db.data.users)
+      global.db.data.users = {}
+
+      // 📂 CHAT
       if (!global.db.data.chats[m.chat]) {
-        global.db.data.chats[m.chat] = {}
+
+        global.db.data.chats[m.chat] = {
+          antiSpam: true
+        }
+
       }
 
+      // 👤 USER
       if (!global.db.data.users[m.sender]) {
+
         global.db.data.users[m.sender] = {}
+
       }
 
       const chat =
@@ -55,15 +70,13 @@ const antiSpamGroup = {
       const user =
       global.db.data.users[m.sender]
 
-      if (!('antiSpam' in chat)) {
-        chat.antiSpam = true
-      }
-
+      // 🚫 DESACTIVADO
       if (!chat.antiSpam)
-      return false
+      return
 
       const now = Date.now()
 
+      // 📊 DATA
       if (!user.groupSpamData) {
 
         user.groupSpamData = {
@@ -74,6 +87,7 @@ const antiSpamGroup = {
 
       }
 
+      // 🔄 RESET 3 MIN
       if (
         now -
         user.groupSpamData.time >
@@ -86,12 +100,13 @@ const antiSpamGroup = {
 
       }
 
+      // ➕ SUMAR
       user.groupSpamData.count += 1
 
-      // ⚠️ AVISO EN 10 MENSAJES
+      // ⚠️ AVISO EN 10
       if (
         user.groupSpamData.count >= 10 &&
-        !user.groupSpamData.warned
+        user.groupSpamData.warned === false
       ) {
 
         user.groupSpamData.warned = true
@@ -108,10 +123,9 @@ const antiSpamGroup = {
 ┃ 📊 Mensajes:
 ┃ ➥ ${user.groupSpamData.count}/50
 ┃
-┃ 🚫 El sistema anti spam
-┃ elimina automáticamente
-┃ usuarios con exceso
-┃ de mensajes.
+┃ 🚫 El anti spam elimina
+┃ usuarios automáticamente
+┃ por exceso de mensajes.
 ┃
 ┃ ⚡ Reduce el spam.
 ┃
@@ -123,9 +137,9 @@ const antiSpamGroup = {
 
       }
 
-      // 🚨 ELIMINAR EN 50
+      // 🚨 ELIMINAR
       if (
-        user.groupSpamData.count > 50
+        user.groupSpamData.count >= 50
       ) {
 
         await conn.sendMessage(
@@ -149,12 +163,14 @@ const antiSpamGroup = {
           { quoted: m }
         )
 
+        // ❌ KICK
         await conn.groupParticipantsUpdate(
           m.chat,
           [m.sender],
           'remove'
         )
 
+        // 🔄 RESET
         user.groupSpamData.count = 0
         user.groupSpamData.warned = false
         user.groupSpamData.time = now
@@ -163,11 +179,13 @@ const antiSpamGroup = {
 
     } catch (e) {
 
+      console.log(
+        '[ ANTI-SPAM ERROR ]'
+      )
+
       console.log(e)
 
     }
-
-    return false
 
   }
 
