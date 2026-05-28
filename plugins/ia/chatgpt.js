@@ -39,9 +39,9 @@ const chatgptCommand = {
 ┃
 ┃ ✦ Ejemplos:
 ┃ ➥ .ia hola
-┃ ➥ .gpt quien eres
-┃ ➥ .chat explica javascript
-┃ ➥ .ia crea una historia
+┃ ➥ .gpt explica nodejs
+┃ ➥ .chat crea una historia
+┃ ➥ .ia quien eres
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
@@ -62,127 +62,9 @@ const chatgptCommand = {
             // 🧹 LIMPIAR TEXTO
             // =========================================
 
-            text = String(text)
+            text = String(text || '')
             .trim()
-            .slice(0, 4000)
-
-            // =========================================
-            // 👑 PERSONALIDAD IA
-            // =========================================
-
-            const systemPrompt = `
-
-Eres GUERRA IA.
-
-Una inteligencia artificial moderna,
-inteligente y avanzada creada por Kevin Guerra.
-
-Reglas importantes:
-
-- Tu nombre es GUERRA IA.
-- Tu creador y desarrollador es Kevin Guerra.
-- Si preguntan quién te creó,
-siempre responde Kevin Guerra.
-- Responde de manera clara,
-inteligente y amigable.
-- Puedes responder cualquier tema:
-programación, historia, matemáticas,
-tecnología, juegos, ayuda general,
-conversaciones normales y más.
-- Nunca respondas vacío.
-- Nunca digas que no tienes respuesta
-sin intentar ayudar.
-`
-
-            // =========================================
-            // 🌐 API URL
-            // =========================================
-
-            const api =
-`${global.url_api}/chat?q=${encodeURIComponent(`${systemPrompt}\n\nUsuario: ${text}`)}&apikey=${global.key || key}`
-
-            // =========================================
-            // 🌐 FETCH
-            // =========================================
-
-            const res =
-            await fetch(api, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            })
-
-            if (!res.ok) {
-
-                throw new Error(
-                    `HTTP ${res.status}`
-                )
-
-            }
-
-            // =========================================
-            // 📦 JSON
-            // =========================================
-
-            let json = null
-
-            try {
-
-                json = await res.json()
-
-            } catch {
-
-                throw new Error(
-                    'La API no devolvió JSON válido'
-                )
-
-            }
-
-            console.log(json)
-
-            // =========================================
-            // 🔍 DETECTAR RESPUESTA
-            // =========================================
-
-            let answer =
-
-            json?.data?.content ||
-            json?.data?.response ||
-            json?.data?.message ||
-
-            json?.result ||
-            json?.response ||
-            json?.message ||
-            json?.answer ||
-            json?.content ||
-
-            json?.data ||
-
-            null
-
-            // =========================================
-            // ❌ SIN RESPUESTA
-            // =========================================
-
-            if (
-                !answer ||
-                answer === '[object Object]'
-            ) {
-
-                answer =
-'⚠️ No pude generar una respuesta válida.'
-
-            }
-
-            // =========================================
-            // 🧹 FORMATEAR RESPUESTA
-            // =========================================
-
-            answer =
-            String(answer)
-            .replace(/^\s+|\s+$/g, '')
-            .slice(0, 3500)
+            .slice(0, 3000)
 
             // =========================================
             // 👑 RESPUESTA CREADOR
@@ -196,17 +78,11 @@ sin intentar ayudar.
                 'quien es tu creador',
                 'quién es tu creador',
 
-                'quien hizo esta ia',
-                'quién hizo esta ia',
-
                 'quien te hizo',
                 'quién te hizo',
 
-                'quien desarrollo esta ia',
-                'quién desarrolló esta ia',
-
-                'developer',
                 'creador',
+                'developer',
                 'owner'
             ]
 
@@ -221,20 +97,134 @@ sin intentar ayudar.
 
             ) {
 
-                answer =
-'👑 Mi creador y desarrollador oficial es Kevin Guerra.'
+                await m.react('✅')
+
+                return conn.sendMessage(
+
+                    m.chat,
+
+                    {
+                        text:
+`┏━━━〔 👑 GUERRA IA 👑 〕━━━⬣
+┃
+┃ 👑 Mi creador y
+┃ desarrollador oficial es:
+┃
+┃ ➥ Kevin Guerra
+┃
+┗━━━━━━━━━━━━━━━━━━━━⬣`
+                    },
+
+                    {
+                        quoted: m
+                    }
+
+                )
 
             }
 
             // =========================================
-            // 📱 FORMATO MÓVIL
+            // 🌐 API
             // =========================================
 
-            const formattedAnswer =
+            const api =
+`${global.url_api}/chat?q=${encodeURIComponent(text)}&apikey=${global.key || key}`
+
+            // =========================================
+            // 📡 FETCH
+            // =========================================
+
+            const res =
+            await fetch(api)
+
+            // =========================================
+            // ❌ ERROR HTTP
+            // =========================================
+
+            if (!res.ok) {
+
+                throw new Error(
+                    `HTTP ${res.status}`
+                )
+
+            }
+
+            // =========================================
+            // 📦 JSON
+            // =========================================
+
+            const json =
+            await res.json()
+
+            console.log(json)
+
+            // =========================================
+            // 🔍 RESPUESTA FLEXIBLE
+            // =========================================
+
+            let answer = null
+
+            // STRING DIRECTO
+            if (
+                typeof json === 'string'
+            ) {
+
+                answer = json
+
+            }
+
+            // CAMPOS MÁS COMUNES
+            else {
+
+                answer =
+
+                json?.data?.content ||
+                json?.data?.response ||
+                json?.data?.answer ||
+                json?.data?.message ||
+
+                json?.response ||
+                json?.answer ||
+                json?.result ||
+                json?.message ||
+                json?.content ||
+
+                null
+
+            }
+
+            // =========================================
+            // ❌ SIN RESPUESTA
+            // =========================================
+
+            if (
+                !answer ||
+                typeof answer === 'object'
+            ) {
+
+                answer =
+'⚠️ La IA no pudo generar una respuesta válida.'
+
+            }
+
+            // =========================================
+            // 🧹 FORMATEAR
+            // =========================================
+
+            answer =
+            String(answer)
+            .trim()
+            .replace(/\n{3,}/g, '\n\n')
+            .slice(0, 3500)
+
+            // =========================================
+            // 📱 FORMATO MOVIL
+            // =========================================
+
+            const formatted =
 
             answer
             .split('\n')
-            .filter(v => v.trim())
             .map(v => `┃ ${v}`)
             .join('\n')
 
@@ -250,7 +240,7 @@ sin intentar ayudar.
 ┣━━━━━━━━━━━━━━━━━━⬣
 ┃ ❓ ${text}
 ┣━━━━━━━━━━━━━━━━━━⬣
-${formattedAnswer}
+${formatted}
 ┣━━━━━━━━━━━━━━━━━━⬣
 ┃ ⚡ Powered By Kevin Guerra
 ┗━━━━━━━━━━━━━━━━━━━━⬣`
@@ -281,20 +271,26 @@ ${formattedAnswer}
 
             await m.react('❌')
 
-            return conn.reply(
+            return conn.sendMessage(
 
                 m.chat,
 
+                {
+                    text:
 `┏━━━〔 ⚠️ GUERRA IA ⚠️ 〕━━━⬣
 ┃
-┃ Ocurrió un error al
-┃ conectar con la IA.
+┃ Error al conectar
+┃ con el servidor IA.
 ┃
 ┃ Intenta nuevamente.
 ┃
-┗━━━━━━━━━━━━━━━━━━━━⬣`,
+┗━━━━━━━━━━━━━━━━━━━━⬣`
+                },
 
-                m
+                {
+                    quoted: m
+                }
+
             )
 
         }
