@@ -1,8 +1,7 @@
 export default {
 
   name: 'nsfw',
-
-  command: [
+  alias: [
     'pack',
     'pack2',
     'pack3',
@@ -19,6 +18,21 @@ export default {
 
   tags: ['nsfw'],
 
+  command: [
+    'pack',
+    'pack2',
+    'pack3',
+    'videoxxx',
+    'vídeoxxx',
+    'videoxxxlesbi',
+    'videolesbixxx',
+    'pornolesbivid',
+    'pornolesbianavid',
+    'pornolesbiv',
+    'pornolesbianav',
+    'pornolesv'
+  ],
+
   async run(m, { conn, command }) {
 
     try {
@@ -27,7 +41,6 @@ export default {
       // 🔥 FIX DATABASE
       // =========================
 
-      global.db = global.db || {}
       global.db.data = global.db.data || {}
       global.db.data.chats = global.db.data.chats || {}
 
@@ -43,20 +56,22 @@ export default {
       global.db.data.chats[m.chat]
 
       // =========================
-      // 🔞 NSFW CHECK
+      // 🔞 CHECK NSFW
       // =========================
 
-      if (m.isGroup && !chat.nsfw) {
+      if (!chat.nsfw && m.isGroup) {
 
         return conn.sendMessage(
           m.chat,
           {
             text:
-`╭━━〔 🚫 NSFW DESACTIVADO 🚫 〕━━⬣
+`╭━━〔 🔞 NSFW SYSTEM 🔞 〕━━⬣
 ┃
 ┃ Los comandos NSFW
-┃ están desactivados
-┃ en este grupo.
+┃ están desactivados.
+┃
+┃ Usa:
+┃ ➥ .enable nsfw
 ┃
 ╰━━━━━━━━━━━━━━━━━━⬣`
           },
@@ -69,144 +84,142 @@ export default {
       // 🥵 PACK
       // =========================
 
-      if (command === 'pack') {
+      switch (command) {
 
-        if (!global.pack?.length) {
-          return m.reply('❌ No hay imágenes configuradas.')
+        case 'pack': {
+
+          const url =
+          global.pack[
+            Math.floor(
+              Math.random() *
+              global.pack.length
+            )
+          ]
+
+          await conn.sendMessage(
+            m.chat,
+            {
+              image: { url },
+              caption: '🥵 Pack 🥵'
+            },
+            { quoted: m }
+          )
+
         }
+        break
 
-        const url =
-        global.pack[
-          Math.floor(Math.random() * global.pack.length)
-        ]
+        // =========================
+        // 🥵 PACK 2
+        // =========================
 
-        return conn.sendMessage(
-          m.chat,
-          {
-            image: { url },
-            caption: '🥵 Pack 🥵'
-          },
-          { quoted: m }
-        )
+        case 'pack2': {
 
-      }
+          const url =
+          global.packgirl[
+            Math.floor(
+              Math.random() *
+              global.packgirl.length
+            )
+          ]
 
-      // =========================
-      // 🥵 PACK 2
-      // =========================
+          await conn.sendMessage(
+            m.chat,
+            {
+              image: { url },
+              caption: '🥵 Pack 2 🥵'
+            },
+            { quoted: m }
+          )
 
-      if (command === 'pack2') {
-
-        if (!global.packgirl?.length) {
-          return m.reply('❌ No hay imágenes configuradas.')
         }
+        break
 
-        const url =
-        global.packgirl[
-          Math.floor(Math.random() * global.packgirl.length)
-        ]
+        // =========================
+        // 🥵 PACK 3
+        // =========================
 
-        return conn.sendMessage(
-          m.chat,
-          {
-            image: { url },
-            caption: '🥵 Pack 2 🥵'
-          },
-          { quoted: m }
-        )
+        case 'pack3': {
 
-      }
+          const url =
+          global.packmen[
+            Math.floor(
+              Math.random() *
+              global.packmen.length
+            )
+          ]
 
-      // =========================
-      // 🥵 PACK 3
-      // =========================
+          await conn.sendMessage(
+            m.chat,
+            {
+              image: { url },
+              caption: '🥵 Pack 3 🥵'
+            },
+            { quoted: m }
+          )
 
-      if (command === 'pack3') {
-
-        if (!global.packmen?.length) {
-          return m.reply('❌ No hay imágenes configuradas.')
         }
+        break
 
-        const url =
-        global.packmen[
-          Math.floor(Math.random() * global.packmen.length)
-        ]
+        // =========================
+        // 🎥 VIDEO XXX
+        // =========================
 
-        return conn.sendMessage(
-          m.chat,
-          {
-            image: { url },
-            caption: '🥵 Pack 3 🥵'
-          },
-          { quoted: m }
-        )
+        case 'videoxxx':
+        case 'vídeoxxx': {
 
-      }
+          const url =
+          global.videosxxxc[
+            Math.floor(
+              Math.random() *
+              global.videosxxxc.length
+            )
+          ]
 
-      // =========================
-      // 🎥 VIDEO XXX
-      // =========================
+          await conn.sendMessage(
+            m.chat,
+            {
+              video: { url },
+              caption: '🥵 VIDEO XXX 🥵',
+              gifPlayback: false
+            },
+            { quoted: m }
+          )
 
-      if (
-        command === 'videoxxx' ||
-        command === 'vídeoxxx'
-      ) {
-
-        if (!global.videosxxxc?.length) {
-          return m.reply('❌ No hay videos configurados.')
         }
+        break
 
-        const url =
-        global.videosxxxc[
-          Math.floor(Math.random() * global.videosxxxc.length)
-        ]
+        // =========================
+        // 🎥 VIDEO LESBI
+        // =========================
 
-        return conn.sendMessage(
-          m.chat,
-          {
-            video: { url },
-            caption: '🥵 VIDEO XXX 🥵',
-            gifPlayback: false
-          },
-          { quoted: m }
-        )
+        case 'videoxxxlesbi':
+        case 'videolesbixxx':
+        case 'pornolesbivid':
+        case 'pornolesbianavid':
+        case 'pornolesbiv':
+        case 'pornolesbianav':
+        case 'pornolesv': {
 
-      }
+          const url =
+          global.videosxxxc2[
+            Math.floor(
+              Math.random() *
+              global.videosxxxc2.length
+            )
+          ]
 
-      // =========================
-      // 🎥 VIDEO LESBI
-      // =========================
+          await conn.sendMessage(
+            m.chat,
+            {
+              video: { url },
+              caption: '🥵 VIDEO LESBI 🥵',
+              gifPlayback: false
+            },
+            { quoted: m }
+          )
 
-      if (
-        [
-          'videoxxxlesbi',
-          'videolesbixxx',
-          'pornolesbivid',
-          'pornolesbianavid',
-          'pornolesbiv',
-          'pornolesbianav',
-          'pornolesv'
-        ].includes(command)
-      ) {
-
-        if (!global.videosxxxc2?.length) {
-          return m.reply('❌ No hay videos configurados.')
         }
-
-        const url =
-        global.videosxxxc2[
-          Math.floor(Math.random() * global.videosxxxc2.length)
-        ]
-
-        return conn.sendMessage(
-          m.chat,
-          {
-            video: { url },
-            caption: '🥵 VIDEO LESBI 🥵',
-            gifPlayback: false
-          },
-          { quoted: m }
-        )
+        break
 
       }
 
@@ -229,40 +242,36 @@ export default {
 }
 
 // =========================================
-// 📦 PEGA TUS LINKS AQUÍ
+// 📦 LINKS
+// PEGA TUS LINKS AQUÍ
 // =========================================
 
 global.pack = [
 
-  // 'LINK1',
-  // 'LINK2'
+  // "LINK.jpg"
 
 ]
 
 global.packgirl = [
 
-  // 'LINK1',
-  // 'LINK2'
+  // "LINK.jpg"
 
 ]
 
 global.packmen = [
 
-  // 'LINK1',
-  // 'LINK2'
+  // "LINK.jpg"
 
 ]
 
 global.videosxxxc = [
 
-  // 'VIDEO1.mp4',
-  // 'VIDEO2.mp4'
+  // "LINK.mp4"
 
 ]
 
 global.videosxxxc2 = [
 
-  // 'VIDEO1.mp4',
-  // 'VIDEO2.mp4'
+  // "LINK.mp4"
 
 ]
