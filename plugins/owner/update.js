@@ -31,76 +31,65 @@ const updateCommand = {
 
       await m.react('🔄')
 
-      // =========================
-      // 📦 GIT PULL
-      // =========================
+      // =========================================
+      // 🔥 CLEAN GIT
+      // =========================================
 
-      const { stdout, stderr } =
-      await execAsync(
-        `git pull ${args.join(' ')}`
+      await safeExec(
+        'git reset --hard'
+      )
+
+      await safeExec(
+        'git clean -fd'
+      )
+
+      // =========================================
+      // 📦 UPDATE
+      // =========================================
+
+      const branch =
+      args.join(' ') || ''
+
+      const pull =
+      await safeExec(
+        `git pull --rebase ${branch}`
       )
 
       const output =
-      `${stdout}\n${stderr}`.trim()
+      `${pull.stdout}\n${pull.stderr}`
+      .trim()
 
-      // =========================
-      // ⚠️ SIN CAMBIOS
-      // =========================
-
-      if (
-        /Already up[ -]to[ -]date/i
-        .test(output)
-      ) {
-
-        // 🔥 AUN ASÍ RECARGA
-        await reloadPlugins(conn)
-
-        await m.react('✅')
-
-        return conn.sendMessage(
-          m.chat,
-          {
-            text:
-`╭━━〔 ✅ SYSTEM UPDATE 〕━━⬣
-┃
-┃ ⚡ Sistema actualizado
-┃ 📦 No había cambios nuevos
-┃ 🔄 Plugins recargados
-┃ 🚀 Bot optimizado
-┃
-╰━━━━━━━━━━━━━━━━━━⬣`
-          },
-          { quoted: m }
-        )
-
-      }
-
-      // =========================
-      // 🔥 MENSAJE UPDATE
-      // =========================
+      // =========================================
+      // ⚠️ UPDATE MSG
+      // =========================================
 
       await conn.sendMessage(
         m.chat,
         {
           text:
-`╭━━〔 📦 UPDATE COMPLETO 〕━━⬣
+`╭━━〔 🔥 SYSTEM UPDATE 🔥 〕━━⬣
 ┃
-┃ ⚡ Nuevos cambios detectados
-┃ 🔄 Recargando comandos...
-┃ 🚀 Aplicando optimización
+┃ ⚡ Sincronizando sistema
+┃ 🔄 Recargando plugins
+┃ 🚀 Aplicando cambios
 ┃
 ┣━━━━━━━━━━━━━━━━━━⬣
-${output.slice(0, 3500)}
+${output.slice(0, 3000) || 'Sistema sincronizado'}
 ╰━━━━━━━━━━━━━━━━━━⬣`
         },
         { quoted: m }
       )
 
-      // =========================
-      // 🔥 RECARGAR PLUGINS
-      // =========================
+      // =========================================
+      // 🔥 HOT RELOAD
+      // =========================================
 
+      const result =
       await reloadPlugins(conn)
+
+      // =========================================
+      // ✅ DONE
+      // =========================================
 
       await m.react('✅')
 
@@ -108,12 +97,18 @@ ${output.slice(0, 3500)}
         m.chat,
         {
           text:
-`╭━━〔 🚀 UPDATE FINALIZADO 〕━━⬣
+`╭━━〔 🚀 UPDATE COMPLETADO 🚀 〕━━⬣
 ┃
 ┃ ✅ Plugins recargados
-┃ ✅ Nuevos comandos activos
+┃ ✅ Comandos activos
+┃ ✅ Hot Reload estable
 ┃ ✅ Sistema sincronizado
-┃ ✅ Hot Reload completado
+┃
+┃ 📦 Plugins:
+┃ ➥ ${result.loaded}
+┃
+┃ ❌ Errores:
+┃ ➥ ${result.errors}
 ┃
 ╰━━━━━━━━━━━━━━━━━━⬣`
         },
@@ -130,9 +125,9 @@ ${output.slice(0, 3500)}
         m.chat,
         {
           text:
-`╭━━〔 ❌ UPDATE ERROR 〕━━⬣
+`╭━━〔 ❌ UPDATE ERROR ❌ 〕━━⬣
 ┃
-┃ ⚠️ Error al actualizar
+┃ ⚠️ Error detectado
 ┃
 ┣━━━━━━━━━━━━━━━━━━⬣
 ${String(e).slice(0, 3000)}
@@ -150,10 +145,41 @@ ${String(e).slice(0, 3000)}
 export default updateCommand
 
 // =========================================
-// 🔥 HOT RELOAD REAL
+// 🔥 SAFE EXEC
+// =========================================
+
+async function safeExec(cmd) {
+
+  try {
+
+    return await execAsync(cmd, {
+      cwd: process.cwd(),
+      maxBuffer: 1024 * 1024 * 20,
+      timeout: 1000 * 60 * 5
+    })
+
+  } catch (e) {
+
+    return {
+      stdout: '',
+      stderr:
+      e?.stderr ||
+      e?.message ||
+      String(e)
+    }
+
+  }
+
+}
+
+// =========================================
+// 🔥 HOT RELOAD ESTABLE
 // =========================================
 
 async function reloadPlugins(conn) {
+
+  let loaded = 0
+  let errors = 0
 
   try {
 
@@ -168,36 +194,35 @@ async function reloadPlugins(conn) {
 
     for (const file of files) {
 
-      if (!file.endsWith('.js'))
-      continue
-
       try {
+
+        if (!file.endsWith('.js'))
+        continue
 
         const modulePath =
         path.resolve(file)
 
-        // 🔥 BORRAR CACHE
-        const resolved =
+        // =========================================
+        // 🔥 IMPORT FRESCO
+        // =========================================
+
         await import(
           `file://${modulePath}?update=${Date.now()}`
         )
 
-        // 🔥 SI EXISTE HANDLER
-        if (
-          resolved?.default?.name
-        ) {
+        loaded++
 
-          console.log(
-            '[ HOT-RELOAD ]',
-            resolved.default.name
-          )
-
-        }
+        console.log(
+          '[ RELOADED ]',
+          path.basename(file)
+        )
 
       } catch (err) {
 
+        errors++
+
         console.log(
-          '[ ERROR LOADING ]',
+          '[ PLUGIN ERROR ]',
           file
         )
 
@@ -207,10 +232,28 @@ async function reloadPlugins(conn) {
 
     }
 
-    // 🔥 RELOAD HANDLER GLOBAL
-    if (global.reloadHandler) {
+    // =========================================
+    // 🔥 RELOAD CORE
+    // =========================================
 
-      await global.reloadHandler(true)
+    if (
+      typeof global.reloadHandler ===
+      'function'
+    ) {
+
+      try {
+
+        await global.reloadHandler(true)
+
+      } catch (e) {
+
+        console.log(
+          '[ CORE RELOAD ERROR ]'
+        )
+
+        console.log(e)
+
+      }
 
     }
 
@@ -220,39 +263,55 @@ async function reloadPlugins(conn) {
 
   }
 
+  return {
+    loaded,
+    errors
+  }
+
 }
 
 // =========================================
-// 📂 LEER ARCHIVOS RECURSIVOS
+// 📂 GET FILES
 // =========================================
 
 function getFiles(dir) {
 
   let results = []
 
-  const list =
-  fs.readdirSync(dir)
+  try {
 
-  for (const file of list) {
+    const list =
+    fs.readdirSync(dir)
 
-    const full =
-    path.join(dir, file)
+    for (const file of list) {
 
-    const stat =
-    fs.statSync(full)
+      const full =
+      path.join(dir, file)
 
-    if (stat && stat.isDirectory()) {
+      const stat =
+      fs.statSync(full)
 
-      results =
-      results.concat(
-        getFiles(full)
-      )
+      if (
+        stat &&
+        stat.isDirectory()
+      ) {
 
-    } else {
+        results =
+        results.concat(
+          getFiles(full)
+        )
 
-      results.push(full)
+      } else {
+
+        results.push(full)
+
+      }
 
     }
+
+  } catch (e) {
+
+    console.log(e)
 
   }
 
