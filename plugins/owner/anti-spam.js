@@ -1,6 +1,6 @@
 const antiSpamGroup = {
 
-  name: 'antiSpamGroup',
+  name: 'antispam',
 
   async before(m, { conn, isAdmin, isBotAdmin, isOwner, isROwner }) {
 
