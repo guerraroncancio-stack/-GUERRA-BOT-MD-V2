@@ -37,17 +37,18 @@ const codeAICommand = {
 
 `┏━━━〔 👑 GUERRA CODE AI 👑 〕━━━⬣
 ┃
-┃ 🤖 Asistente de programación
-┃ 💻 Especialista en código
+┃ 🤖 Asistente avanzado de programación
+┃ 💻 Especialista en desarrollo
 ┃ 👑 Creador: Kevin Guerra
 ┃
 ┣━━━━━━━━━━━━━━━━━━⬣
 ┃ 📌 Ejemplos:
 ┃
-┃ ➥ .dev crea un menú
-┃ ➥ .fix TypeError
-┃ ➥ .codigo bot whatsapp
-┃ ➥ .coder api nodejs
+┃ ➥ .dev crea un menú premium
+┃ ➥ .fix TypeError baileys
+┃ ➥ .codigo api express
+┃ ➥ .coder bot whatsapp
+┃ ➥ .programar login html
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`,
 
@@ -60,10 +61,62 @@ const codeAICommand = {
         try {
 
             // =========================================
-            // 💻 REACT
+            // 💻 REACCIÓN
             // =========================================
 
             await m.react('💻')
+
+            // =========================================
+            // 👑 PREGUNTAS CREADOR
+            // =========================================
+
+            const lower =
+            text.toLowerCase()
+
+            const creatorQuestions = [
+
+                'quien te creo',
+                'quién te creó',
+
+                'quien es tu creador',
+                'quién es tu creador',
+
+                'quien hizo esta ia',
+                'quién hizo esta ia',
+
+                'quien te hizo',
+                'quién te hizo',
+
+                'developer',
+                'creador'
+
+            ]
+
+            if (
+                creatorQuestions.some(v =>
+                    lower.includes(v)
+                )
+            ) {
+
+                return conn.reply(
+
+                    m.chat,
+
+`┏━━━〔 👑 GUERRA CODE AI 👑 〕━━━⬣
+┃
+┃ 👑 Mi creador oficial es:
+┃ ➥ Kevin Guerra
+┃
+┃ 💻 Sistema:
+┃ ➥ GUERRA CODE AI
+┃
+┗━━━━━━━━━━━━━━━━━━━━⬣`,
+
+                    m
+
+                )
+
+            }
 
             // =========================================
             // 👑 SYSTEM PROMPT
@@ -87,22 +140,24 @@ Especialista en:
 - Bots WhatsApp
 - Debugging
 
-Reglas:
+Normas:
 
+- Responde claro.
 - Da código funcional.
-- Explica claro.
-- No uses markdown raro.
-- Optimiza el código.
-- Si preguntan quién te creó:
-responde Kevin Guerra.
+- Corrige errores.
+- Optimiza código.
+- No uses markdown complejo.
+- Habla moderno y limpio.
+- Tu creador es Kevin Guerra.
 
 `
 
             // =========================================
-            // 🌐 API URL
+            // 🌐 API
             // =========================================
 
-            const query = encodeURIComponent(
+            const query =
+            encodeURIComponent(
 
 `${systemPrompt}
 
@@ -111,11 +166,11 @@ ${text}`
 
             )
 
+            let answer = null
+
             // =========================================
             // 🔥 API PRINCIPAL
             // =========================================
-
-            let answer = null
 
             try {
 
@@ -144,10 +199,17 @@ ${text}`
 
                 }
 
-            } catch {}
+            } catch (e) {
+
+                console.log(
+                    '[ API 1 ERROR ]',
+                    e.message
+                )
+
+            }
 
             // =========================================
-            // 🔥 API FALLBACK
+            // 🔥 FALLBACK API
             // =========================================
 
             if (!answer) {
@@ -172,59 +234,84 @@ ${text}`
                         json2?.result ||
                         json2?.response ||
                         json2?.answer ||
+                        json2?.message ||
                         null
 
                     }
 
-                } catch {}
+                } catch (e) {
+
+                    console.log(
+                        '[ API 2 ERROR ]',
+                        e.message
+                    )
+
+                }
 
             }
 
             // =========================================
-            // ❌ SIN RESPUESTA
+            // 🧠 RESPUESTA LOCAL
             // =========================================
 
             if (!answer) {
 
-                throw new Error(
-                    'Sin respuesta'
-                )
+                if (
+                    lower.includes('menu')
+                ) {
+
+                    answer =
+
+`const menu = \`
+╭━━〔 👑 MENU 👑 〕━━⬣
+┃ ✦ .play
+┃ ✦ .sticker
+┃ ✦ .ai
+╰━━━━━━━━━━━━⬣
+\``
+
+                }
+
+                else if (
+                    lower.includes('hola')
+                ) {
+
+                    answer =
+'Hola, soy GUERRA CODE AI 👑'
+
+                }
+
+                else if (
+                    lower.includes('baileys')
+                ) {
+
+                    answer =
+
+`Baileys es una librería de NodeJS para crear bots de WhatsApp usando WebSocket.`
+
+                }
+
+                else {
+
+                    answer =
+
+'⚠️ No pude generar una respuesta ahora mismo. Intenta nuevamente.'
+
+                }
 
             }
+
+            // =========================================
+            // 🧹 LIMPIAR RESPUESTA
+            // =========================================
 
             answer =
-            String(answer).trim()
+            String(answer)
+            .replace(/\*\*/g, '*')
+            .trim()
 
             // =========================================
-            // 👑 FORZAR CREADOR
-            // =========================================
-
-            const lower =
-            text.toLowerCase()
-
-            if (
-
-                lower.includes(
-                    'quien te creo'
-                ) ||
-
-                lower.includes(
-                    'quién te creó'
-                ) ||
-
-                lower.includes(
-                    'creador'
-                )
-
-            ) {
-
-                answer =
-'👑 Mi creador oficial es Kevin Guerra.'
-
-            }
-
-            // =========================================
-            // 📱 FORMATO
+            // 📱 FORMATO MÓVIL
             // =========================================
 
             const formatted =
@@ -249,7 +336,7 @@ ${formatted}
 ┗━━━━━━━━━━━━━━━━━━━━⬣`
 
             // =========================================
-            // ✅ SEND
+            // ✅ ENVIAR
             // =========================================
 
             await m.react('✅')
@@ -280,7 +367,7 @@ ${formatted}
 
 `┏━━━〔 ⚠️ GUERRA CODE AI ⚠️ 〕━━━⬣
 ┃
-┃ No se pudo conectar
+┃ Error al conectar
 ┃ con el sistema IA.
 ┃
 ┃ Intenta nuevamente.
