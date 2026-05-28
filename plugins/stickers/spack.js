@@ -73,29 +73,38 @@ function buildZip(files) {
         local.writeUInt16LE(0, 28);
         name.copy(local, 30);
         localParts.push(local, file.data);
-
         const cd = Buffer.alloc(46 + name.length);
         cd.writeUInt32LE(0x02014b50, 0);
+        cd.writeUInt16LE(20, 4);
+        cd.writeUInt16LE(20, 6);
+        cd.writeUInt16LE(0, 8);
+        cd.writeUInt16LE(0, 10);
+        cd.writeUInt16LE(0, 12);
+        cd.writeUInt16LE(0, 14);
         cd.writeUInt32LE(crc, 16);
         cd.writeUInt32LE(size, 20);
         cd.writeUInt32LE(size, 24);
         cd.writeUInt16LE(name.length, 28);
+        cd.writeUInt16LE(0, 30);
+        cd.writeUInt16LE(0, 32);
+        cd.writeUInt16LE(0, 34);
+        cd.writeUInt16LE(0, 36);
+        cd.writeUInt32LE(0, 38);
         cd.writeUInt32LE(offset, 42);
         name.copy(cd, 46);
-
         centralDirs.push(cd);
         offset += 30 + name.length + size;
     }
-
     const central = Buffer.concat(centralDirs);
-
     const eocd = Buffer.alloc(22);
     eocd.writeUInt32LE(0x06054b50, 0);
+    eocd.writeUInt16LE(0, 4);
+    eocd.writeUInt16LE(0, 6);
     eocd.writeUInt16LE(files.length, 8);
     eocd.writeUInt16LE(files.length, 10);
     eocd.writeUInt32LE(central.length, 12);
     eocd.writeUInt32LE(offset, 16);
-
+    eocd.writeUInt16LE(0, 20);
     return Buffer.concat([...localParts, central, eocd]);
 }
 
@@ -114,71 +123,45 @@ async function patchMediaPathMap() {
 
 async function uploadBuffer(conn, buffer, mediaType) {
     if (!buffer || buffer.length === 0) return null;
-
-    const enc = encryptBuffer(
-        buffer,
-        mediaType === 'sticker'
-            ? 'WhatsApp Image Keys'
-            : 'WhatsApp Sticker Pack Keys'
-    );
-
+    const enc = encryptBuffer(buffer, mediaType === 'sticker' ? 'WhatsApp Image Keys' : 'WhatsApp Sticker Pack Keys');
     const tmpPath = join(tmpdir(), `wa-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.enc`);
     await writeFile(tmpPath, enc.encBody);
-
     try {
         const result = await conn.waUploadToServer(tmpPath, {
             fileEncSha256B64: enc.fileEncSha256.toString('base64'),
             mediaType
         });
-
         return { ...enc, directPath: result.directPath };
     } finally {
         unlink(tmpPath).catch(() => {});
     }
 }
 
-/* =========================
-   💫 DISEÑO SOLO TEXTO
-========================= */
-
 const stickerPackSearch = {
     name: 'stickerpack',
     alias: ['spack', 'stickerly'],
     category: 'search',
     run: async (m, { conn, text }) => {
-
-        if (!text)
-            return m.reply('❖ 𝗘𝗥𝗥𝗢𝗥 » Ingresa un nombre para buscar el pack.');
-
+        if (!text) return m.reply('Ingresa el nombre.');
         try {
             await m.react('🕒');
-
             await patchMediaPathMap();
 
-            const { data: searchRes } = await axios.get(
-                `https://sylphyy.xyz/search/stickerly?q=${encodeURIComponent(text)}&api_key=${API_KEY}`
-            );
+            const { data: searchRes } = await axios.get(`https://sylphyy.xyz/search/stickerly?q=${encodeURIComponent(text)}&api_key=${API_KEY}`);
 
-            if (!searchRes.status || !searchRes.result?.length)
-                return m.reply('❖ 𝗦𝗜𝗡 𝗥𝗘𝗦𝗨𝗟𝗧𝗔𝗗𝗢𝗦 » No se encontraron packs disponibles.');
-
+            if (!searchRes.status || !searchRes.result?.length) return m.reply('Sin resultados.');
             const pack = searchRes.result[0];
 
-            const { data: dlRes } = await axios.get(
-                `https://sylphyy.xyz/download/stickerly?url=${encodeURIComponent(pack.url)}&api_key=${API_KEY}`
-            );
+            const { data: dlRes } = await axios.get(`https://sylphyy.xyz/download/stickerly?url=${encodeURIComponent(pack.url)}&api_key=${API_KEY}`);
 
-            if (!dlRes.status || !dlRes.result?.stickers)
-                return m.reply('❖ 𝗘𝗥𝗥𝗢𝗥 » No se pudo descargar el paquete.');
+            if (!dlRes.status || !dlRes.result?.stickers) return m.reply('Error al descargar.');
 
             const packData = dlRes.result;
             const stickersToProcess = packData.stickers.slice(0, 5);
 
             const [coverRes, ...stickerResps] = await Promise.all([
                 axios.get(packData.thumbnailUrl, { responseType: 'arraybuffer' }),
-                ...stickersToProcess.map(s =>
-                    axios.get(s.imageUrl, { responseType: 'arraybuffer' })
-                )
+                ...stickersToProcess.map(s => axios.get(s.imageUrl, { responseType: 'arraybuffer' }))
             ]);
 
             const trayBuffer = await sharp(Buffer.from(coverRes.data))
@@ -187,8 +170,7 @@ const stickerPackSearch = {
                 .toBuffer()
                 .catch(() => null);
 
-            if (!trayBuffer)
-                throw new Error('❖ ERROR » No se pudo procesar el icono del pack.');
+            if (!trayBuffer) throw new Error('Error al procesar el icono del paquete.');
 
             const processedStickers = (await Promise.all(
                 stickerResps.map(async (resp, i) => {
@@ -196,48 +178,89 @@ const stickerPackSearch = {
                         const inputBuf = Buffer.from(resp.data);
                         if (inputBuf.length < 100) return null;
 
-                        return await sharp(inputBuf, { animated: false })
+                        const isAnimated = stickersToProcess[i].isAnimated || false;
+                        
+                        return await sharp(inputBuf, { animated: isAnimated })
                             .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
                             .webp({ quality: 75, loop: 0, force: true })
                             .toBuffer();
-                    } catch {
+                    } catch (err) {
                         return null;
                     }
                 })
-            )).filter(Boolean);
+            )).filter(buf => buf !== null);
 
-            if (!processedStickers.length)
-                return m.reply('❖ 𝗘𝗥𝗥𝗢𝗥 » No se pudo procesar ningún sticker.');
+            if (processedStickers.length === 0) return m.reply('❯❯ 𝗘𝗥𝗥𝗢𝗥: No se pudo procesar ningún sticker del paquete.');
 
-            const zipFiles = processedStickers.map((buf, i) => ({
-                name: `sticker_${i}.webp`,
-                data: buf
-            }));
+            const stickerUploadResults = (await Promise.all(
+                processedStickers.map(buf => uploadBuffer(conn, buf, 'sticker'))
+            )).filter(res => res !== null);
 
-            const finalZip = buildZip(zipFiles);
-            const packUpload = await uploadBuffer(conn, finalZip, 'sticker-pack');
+            const zipFiles = [];
+            const stickerMeta = [];
 
-            if (!packUpload)
-                throw new Error('❖ ERROR » Fallo al subir el paquete.');
+            for (let i = 0; i < processedStickers.length; i++) {
+                const hash = crypto.createHash('sha256').update(processedStickers[i]).digest('base64url');
+                const fileName = `${String(i).padStart(2, '0')}_${hash}.webp`;
+                zipFiles.push({ name: fileName, data: processedStickers[i] });
+                stickerMeta.push({
+                    fileName,
+                    isAnimated: stickersToProcess[i].isAnimated || false,
+                    emojis: ['✨'],
+                    mimetype: 'image/webp',
+                    accessibilityLabel: ''
+                });
+            }
+
+            const packEncTemp = encryptBuffer(buildZip(zipFiles), 'WhatsApp Sticker Pack Keys');
+            const packId = packEncTemp.fileEncSha256.toString('base64url');
+            const trayIconName = `${packId}.png`;
+
+            const finalZipBuffer = buildZip([{ name: trayIconName, data: trayBuffer }, ...zipFiles]);
+            const packUpload = await uploadBuffer(conn, finalZipBuffer, 'sticker-pack');
+
+            if (!packUpload) throw new Error('Error al subir el paquete de stickers.');
+
+            const thumbSha256 = crypto.createHash('sha256').update(trayBuffer).digest();
+            const thumbKeys = hkdf(packUpload.mediaKey, 112, 'WhatsApp Sticker Pack Keys');
+            const thumbCipher = crypto.createCipheriv('aes-256-cbc', thumbKeys.slice(16, 48), thumbKeys.slice(0, 16));
+            const thumbEnc = Buffer.concat([thumbCipher.update(trayBuffer), thumbCipher.final()]);
+            const thumbMac = crypto.createHmac('sha256', thumbKeys.slice(48, 80)).update(thumbKeys.slice(0, 16)).update(thumbEnc).digest().slice(0, 10);
+            const thumbEncSha256 = crypto.createHash('sha256').update(Buffer.concat([thumbEnc, thumbMac])).digest();
+
+            const msgId = crypto.randomBytes(8).toString('hex').toUpperCase();
 
             await conn.relayMessage(m.chat, {
                 stickerPackMessage: {
-                    name: `✨ 𝗣𝗔𝗖𝗞 » ${packData.name || 'Sin nombre'}`,
-                    publisherName: packData.author?.name || '𝗕𝗢𝗧',
-                    stickers: [],
+                    stickerPackId: packUpload.fileEncSha256.toString('base64url'),
+                    name: packData.name.substring(0, 30),
+                    publisherName: packData.author.name || 'KiritoBot',
+                    trayIconFileName: trayIconName,
+                    stickers: stickerMeta,
+                    stickerPackSize: finalZipBuffer.length,
+                    stickerPackOrigin: 'THIRD_PARTY',
                     mediaKey: packUpload.mediaKey,
-                    fileEncSha256: packUpload.fileEncSha256,
+                    fileLength: packUpload.encBody.length,
                     fileSha256: packUpload.fileSha256,
-                    directPath: packUpload.directPath
+                    fileEncSha256: packUpload.fileEncSha256,
+                    directPath: packUpload.directPath,
+                    thumbnailDirectPath: packUpload.directPath,
+                    thumbnailSha256: thumbSha256,
+                    thumbnailEncSha256: thumbEncSha256,
+                    thumbnailHeight: 96,
+                    thumbnailWidth: 96,
+                    mediaKeyTimestamp: Math.floor(Date.now() / 1000),
+                    packDescription: 'Multi-device Sticker Pack',
+                    imageDataHash: thumbSha256.toString('base64')
                 }
-            }, { quoted: m });
+            }, { messageId: msgId, quoted: m });
 
             await m.react('✅');
 
         } catch (e) {
-            console.error('StickerPack Error:', e);
+            console.error('Error en StickerPack:', e);
             await m.react('❌');
-            m.reply(`❖ 𝗘𝗥𝗥𝗢𝗥 𝗚𝗘𝗡𝗘𝗥𝗔𝗟 » ${e.message}`);
+            m.reply(`❯❯ 𝗘𝗥𝗥𝗢𝗥: ${e.message}`);
         }
     }
 };
