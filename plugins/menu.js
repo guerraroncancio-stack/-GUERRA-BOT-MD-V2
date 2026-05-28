@@ -1,39 +1,17 @@
 import fetch from 'node-fetch'
 
 async function makeFkontak() {
-  try {
-    const res = await fetch(
-      'https://cdn.dix.lat/me/bb174465-aa94-4844-8b89-ff4bc5f77f17.jpg'
-    )
-
-    const thumb = Buffer.from(await res.arrayBuffer())
-
-    return {
-      key: {
-        participants: '0@s.whatsapp.net',
-        remoteJid: 'status@broadcast',
-        fromMe: false,
-        id: 'GUERRA'
-      },
-      message: {
-        locationMessage: {
-          name: '👑 GUERRA BOT',
-          jpegThumbnail: thumb
-        }
-      },
-      participant: '0@s.whatsapp.net'
-    }
-
-  } catch (e) {
-    return {
-      key: {
-        participants: '0@s.whatsapp.net',
-        remoteJid: 'status@broadcast',
-        fromMe: false,
-        id: 'GUERRA'
-      },
-      message: { conversation: '👑 GUERRA BOT' }
-    }
+  return {
+    key: {
+      participants: '0@s.whatsapp.net',
+      remoteJid: 'status@broadcast',
+      fromMe: false,
+      id: 'GUERRA'
+    },
+    message: {
+      conversation: '👑 GUERRA BOT'
+    },
+    participant: '0@s.whatsapp.net'
   }
 }
 
@@ -52,7 +30,6 @@ async function run(m, { conn, usedPrefix }) {
 
 ╭═〔 🌌 CORE 〕═⬣
 ┃ ⬡ ${usedPrefix}menu
-┃ ⬡ ${usedPrefix}allmenu
 ┃ ⬡ ${usedPrefix}owner
 ┃ ⬡ ${usedPrefix}ping
 ╰════════════════⬣
@@ -61,29 +38,31 @@ async function run(m, { conn, usedPrefix }) {
 ┃ ◈ Engine » Online
 ┃ ◈ Database » Connected
 ┃ ◈ Response » Fast
-┃ ◈ Security » Stable
 ╰════════════════⬣
 
-> ⚡ Powered By Kevin Guerra
-> 🚀 GUERRA BOT MD - Ultimate Edition
+> ⚡ GUERRA BOT MD
 `
 
   const fkontak = await makeFkontak()
 
+  // =========================
+  // ⚔️ MENÚ + ANIMACIÓN + FOTO (TODO EN UNO)
+  // =========================
   await conn.sendMessage(
     m.chat,
     {
-      image: {
-        url: 'https://cdn.dix.lat/me/bb174465-aa94-4844-8b89-ff4bc5f77f17.jpg'
+      video: {
+        url: 'https://cdn.dix.lat/me/b267_a8edfc35-d71b-47a0-a1ef-58e28aec4312.mp4'
       },
+
+      gifPlayback: true,
 
       caption: menu,
 
       contextInfo: {
-        mentionedJid: [m.sender],
         externalAdReply: {
           title: '⚔️ GUERRA BOT MD',
-          body: 'Sistema activo',
+          body: 'Sistema activo - Ultimate Edition',
           thumbnailUrl: 'https://cdn.dix.lat/me/bb174465-aa94-4844-8b89-ff4bc5f77f17.jpg',
           mediaType: 1,
           renderLargerThumbnail: true
