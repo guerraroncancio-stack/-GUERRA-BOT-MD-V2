@@ -1,15 +1,10 @@
+```js
 import { exec } from 'child_process'
 import path from 'path'
 import fs from 'fs'
 import { promisify } from 'util'
-import { fileURLToPath } from 'url'
 
 const execAsync = promisify(exec)
-
-const __dirname =
-path.dirname(
-  fileURLToPath(import.meta.url)
-)
 
 const updateCommand = {
 
@@ -31,65 +26,28 @@ const updateCommand = {
 
       await m.react('🔄')
 
-      // =========================================
-      // 🔥 CLEAN GIT
-      // =========================================
+      // =====================================
+      // 📦 GIT PULL
+      // =====================================
 
-      await safeExec(
-        'git reset --hard'
-      )
-
-      await safeExec(
-        'git clean -fd'
-      )
-
-      // =========================================
-      // 📦 UPDATE
-      // =========================================
-
-      const branch =
-      args.join(' ') || ''
-
-      const pull =
-      await safeExec(
-        `git pull --rebase ${branch}`
+      const { stdout, stderr } =
+      await execAsync(
+        `git pull ${args.join(' ')}`
       )
 
       const output =
-      `${pull.stdout}\n${pull.stderr}`
-      .trim()
+      `${stdout}\n${stderr}`.trim()
 
-      // =========================================
-      // ⚠️ UPDATE MSG
-      // =========================================
-
-      await conn.sendMessage(
-        m.chat,
-        {
-          text:
-`╭━━〔 🔥 SYSTEM UPDATE 🔥 〕━━⬣
-┃
-┃ ⚡ Sincronizando sistema
-┃ 🔄 Recargando plugins
-┃ 🚀 Aplicando cambios
-┃
-┣━━━━━━━━━━━━━━━━━━⬣
-${output.slice(0, 3000) || 'Sistema sincronizado'}
-╰━━━━━━━━━━━━━━━━━━⬣`
-        },
-        { quoted: m }
-      )
-
-      // =========================================
+      // =====================================
       // 🔥 HOT RELOAD
-      // =========================================
+      // =====================================
 
-      const result =
-      await reloadPlugins(conn)
+      const total =
+      await reloadPlugins()
 
-      // =========================================
-      // ✅ DONE
-      // =========================================
+      // =====================================
+      // ✅ MENSAJE FINAL
+      // =====================================
 
       await m.react('✅')
 
@@ -97,19 +55,15 @@ ${output.slice(0, 3000) || 'Sistema sincronizado'}
         m.chat,
         {
           text:
-`╭━━〔 🚀 UPDATE COMPLETADO 🚀 〕━━⬣
+`╭━━〔 🚀 SYSTEM UPDATE 〕━━⬣
 ┃
-┃ ✅ Plugins recargados
-┃ ✅ Comandos activos
-┃ ✅ Hot Reload estable
-┃ ✅ Sistema sincronizado
+┃ ✅ Actualización completada
+┃ 🔄 Plugins recargados
+┃ 📦 Total cargados: ${total}
+┃ ⚡ Sistema sincronizado
 ┃
-┃ 📦 Plugins:
-┃ ➥ ${result.loaded}
-┃
-┃ ❌ Errores:
-┃ ➥ ${result.errors}
-┃
+┣━━━━━━━━━━━━━━━━━━⬣
+${output.slice(0, 3000) || 'Sin cambios nuevos'}
 ╰━━━━━━━━━━━━━━━━━━⬣`
         },
         { quoted: m }
@@ -125,9 +79,9 @@ ${output.slice(0, 3000) || 'Sistema sincronizado'}
         m.chat,
         {
           text:
-`╭━━〔 ❌ UPDATE ERROR ❌ 〕━━⬣
+`╭━━〔 ❌ UPDATE ERROR 〕━━⬣
 ┃
-┃ ⚠️ Error detectado
+┃ ⚠️ Error durante update
 ┃
 ┣━━━━━━━━━━━━━━━━━━⬣
 ${String(e).slice(0, 3000)}
@@ -144,177 +98,150 @@ ${String(e).slice(0, 3000)}
 
 export default updateCommand
 
-// =========================================
-// 🔥 SAFE EXEC
-// =========================================
+// =====================================
+// 🔥 HOT RELOAD UNIVERSAL
+// =====================================
 
-async function safeExec(cmd) {
-
-  try {
-
-    return await execAsync(cmd, {
-      cwd: process.cwd(),
-      maxBuffer: 1024 * 1024 * 20,
-      timeout: 1000 * 60 * 5
-    })
-
-  } catch (e) {
-
-    return {
-      stdout: '',
-      stderr:
-      e?.stderr ||
-      e?.message ||
-      String(e)
-    }
-
-  }
-
-}
-
-// =========================================
-// 🔥 HOT RELOAD ESTABLE
-// =========================================
-
-async function reloadPlugins(conn) {
-
-  let loaded = 0
-  let errors = 0
+async function reloadPlugins() {
 
   try {
 
-    const pluginFolder =
-    path.join(
-      process.cwd(),
-      'plugins'
-    )
+    // =====================================
+    // 📂 POSIBLES CARPETAS
+    // =====================================
 
-    const files =
-    getFiles(pluginFolder)
+    const folders = [
+      'plugins',
+      'handler',
+      'commands',
+      'src/plugins',
+      'src/handler'
+    ]
 
-    for (const file of files) {
+    let totalLoaded = 0
 
-      try {
+    for (const folder of folders) {
+
+      const fullPath =
+      path.join(process.cwd(), folder)
+
+      // ✅ SI NO EXISTE NO ROMPE
+      if (!fs.existsSync(fullPath))
+      continue
+
+      const files =
+      getFiles(fullPath)
+
+      for (const file of files) {
 
         if (!file.endsWith('.js'))
         continue
 
-        const modulePath =
-        path.resolve(file)
+        try {
 
-        // =========================================
-        // 🔥 IMPORT FRESCO
-        // =========================================
+          const modulePath =
+          path.resolve(file)
 
-        await import(
-          `file://${modulePath}?update=${Date.now()}`
-        )
+          // 🔥 IMPORT FRESCO
+          const imported =
+          await import(
+            `file://${modulePath}?reload=${Date.now()}`
+          )
 
-        loaded++
+          if (imported?.default?.name) {
 
-        console.log(
-          '[ RELOADED ]',
-          path.basename(file)
-        )
+            totalLoaded++
 
-      } catch (err) {
+            console.log(
+              `[ HOT-RELOAD ] ${imported.default.name}`
+            )
 
-        errors++
+          }
 
-        console.log(
-          '[ PLUGIN ERROR ]',
-          file
-        )
+        } catch (err) {
 
-        console.log(err)
+          console.log(
+            `[ ERROR ] ${file}`
+          )
 
-      }
+          console.log(err)
 
-    }
-
-    // =========================================
-    // 🔥 RELOAD CORE
-    // =========================================
-
-    if (
-      typeof global.reloadHandler ===
-      'function'
-    ) {
-
-      try {
-
-        await global.reloadHandler(true)
-
-      } catch (e) {
-
-        console.log(
-          '[ CORE RELOAD ERROR ]'
-        )
-
-        console.log(e)
+        }
 
       }
 
     }
+
+    // =====================================
+    // 🔥 RELOAD GLOBAL
+    // =====================================
+
+    if (global.reloadHandler) {
+
+      await global.reloadHandler(true)
+
+    }
+
+    return totalLoaded
 
   } catch (e) {
 
     console.log(e)
 
-  }
+    return 0
 
-  return {
-    loaded,
-    errors
   }
 
 }
 
-// =========================================
-// 📂 GET FILES
-// =========================================
+// =====================================
+// 📂 LEER ARCHIVOS RECURSIVOS
+// =====================================
 
 function getFiles(dir) {
 
   let results = []
 
-  try {
+  if (!fs.existsSync(dir))
+  return results
 
-    const list =
-    fs.readdirSync(dir)
+  const list =
+  fs.readdirSync(dir)
 
-    for (const file of list) {
+  for (const file of list) {
 
-      const full =
-      path.join(dir, file)
+    const full =
+    path.join(dir, file)
 
-      const stat =
+    let stat
+
+    try {
+
+      stat =
       fs.statSync(full)
 
-      if (
-        stat &&
-        stat.isDirectory()
-      ) {
+    } catch {
 
-        results =
-        results.concat(
-          getFiles(full)
-        )
-
-      } else {
-
-        results.push(full)
-
-      }
+      continue
 
     }
 
-  } catch (e) {
+    if (stat.isDirectory()) {
 
-    console.log(e)
+      results =
+      results.concat(
+        getFiles(full)
+      )
+
+    } else {
+
+      results.push(full)
+
+    }
 
   }
 
   return results
 
 }
+```
