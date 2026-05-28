@@ -5,33 +5,25 @@ export default {
     try {
 
       // =========================
-      // 🔥 DATABASE FIX
+      // 👑 OWNER BYPASS
       // =========================
-
-      global.db.data = global.db.data || {}
-
-      if (!global.db.data.settings) {
-        global.db.data.settings = {}
-      }
-
-      if (!global.db.data.settings.antiprivado) {
-        global.db.data.settings.antiprivado = false
-      }
-
-      // =========================
-      // 🚫 CHECK
-      // =========================
-
-      if (
-        !global.db.data.settings.antiprivado
-      ) return
-
-      if (m.isGroup) return
 
       if (isOwner) return
 
       // =========================
-      // ⚠️ WARNING
+      // 👥 IGNORAR GRUPOS
+      // =========================
+
+      if (m.isGroup) return
+
+      // =========================
+      // 🤖 IGNORAR BOTS
+      // =========================
+
+      if (m.fromMe) return
+
+      // =========================
+      // ⚠️ MENSAJE
       // =========================
 
       await conn.sendMessage(
@@ -40,13 +32,11 @@ export default {
           text:
 `╭━━〔 🚫 ACCESO DENEGADO 🚫 〕━━⬣
 ┃
-┃ No puedes usar el bot
+┃ Solo el owner puede
+┃ escribirle al bot
 ┃ por privado.
 ┃
-┃ Serás bloqueado automáticamente.
-┃
-┃ Contacta al owner si
-┃ necesitas acceso.
+┃ Serás bloqueado.
 ┃
 ╰━━━━━━━━━━━━━━━━━━⬣`
         },
@@ -54,7 +44,25 @@ export default {
       )
 
       // =========================
-      // ⛔ BLOCK
+      // ⏳ ESPERA
+      // =========================
+
+      await new Promise(resolve =>
+        setTimeout(resolve, 2000)
+      )
+
+      // =========================
+      // ❌ ELIMINAR CONTACTO
+      // =========================
+
+      if (conn.contacts?.[m.sender]) {
+
+        delete conn.contacts[m.sender]
+
+      }
+
+      // =========================
+      // ⛔ BLOQUEAR
       // =========================
 
       await conn.updateBlockStatus(
