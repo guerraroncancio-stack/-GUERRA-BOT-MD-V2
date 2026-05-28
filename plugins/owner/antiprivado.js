@@ -1,126 +1,78 @@
 export default {
 
-  name: 'antiprivado',
-
-  alias: [
-    'antipv',
-    'privado'
-  ],
-
-  tags: ['owner'],
-
-  command: [
-    'antiprivado',
-    'antipv',
-    'privado'
-  ],
-
-  rowner: true,
-
-  async run(m, { conn, args }) {
+  async all(m, { conn, isOwner }) {
 
     try {
 
       // =========================
-      // 🔥 DATABASE FIX
+      // 👑 OWNER BYPASS
       // =========================
 
-      global.db.data = global.db.data || {}
-
-      if (!global.db.data.settings) {
-        global.db.data.settings = {}
-      }
-
-      if (!global.db.data.settings.antiprivado) {
-        global.db.data.settings.antiprivado = false
-      }
+      if (isOwner) return
 
       // =========================
-      // ⚙️ OPTION
+      // 👥 IGNORAR GRUPOS
       // =========================
 
-      const option =
-      (args[0] || '').toLowerCase()
+      if (m.isGroup) return
 
-      if (!option) {
+      // =========================
+      // 🤖 IGNORAR BOTS
+      // =========================
 
-        return conn.sendMessage(
-          m.chat,
-          {
-            text:
-`╭━━〔 🚫 ANTI PRIVADO 🚫 〕━━⬣
+      if (m.fromMe) return
+
+      // =========================
+      // ⚠️ MENSAJE
+      // =========================
+
+      await conn.sendMessage(
+        m.chat,
+        {
+          text:
+`╭━━〔 🚫 ACCESO DENEGADO 🚫 〕━━⬣
 ┃
-┃ Estado:
-┃ ➥ ${
-global.db.data.settings.antiprivado
-? 'Activado ✅'
-: 'Desactivado ❌'
-}
+┃ Solo el owner puede
+┃ escribirle al bot
+┃ por privado.
 ┃
-┃ Ejemplos:
-┃ ➥ .antiprivado on
-┃ ➥ .antiprivado off
+┃ Serás bloqueado.
 ┃
 ╰━━━━━━━━━━━━━━━━━━⬣`
-          },
-          { quoted: m }
-        )
+        },
+        { quoted: m }
+      )
+
+      // =========================
+      // ⏳ ESPERA
+      // =========================
+
+      await new Promise(resolve =>
+        setTimeout(resolve, 2000)
+      )
+
+      // =========================
+      // ❌ ELIMINAR CONTACTO
+      // =========================
+
+      if (conn.contacts?.[m.sender]) {
+
+        delete conn.contacts[m.sender]
 
       }
 
       // =========================
-      // ✅ ON
+      // ⛔ BLOQUEAR
       // =========================
 
-      if (option === 'on') {
-
-        global.db.data.settings.antiprivado = true
-
-        return conn.sendMessage(
-          m.chat,
-          {
-            text:
-`╭━━〔 🚫 ANTI PRIVADO 🚫 〕━━⬣
-┃
-┃ Sistema activado ✅
-┃
-╰━━━━━━━━━━━━━━━━━━⬣`
-          },
-          { quoted: m }
-        )
-
-      }
-
-      // =========================
-      // ❌ OFF
-      // =========================
-
-      if (option === 'off') {
-
-        global.db.data.settings.antiprivado = false
-
-        return conn.sendMessage(
-          m.chat,
-          {
-            text:
-`╭━━〔 🚫 ANTI PRIVADO 🚫 〕━━⬣
-┃
-┃ Sistema desactivado ❌
-┃
-╰━━━━━━━━━━━━━━━━━━⬣`
-          },
-          { quoted: m }
-        )
-
-      }
+      await conn.updateBlockStatus(
+        m.sender,
+        'block'
+      )
 
     } catch (e) {
 
       console.log(e)
-
-      return m.reply(
-        '❌ Error en anti privado'
-      )
 
     }
 
