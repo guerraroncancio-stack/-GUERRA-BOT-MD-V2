@@ -59,7 +59,11 @@ export default {
 
   name: 'hidetag',
 
-  alias: ['n', 'notify', 'tagall'],
+  alias: [
+    'n',
+    'notify',
+    'tagall'
+  ],
 
   group: true,
 
@@ -67,7 +71,10 @@ export default {
 
   botAdmin: true,
 
-  async run(m, { conn, text }) {
+  async run(m, {
+    conn,
+    text
+  }) {
 
     try {
 
@@ -80,18 +87,29 @@ export default {
         )
 
       const fkontak = {
+
         key: {
           remoteJid: m.chat,
           fromMe: false,
           id: 'Guerra'
         },
+
         message: {
+
           locationMessage: {
-            name: 'Hola, Soy GUERRA 𝐁𝐎𝐓',
+
+            name:
+            'Hola, Soy GUERRA 𝐁𝐎𝐓',
+
             jpegThumbnail: thumb
+
           }
+
         },
-        participant: '0@s.whatsapp.net'
+
+        participant:
+        '0@s.whatsapp.net'
+
       }
 
       const q =
@@ -101,7 +119,9 @@ export default {
 
       const mtype =
         q.mtype ||
-        Object.keys(q.message || {})[0] ||
+        Object.keys(
+          q.message || {}
+        )[0] ||
         ''
 
       const watermark =
@@ -126,7 +146,8 @@ export default {
       ======================= */
 
       if (
-        m.quoted?.mtype === 'imageMessage'
+        m.quoted?.mtype ===
+        'imageMessage'
       ) {
 
         const media =
@@ -142,7 +163,9 @@ export default {
             caption: finalCaption,
             mentions: users
           },
-          { quoted: fkontak }
+          {
+            quoted: fkontak
+          }
         )
 
       }
@@ -152,7 +175,8 @@ export default {
       ======================= */
 
       if (
-        m.quoted?.mtype === 'videoMessage'
+        m.quoted?.mtype ===
+        'videoMessage'
       ) {
 
         const media =
@@ -169,7 +193,9 @@ export default {
             mimetype: 'video/mp4',
             mentions: users
           },
-          { quoted: fkontak }
+          {
+            quoted: fkontak
+          }
         )
 
       }
@@ -179,7 +205,8 @@ export default {
       ======================= */
 
       if (
-        m.quoted?.mtype === 'audioMessage'
+        m.quoted?.mtype ===
+        'audioMessage'
       ) {
 
         const media =
@@ -196,7 +223,9 @@ export default {
             ptt: false,
             mentions: users
           },
-          { quoted: fkontak }
+          {
+            quoted: fkontak
+          }
         )
 
         return await conn.sendMessage(
@@ -205,7 +234,9 @@ export default {
             text: finalCaption,
             mentions: users
           },
-          { quoted: fkontak }
+          {
+            quoted: fkontak
+          }
         )
 
       }
@@ -215,7 +246,8 @@ export default {
       ======================= */
 
       if (
-        m.quoted?.mtype === 'stickerMessage'
+        m.quoted?.mtype ===
+        'stickerMessage'
       ) {
 
         const media =
@@ -230,7 +262,9 @@ export default {
             sticker: media,
             mentions: users
           },
-          { quoted: fkontak }
+          {
+            quoted: fkontak
+          }
         )
 
       }
@@ -241,6 +275,20 @@ export default {
 
       if (m.quoted) {
 
+        let content =
+          q?.message?.[mtype]
+
+        if (
+          !content ||
+          typeof content !== 'object'
+        ) {
+
+          content = {
+            text: finalCaption
+          }
+
+        }
+
         const newMsg =
           conn.cMod(
             m.chat,
@@ -248,9 +296,10 @@ export default {
               m.chat,
               {
                 [mtype || 'extendedTextMessage']:
-                  q?.message?.[mtype] || {
-                    text: finalCaption
-                  }
+                {
+                  ...content,
+                  text: finalCaption
+                }
               },
               {
                 quoted: fkontak,
@@ -268,7 +317,8 @@ export default {
           m.chat,
           newMsg.message,
           {
-            messageId: newMsg.key.id
+            messageId:
+            newMsg.key.id
           }
         )
 
@@ -284,7 +334,9 @@ export default {
           text: finalCaption,
           mentions: users
         },
-        { quoted: fkontak }
+        {
+          quoted: fkontak
+        }
       )
 
     } catch (e) {
@@ -294,9 +346,12 @@ export default {
       return conn.sendMessage(
         m.chat,
         {
-          text: '❌ Error en hidetag.'
+          text:
+          '❌ Error en hidetag.'
         },
-        { quoted: m }
+        {
+          quoted: m
+        }
       )
 
     }
