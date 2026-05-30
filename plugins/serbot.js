@@ -1,104 +1,97 @@
-import fs from 'fs'
-import path from 'path'
 import { startSubBot } from '../lib/serbot.js'
-
-const MAX_SUBBOTS = 2
 
 const codeCommand = {
     name: 'code',
     alias: ['serbot', 'jadibot'],
     category: 'subbot',
 
-    run: async (m, { conn, text, isOwner }) => {
+    run: async (m, { conn, text, command }) => {
+        try {
 
-        // ELIMINAR SUBBOT
-        if (text?.startsWith('delbot ')) {
+            let subbots = global.subbotUsers || (global.subbotUsers = {})
 
-            if (!isOwner) {
-                return m.reply('❌ Solo el owner puede eliminar subbots.')
-            }
+            // =========================
+            // 📌 DESACTIVAR SUBBOT
+            // =========================
+            if (command === 'subbot' && text === 'off') {
 
-            const number = text.replace('delbot', '').replace(/\D/g, '')
+                let user = m.sender
 
-            if (!number) {
-                return m.reply('Uso:\n.code delbot 573001234567')
-            }
-
-            const dbPath = path.join(process.cwd(), 'jadibts', `${number}.sqlite`)
-
-            try {
-
-                const sock = global.conns?.get(number)
-
-                if (sock) {
-                    try {
-                        sock.ws.close()
-                    } catch {}
-                    global.conns.delete(number)
-                }
-
-                if (fs.existsSync(dbPath)) {
-                    fs.unlinkSync(dbPath)
-                }
-
-                return m.reply(
-`╭─〔 🗑️ SUBBOT ELIMINADO 〕─⬣
+                if (!subbots[user] || !subbots[user].length) {
+                    return m.reply(`╭─〔 🤖 SUBBOT 〕─⬣
 │
-│ Número:
-│ ${number}
+│ ❌ No tienes subbots activos
+│
+╰──────────────⬣`)
+                }
+
+                delete subbots[user]
+
+                return m.reply(`╭─〔 🤖 SUBBOT OFF 〕─⬣
+│
+│ 🛑 Subbot desactivado correctamente
+│
+╰──────────────⬣`)
+            }
+
+            // =========================
+            // 📌 LISTA DE SUBBOTS
+            // =========================
+            if (text === 'list' || text === 'lista') {
+
+                let owners = Object.keys(subbots)
+
+                if (!owners.length) {
+                    return m.reply(`╭─〔 🤖 SUBBOTS ACTIVOS 〕─⬣
+│
+│ ❌ No hay subbots activos
+│
+╰──────────────⬣`)
+                }
+
+                let txt = `╭─〔 🤖 SUBBOTS ACTIVOS 〕─⬣\n│\n`
+
+                for (let owner of owners) {
+                    let bots = subbots[owner] || []
+
+                    txt += `│ 👤 Owner: ${owner}\n`
+                    txt += `│ 🤖 Activos: ${bots.length}\n`
+                    txt += `│\n`
+                }
+
+                txt += `╰──────────────⬣`
+
+                return m.reply(txt)
+            }
+
+            // =========================
+            // 📌 PANEL DE AYUDA
+            // =========================
+            if (!text) {
+                return m.reply(
+`╭─〔 🤖 SUBBOT PANEL 〕─⬣
+│
+│ 📌 Comandos:
+│ .code 573001234567
+│ .code list
+│ .subbot off
+│
+│ ⚙️ Control:
+│ Activar → .code <numero>
+│ Desactivar → .subbot off
 │
 ╰──────────────⬣`
                 )
-
-            } catch (e) {
-                console.error(e)
-                return m.reply('❌ No pude eliminar esa sesión.')
             }
-        }
 
-        try {
+            // =========================
+            // 📌 CREAR SUBBOT
+            // =========================
 
             let number = text.replace(/\D/g, '')
 
             if (!number) {
-                return conn.sendMessage(
-                    m.chat,
-                    {
-                        image: {
-                            url: 'https://files.catbox.moe/4w0j2v.jpg'
-                        },
-                        caption:
-`╭─〔 📱 VINCULAR SUBBOT 〕─⬣
-│
-│ Uso:
-│ .code 573001234567
-│
-│ Máximo:
-│ ${MAX_SUBBOTS} vinculaciones
-│
-╰──────────────⬣`
-                    },
-                    { quoted: m }
-                )
-            }
-
-            const totalBots = fs.existsSync('./jadibts')
-                ? fs.readdirSync('./jadibts')
-                    .filter(file => file.endsWith('.sqlite'))
-                    .length
-                : 0
-
-            if (totalBots >= MAX_SUBBOTS) {
-                return m.reply(
-`❌ Límite alcanzado.
-
-Solo se permiten ${MAX_SUBBOTS} subbots activos.
-
-Usa:
-.code delbot numero
-
-Para liberar espacio.`
-                )
+                return m.reply(`❌ Número inválido`)
             }
 
             await m.reply('⏳ Generando código...')
@@ -114,26 +107,40 @@ Para liberar espacio.`
             )
 
             if (code) {
-                await conn.sendMessage(
-                    m.chat,
-                    {
-                        image: {
-                            url: 'https://files.catbox.moe/4w0j2v.jpg'
-                        },
-                        caption:
-`╭─〔 🔑 CÓDIGO DE VINCULACIÓN 〕─⬣
+
+                let owner = m.sender
+
+                if (!subbots[owner]) subbots[owner] = []
+                subbots[owner].push(number)
+
+                await conn.sendMessage(m.chat, {
+                    image: {
+                        url: 'https://i.imgur.com/5kQnL6X.jpeg'
+                    },
+                    caption:
+`╭─〔 🤖 SUBBOT ACTIVO 〕─⬣
 │
+│ 📱 Número:
+│ ${number}
+│
+│ 🔑 Código:
 │ ${code}
 │
+│ ⚙️ Comandos:
+│ .code list
+│ .subbot off
+│
+│ 👥 Vinculados:
+│ ${subbots[owner].length}/2
+│
 ╰──────────────⬣`
-                    },
-                    { quoted: m }
-                )
+                }, { quoted: m })
+
             }
 
         } catch (e) {
             console.error(e)
-            await m.reply('❌ Error al generar el código.')
+            await m.reply('❌ Error en subbot system')
         }
     }
 }
