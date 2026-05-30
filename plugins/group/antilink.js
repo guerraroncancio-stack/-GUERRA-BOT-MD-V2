@@ -1,15 +1,19 @@
+import { jidNormalizedUser } from '@whiskeysockets/baileys';
+
 const antiLinkPlugin = {
     name: 'antilink_pro',
-
-    async run(m, { conn, isAdmin, isBotAdmin, isOwner, chat }) {
-        return false; // este plugin no se ejecuta por comando
-    },
 
     async before(m, { conn, isAdmin, isBotAdmin, isOwner, chat }) {
 
         const config = chat || {}
 
-        if (!m.isGroup || !config.antiLink || isOwner || isAdmin || m.fromMe) return false
+        if (
+            !m.isGroup ||
+            !config.antiLink ||
+            isOwner ||
+            isAdmin ||
+            m.fromMe
+        ) return false;
 
         const text = (
             m.text ||
@@ -18,43 +22,67 @@ const antiLinkPlugin = {
             m.message?.imageMessage?.caption ||
             m.message?.videoMessage?.caption ||
             ''
-        ).toLowerCase().trim()
+        ).toLowerCase().trim();
 
-        const inviteRegex = /chat\.whatsapp\.com\/([0-9A-Za-z]{20,24})/i
-        const channelRegex = /whatsapp\.com\/channel\/([0-9A-Za-z]{20,24})/i
+        const linkRegex = /chat\.whatsapp\.com\/([0-9a-z]{20,24})/i;
+        const channelRegex = /whatsapp\.com\/channel\/([0-9a-z]{20,24})/i;
 
-        const hasLink =
-            inviteRegex.test(text) ||
+        const isLink =
+            linkRegex.test(text) ||
             channelRegex.test(text) ||
-            m.message?.extendedTextMessage?.contextInfo?.forwardedNewsletterMessageInfo
+            m.message?.extendedTextMessage?.contextInfo?.forwardedNewsletterMessageInfo;
 
-        if (!hasLink) return false
+        if (!isLink) return false;
 
-        // ❌ bot sin permisos
-        if (!isBotAdmin) {
-            await conn.sendMessage(m.chat, {
-                text: `🚫 @${m.sender.split('@')[0]} envió un enlace pero no soy admin.`,
-                mentions: [m.sender]
-            }, { quoted: m })
-
-            return true
+        // 🔥 ignorar link del propio grupo
+        if (linkRegex.test(text)) {
+            const code = await conn.groupInviteCode(m.chat).catch(() => null);
+            if (code && text.includes(code.toLowerCase())) return false;
         }
 
+        const user = `@${m.sender.split('@')[0]}`;
+
+        // ❌ si bot no es admin
+        if (!isBotAdmin) {
+            await conn.sendMessage(m.chat, {
+                text:
+`🚫 *ENLACE DETECTADO*
+
+${user} intentó enviar un link.
+
+⚠️ No puedo aplicar sanciones porque no soy admin.
+🔐 El sistema anti-link está activo.`,
+                mentions: [m.sender]
+            }, { quoted: m });
+
+            return true;
+        }
+
+        // 🧹 BORRAR MENSAJE
         try {
-            await conn.sendMessage(m.chat, { delete: m.key })
+            await conn.sendMessage(m.chat, { delete: m.key });
         } catch {}
 
+        // 👢 EXPULSAR USUARIO
         try {
-            await conn.groupParticipantsUpdate(m.chat, [m.sender], 'remove')
+            await conn.groupParticipantsUpdate(m.chat, [m.sender], 'remove');
         } catch {}
 
+        // ⚠️ MENSAJE FINAL MEJORADO
         await conn.sendMessage(m.chat, {
-            text: `🚫 *ANTI-LINK*\n\n@${m.sender.split('@')[0]} fue eliminado.`,
+            text:
+`🚫 *ANTI-LINK ACTIVADO*
+
+${user} ha sido eliminado del grupo.
+
+⚠️ *REGLA:* No está permitido enviar enlaces.
+📌 Si continúas, podrás ser expulsado permanentemente.
+🔒 Mantén el grupo libre de spam.`,
             mentions: [m.sender]
-        })
+        });
 
-        return true
+        return true;
     }
-}
+};
 
-export default antiLinkPlugin
+export default antiLinkPlugin;
