@@ -1,10 +1,8 @@
-const chat = global.db.data.chats[m.chat] || {}
+export async function featureAntiLink(m, conn) {
 
-if (
-    m.isGroup &&
-    chat.antiLink &&
-    !m.fromMe
-) {
+    const chat = global.db?.data?.chats?.[m.chat] || {}
+
+    if (!m.isGroup || !chat.antiLink || m.fromMe) return
 
     const text = (
         m.text ||
@@ -20,57 +18,56 @@ if (
 
     const isLink = linkRegex.test(text) || channelRegex.test(text)
 
-    if (isLink) {
+    if (!isLink) return
 
-        const sender = m.sender || m.key.participant
+    const sender = m.sender || m.key.participant
+    const user = `@${sender.split('@')[0]}`
 
-        const user = `@${sender.split('@')[0]}`
+    const metadata = await conn.groupMetadata(m.chat).catch(() => null)
+    const participants = metadata?.participants || []
 
-        const metadata = await conn.groupMetadata(m.chat).catch(() => null)
-        const participants = metadata?.participants || []
+    const isAdmin = participants.some(p =>
+        p.id === sender &&
+        (p.admin === 'admin' || p.admin === 'superadmin')
+    )
 
-        const isAdmin = participants.some(p =>
-            p.id === sender &&
-            (p.admin === 'admin' || p.admin === 'superadmin')
-        )
+    const botId = conn.user.id.split(':')[0] + '@s.whatsapp.net'
 
-        const botId = conn.user.id.split(':')[0] + '@s.whatsapp.net'
+    const botIsAdmin = participants.some(p =>
+        p.id === botId &&
+        (p.admin === 'admin' || p.admin === 'superadmin')
+    )
 
-        const botIsAdmin = participants.some(p =>
-            p.id === botId &&
-            (p.admin === 'admin' || p.admin === 'superadmin')
-        )
+    // 🚫 admins no son sancionados
+    if (isAdmin) return
 
-        if (isAdmin) return
-
-        // 🚫 si bot no es admin
-        if (!botIsAdmin) {
-            await conn.sendMessage(m.chat, {
-                text: `🚫 @${sender.split('@')[0]} envió un link, pero no soy admin para sancionar.`,
-                mentions: [sender]
-            })
-            return
-        }
-
-        // 🧹 borrar mensaje
-        try {
-            await conn.sendMessage(m.chat, { delete: m.key })
-        } catch {}
-
-        // 👢 expulsar
-        try {
-            await conn.groupParticipantsUpdate(m.chat, [sender], 'remove')
-        } catch {}
-
-        // ⚠️ aviso
+    // ❌ bot sin permisos
+    if (!botIsAdmin) {
         await conn.sendMessage(m.chat, {
-            text:
-`🚫 *ANTI-LINK ACTIVADO*
-
-${user} fue eliminado.
-
-⚠️ No está permitido enviar enlaces.`,
+            text: `🚫 @${sender.split('@')[0]} envió un link, pero no soy admin para sancionar.`,
             mentions: [sender]
         })
+        return
     }
+
+    // 🧹 borrar mensaje
+    try {
+        await conn.sendMessage(m.chat, { delete: m.key })
+    } catch {}
+
+    // 👢 expulsar usuario
+    try {
+        await conn.groupParticipantsUpdate(m.chat, [sender], 'remove')
+    } catch {}
+
+    // ⚠️ aviso final
+    await conn.sendMessage(m.chat, {
+        text:
+`🚫 *ANTI-LINK ACTIVADO*
+
+${user} fue eliminado del grupo.
+
+⚠️ No está permitido enviar enlaces.`,
+        mentions: [sender]
+    })
 }
