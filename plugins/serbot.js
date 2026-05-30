@@ -1,41 +1,27 @@
-import fs from 'fs'
 import { startSubBot } from '../lib/serbot.js'
 
 const MAX_SUBBOTS = 2
-const DB_PATH = './sessions/subbots.json'
+
+global.subbotUsers = global.subbotUsers || {}
+global.subbotSessions = global.subbotSessions || {}
 
 // =========================
-// 📦 DB HELPERS
+// 🔴 CLOSE SESSION REAL
 // =========================
-function loadDB() {
-    if (!fs.existsSync(DB_PATH)) return {}
-    return JSON.parse(fs.readFileSync(DB_PATH))
-}
+function closeSubbot(number) {
+    try {
+        const session = global.subbotSessions[number]
 
-function saveDB(data) {
-    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2))
-}
-
-// =========================
-// 🔁 AUTO RESTORE (NO CIERRA SESIONES)
-// =========================
-export async function restoreSubbots(conn) {
-    const db = loadDB()
-
-    for (const user in db) {
-        for (const number of db[user]) {
-            console.log(`♻️ Restaurando subbot: ${number}`)
-            await startSubBot(null, conn, number, {
-                isCode: false,
-                restart: true
-            })
+        if (session?.sock) {
+            session.sock.end()
         }
+
+        delete global.subbotSessions[number]
+    } catch (e) {
+        console.log('Error cerrando subbot:', e)
     }
 }
 
-// =========================
-// 🤖 COMMAND
-// =========================
 const codeCommand = {
     name: 'code',
     alias: ['serbot', 'jadibot'],
@@ -44,15 +30,14 @@ const codeCommand = {
     run: async (m, { conn, text }) => {
         try {
 
-            const db = loadDB()
             const user = m.sender
+            const db = global.subbotUsers
 
             if (!db[user]) db[user] = []
 
+            const userBots = db[user]
             const args = (text || '').trim().split(' ')
             const cmd = args[0]?.toLowerCase()
-
-            const userBots = db[user]
 
             // =========================
             // 📌 PANEL
@@ -100,43 +85,64 @@ const codeCommand = {
             }
 
             // =========================
-            // 📌 OFF
+            // 📌 OFF (CERRAR TODO)
             // =========================
             if (cmd === 'off') {
 
+                if (!userBots.length) {
+                    return m.reply(`❌ No tienes subbots activos`)
+                }
+
+                for (let num of userBots) {
+                    closeSubbot(num)
+                }
+
                 db[user] = []
-                saveDB(db)
 
                 return m.reply(`╭─〔 🛑 SUBBOT OFF 〕─⬣
 │
-│ ❌ Todos tus subbots fueron eliminados
+│ ❌ Todos los subbots fueron cerrados
+│ 🧠 Sesiones eliminadas
 │
 ╰──────────────⬣`)
             }
 
             // =========================
-            // 📌 REMOVE
+            // 📌 REMOVE INDIVIDUAL
             // =========================
             if (cmd === 'remove') {
 
                 const number = args.slice(1).join('').replace(/\D/g, '')
 
+                if (!number) {
+                    return m.reply(`❌ Número inválido`)
+                }
+
                 const index = userBots.indexOf(number)
 
                 if (index === -1) {
-                    return m.reply('❌ Subbot no encontrado')
+                    return m.reply(`❌ Ese subbot no existe`)
                 }
+
+                // 🔴 cerrar sesión real
+                closeSubbot(number)
 
                 userBots.splice(index, 1)
                 db[user] = userBots
-                saveDB(db)
 
-                return m.reply(`🗑 Subbot eliminado: ${number}`)
+                return m.reply(`╭─〔 🗑 SUBBOT REMOVED 〕─⬣
+│
+│ 📱 ${number}
+│ 🛑 Sesión cerrada
+│ ❌ Eliminado completamente
+│
+╰──────────────⬣`)
             }
 
             // =========================
-            // 📌 CREATE
+            // 📌 CREATE SUBBOT
             // =========================
+
             const number = text.replace(/\D/g, '')
 
             if (!number || number.length < 10) {
@@ -149,19 +155,19 @@ const codeCommand = {
 
             await m.reply('⏳ Generando subbot...')
 
-            const code = await startSubBot(m, conn, number, {
+            const session = await startSubBot(m, conn, number, {
                 isCode: true,
                 caption: '🔑 Código generado'
             })
 
-            if (!code) {
-                return m.reply('❌ Error generando código')
+            // 🔴 guardar sesión real
+            if (session) {
+                global.subbotSessions[number] = session
             }
 
             if (!userBots.includes(number)) {
                 userBots.push(number)
                 db[user] = userBots
-                saveDB(db)
             }
 
             return conn.sendMessage(m.chat, {
@@ -170,7 +176,7 @@ const codeCommand = {
 `╭─〔 🤖 SUBBOT ACTIVE 〕─⬣
 │
 │ 📱 ${number}
-│ 🔑 ${code}
+│ 🔑 Código generado
 │
 │ 👤 Owner: ${user}
 │ 📊 ${userBots.length}/${MAX_SUBBOTS}
@@ -184,7 +190,7 @@ const codeCommand = {
 
         } catch (e) {
             console.error(e)
-            return m.reply('❌ Error Subbot System')
+            return m.reply('❌ Error Subbot System Pro')
         }
     }
 }
