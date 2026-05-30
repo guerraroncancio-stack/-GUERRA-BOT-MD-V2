@@ -25,7 +25,7 @@ const codeCommand = {
             // =========================
             if (!text) {
                 return conn.sendMessage(m.chat, {
-                    image: { url: 'https://i.imgur.com/5kQnL6X.jpeg' },
+                    image: { url: 'https://api.dix.lat/media2/1777431085383.jpg' },
                     caption:
 `╭─〔 🤖 SUBBOT SYSTEM PRO 〕─⬣
 │
