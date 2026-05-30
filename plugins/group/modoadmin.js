@@ -1,35 +1,29 @@
-export async function featureModoadmin(m, conn) {
+let handler = m => m;
+handler.before = async function (m, { conn, isAdmin, isBotAdmin, isOwner, isROwner, isPrems }) {
+  const chat = global.db.data.chats[m.chat];
+  const bot = global.db.data.settings[conn.user.jid] || {};
 
-    const chat = global.db?.data?.chats?.[m.chat] || {}
+  const hl = global.prefix;  // Prefijo global
+  const adminMode = chat.modoadmin;  // Modo de administrador
 
-    if (!m.isGroup || !chat.modoadmin) return true
+  // Comprobamos si el mensaje está en un grupo y si el modo administrador está activado
+  if (m.isGroup) {
+    // Si el modo admin está activado y el usuario no tiene privilegios, rechazamos el mensaje
+    if (adminMode && !isOwner && !isROwner && !isAdmin) {
+      return false;  // Cancelamos la acción
+    }
 
-    const sender = m.sender
-
-    const group = await conn.groupMetadata(m.chat).catch(() => null)
-    const participants = group?.participants || []
-
-    // 🔐 verificar admin real
-    const isAdmin = participants.some(p =>
-        p.id === sender &&
-        (p.admin === 'admin' || p.admin === 'superadmin')
-    )
-
-    // 👑 owner bypass
-    const isOwner = global.owner?.includes(sender)
-
-    if (isAdmin || isOwner) return true
-
-    // ❌ bloquear acceso
-    await conn.sendMessage(m.chat, {
-        text:
-`🔐 *MODO ADMIN ACTIVADO*
-
-🚫 @${sender.split('@')[0]} no puede usar el bot en este grupo.
-
-⚠️ Solo administradores tienen acceso.`,
-        mentions: [sender]
-    })
-
-    return false
+    // Si el bot no es administrador en el grupo, rechazamos el mensaje
+    if (!isBotAdmin) {
+      return false;  // Cancelamos la acción
+    }
+  } else {
+    // Si no es un grupo, solo los usuarios con privilegios pueden enviar mensajes
+    if (isOwner || isROwner || isPrems) {
+      return true;  // Permitir acción
+    }
+    return false;  // Cancelamos la acción
+  }
 }
+
+export default handler;
