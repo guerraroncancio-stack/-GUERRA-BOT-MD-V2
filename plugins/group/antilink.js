@@ -1,85 +1,76 @@
-export const name = 'antilink_pro';
+const chat = global.db.data.chats[m.chat] || {}
 
-export async function load(conn) {
+if (
+    m.isGroup &&
+    chat.antiLink &&
+    !m.fromMe
+) {
 
-    conn.ev.on('messages.upsert', async ({ messages }) => {
+    const text = (
+        m.text ||
+        m.message?.conversation ||
+        m.message?.extendedTextMessage?.text ||
+        m.message?.imageMessage?.caption ||
+        m.message?.videoMessage?.caption ||
+        ''
+    ).toLowerCase()
 
-        const m = messages[0];
-        if (!m || !m.message) return;
+    const linkRegex = /chat\.whatsapp\.com\/([0-9a-z]{20,24})/i
+    const channelRegex = /whatsapp\.com\/channel\/([0-9a-z]{20,24})/i
 
-        const chat = global.db?.data?.chats?.[m.key.remoteJid] || {};
+    const isLink = linkRegex.test(text) || channelRegex.test(text)
 
-        const isGroup = m.key.remoteJid.endsWith('@g.us');
-        if (!isGroup || !chat.antiLink) return;
+    if (isLink) {
 
-        const text = (
-            m.message?.conversation ||
-            m.message?.extendedTextMessage?.text ||
-            m.message?.imageMessage?.caption ||
-            m.message?.videoMessage?.caption ||
-            ''
-        ).toLowerCase();
+        const sender = m.sender || m.key.participant
 
-        const linkRegex = /chat\.whatsapp\.com\/([0-9a-z]{20,24})/i;
-        const channelRegex = /whatsapp\.com\/channel\/([0-9a-z]{20,24})/i;
+        const user = `@${sender.split('@')[0]}`
 
-        const isLink =
-            linkRegex.test(text) ||
-            channelRegex.test(text);
+        const metadata = await conn.groupMetadata(m.chat).catch(() => null)
+        const participants = metadata?.participants || []
 
-        if (!isLink) return;
+        const isAdmin = participants.some(p =>
+            p.id === sender &&
+            (p.admin === 'admin' || p.admin === 'superadmin')
+        )
 
-        const sender = m.key.participant || m.key.remoteJid;
+        const botId = conn.user.id.split(':')[0] + '@s.whatsapp.net'
 
-        const user = `@${sender.split('@')[0]}`;
+        const botIsAdmin = participants.some(p =>
+            p.id === botId &&
+            (p.admin === 'admin' || p.admin === 'superadmin')
+        )
 
-        // ❌ si no es admin bot
-        const metadata = await conn.groupMetadata(m.key.remoteJid).catch(() => null);
-        const botId = conn.user.id.split(':')[0] + '@s.whatsapp.net';
+        if (isAdmin) return
 
-        const botIsAdmin = metadata?.participants?.some(p =>
-            p.id === botId && (p.admin === 'admin' || p.admin === 'superadmin')
-        );
-
-        const isAdmin = metadata?.participants?.some(p =>
-            p.id === sender && (p.admin === 'admin' || p.admin === 'superadmin')
-        );
-
-        if (isAdmin) return;
-
+        // 🚫 si bot no es admin
         if (!botIsAdmin) {
-            await conn.sendMessage(m.key.remoteJid, {
-                text: `🚫 ${user} envió un enlace, pero no soy admin para sancionar.`,
+            await conn.sendMessage(m.chat, {
+                text: `🚫 @${sender.split('@')[0]} envió un link, pero no soy admin para sancionar.`,
                 mentions: [sender]
-            });
-            return;
+            })
+            return
         }
 
         // 🧹 borrar mensaje
         try {
-            await conn.sendMessage(m.key.remoteJid, { delete: m.key });
+            await conn.sendMessage(m.chat, { delete: m.key })
         } catch {}
 
         // 👢 expulsar
         try {
-            await conn.groupParticipantsUpdate(
-                m.key.remoteJid,
-                [sender],
-                'remove'
-            );
+            await conn.groupParticipantsUpdate(m.chat, [sender], 'remove')
         } catch {}
 
-        // ⚠️ aviso fuerte
-        await conn.sendMessage(m.key.remoteJid, {
+        // ⚠️ aviso
+        await conn.sendMessage(m.chat, {
             text:
 `🚫 *ANTI-LINK ACTIVADO*
 
-${user} fue eliminado del grupo.
+${user} fue eliminado.
 
-⚠️ No está permitido enviar enlaces.
-🔒 Respeta las reglas del grupo.`,
+⚠️ No está permitido enviar enlaces.`,
             mentions: [sender]
-        });
-
-    });
+        })
+    }
 }
