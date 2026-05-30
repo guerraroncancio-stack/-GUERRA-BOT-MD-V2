@@ -1,4 +1,4 @@
-export async function startSubBot(...)
+import { startSubBot } from '../lib/serbot.js' // cambia la ruta
 
 const codeCommand = {
     name: 'code',
@@ -20,14 +20,7 @@ const codeCommand = {
                 )
             }
 
-            await m.reply(
-`╭─〔 ⏳ GENERANDO 〕─⬣
-│
-│ Espere un momento...
-│ Generando código de vinculación
-│
-╰──────────────⬣`
-            )
+            await m.reply('⏳ Generando código...')
 
             const code = await startSubBot(
                 m,
@@ -40,26 +33,12 @@ const codeCommand = {
             )
 
             if (code) {
-                await m.reply(
-`╭─〔 🔑 CÓDIGO 〕─⬣
-│
-│ ${code}
-│
-╰──────────────⬣`
-                )
+                await m.reply(`🔑 Código:\n\n${code}`)
             }
 
         } catch (e) {
             console.error(e)
-
-            await m.reply(
-`╭─〔 ❌ ERROR 〕─⬣
-│
-│ No se pudo generar
-│ el código.
-│
-╰──────────────⬣`
-            )
+            await m.reply('❌ Error al generar el código.')
         }
     }
 }
