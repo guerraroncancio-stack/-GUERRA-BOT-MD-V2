@@ -71,63 +71,62 @@ const modAdmin = {
   // =========================
   // ⚙️ COMMAND
   // =========================
-  async run(m, { conn, text }) {
+async run(m, { conn, text }) {
 
     try {
 
-      if (!m.isGroup)
-        return m.reply('❌ Solo funciona en grupos')
+        if (!m.isGroup)
+            return m.reply('❌ Solo funciona en grupos')
 
-      global.db ||= {}
-      global.db.data ||= {}
-      global.db.data.chats ||= {}
+        global.db ||= {}
+        global.db.data ||= {}
+        global.db.data.chats ||= {}
 
-      // 🔥 FIX CRÍTICO
-      global.db.data.chats[m.chat] ||= {}
+        // 🔥 FIX CRÍTICO
+        global.db.data.chats[m.chat] ||= {}
 
-      const chat = global.db.data.chats[m.chat]
+        const chat = global.db.data.chats[m.chat]
 
-      // valor seguro por defecto
-      chat.modoadmin ||= false
+        chat.modoadmin ||= false
 
-      const cmd = (text || '').toLowerCase().trim()
+        const cmd = (text || '').toLowerCase().trim()
 
-      // =========================
-      // 📌 ON
-      // =========================
-      if (cmd === 'on') {
+        if (cmd === 'on') {
 
-        chat.modoadmin = true
+            chat.modoadmin = true
 
-        return m.reply(
+            return m.reply(
 `╭─〔 🛡 MOD ADMIN 〕─⬣
 │
 │ 🟢 ACTIVADO
 │
-│ 🔒 Solo admins pueden usar comandos
-│ 📊 Activity tracking activo
-│
 ╰──────────────⬣`
-        )
-      }
+            )
+        }
 
-      // =========================
-      // 📌 OFF
-      // =========================
-      if (cmd === 'off') {
+        if (cmd === 'off') {
 
-        chat.modoadmin = false
+            chat.modoadmin = false
 
-        return m.reply(
+            return m.reply(
 `╭─〔 🛡 MOD ADMIN 〕─⬣
 │
 │ 🔴 DESACTIVADO
 │
-│ 🔓 Todos los usuarios pueden usar comandos
-│
+╰──────────────⬣`
+            )
+        }
+
+        return m.reply(
+`╭─〔 🛡 MOD ADMIN 〕─⬣
+│ Estado: ${chat.modoadmin ? 'ON 🟢' : 'OFF 🔴'}
 ╰──────────────⬣`
         )
-      }
+
+    } catch (e) {
+        console.log('[ MODADMIN ERROR ]', e)
+    }
+}
 
       // =========================
       // 📌 STATUS
