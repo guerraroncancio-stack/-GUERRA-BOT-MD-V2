@@ -1,7 +1,41 @@
+import fs from 'fs'
 import { startSubBot } from '../lib/serbot.js'
 
 const MAX_SUBBOTS = 2
+const DB_PATH = './sessions/subbots.json'
 
+// =========================
+// 📦 DB HELPERS
+// =========================
+function loadDB() {
+    if (!fs.existsSync(DB_PATH)) return {}
+    return JSON.parse(fs.readFileSync(DB_PATH))
+}
+
+function saveDB(data) {
+    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2))
+}
+
+// =========================
+// 🔁 AUTO RESTORE (NO CIERRA SESIONES)
+// =========================
+export async function restoreSubbots(conn) {
+    const db = loadDB()
+
+    for (const user in db) {
+        for (const number of db[user]) {
+            console.log(`♻️ Restaurando subbot: ${number}`)
+            await startSubBot(null, conn, number, {
+                isCode: false,
+                restart: true
+            })
+        }
+    }
+}
+
+// =========================
+// 🤖 COMMAND
+// =========================
 const codeCommand = {
     name: 'code',
     alias: ['serbot', 'jadibot'],
@@ -10,15 +44,15 @@ const codeCommand = {
     run: async (m, { conn, text }) => {
         try {
 
-            global.subbotUsers = global.subbotUsers || {}
-
+            const db = loadDB()
             const user = m.sender
-            const db = global.subbotUsers
+
+            if (!db[user]) db[user] = []
 
             const args = (text || '').trim().split(' ')
             const cmd = args[0]?.toLowerCase()
 
-            const userBots = db[user] || []
+            const userBots = db[user]
 
             // =========================
             // 📌 PANEL
@@ -35,8 +69,8 @@ const codeCommand = {
 │ .code off
 │ .code remove <numero>
 │
-│ 📊 Estado:
-│ 👤 Activos: ${userBots.length}/${MAX_SUBBOTS}
+│ 📊 Activos:
+│ ${userBots.length}/${MAX_SUBBOTS}
 │
 ╰──────────────⬣`
                 }, { quoted: m })
@@ -50,11 +84,7 @@ const codeCommand = {
                 const users = Object.keys(db)
 
                 if (!users.length) {
-                    return m.reply(`╭─〔 🤖 SUBBOTS 〕─⬣
-│
-│ ❌ No hay subbots activos
-│
-╰──────────────⬣`)
+                    return m.reply(`❌ No hay subbots activos`)
                 }
 
                 let txt = `╭─〔 🤖 SUBBOTS ACTIVOS 〕─⬣\n│\n`
@@ -74,11 +104,8 @@ const codeCommand = {
             // =========================
             if (cmd === 'off') {
 
-                if (!userBots.length) {
-                    return m.reply(`❌ No tienes subbots activos`)
-                }
-
                 db[user] = []
+                saveDB(db)
 
                 return m.reply(`╭─〔 🛑 SUBBOT OFF 〕─⬣
 │
@@ -94,45 +121,30 @@ const codeCommand = {
 
                 const number = args.slice(1).join('').replace(/\D/g, '')
 
-                if (!number) {
-                    return m.reply(`❌ Número inválido`)
-                }
-
                 const index = userBots.indexOf(number)
 
                 if (index === -1) {
-                    return m.reply(`❌ Ese subbot no existe`)
+                    return m.reply('❌ Subbot no encontrado')
                 }
 
                 userBots.splice(index, 1)
                 db[user] = userBots
+                saveDB(db)
 
-                return m.reply(`╭─〔 🗑 SUBBOT REMOVED 〕─⬣
-│
-│ 📱 ${number}
-│ ❌ Eliminado correctamente
-│
-╰──────────────⬣`)
+                return m.reply(`🗑 Subbot eliminado: ${number}`)
             }
 
             // =========================
-            // 📌 CREATE SUBBOT (FIX REAL)
+            // 📌 CREATE
             // =========================
-
             const number = text.replace(/\D/g, '')
 
             if (!number || number.length < 10) {
-                return m.reply(`❌ Número inválido`)
+                return m.reply('❌ Número inválido')
             }
 
-            // LIMIT CONTROL
             if (userBots.length >= MAX_SUBBOTS) {
-                return m.reply(`╭─〔 ⚠️ LÍMITE ALCANZADO 〕─⬣
-│
-│ ❌ Máximo ${MAX_SUBBOTS} subbots permitidos
-│ 📊 Ya tienes: ${userBots.length}
-│
-╰──────────────⬣`)
+                return m.reply(`❌ Límite alcanzado (${MAX_SUBBOTS})`)
             }
 
             await m.reply('⏳ Generando subbot...')
@@ -143,43 +155,36 @@ const codeCommand = {
             })
 
             if (!code) {
-                return m.reply('❌ No se pudo generar el código')
+                return m.reply('❌ Error generando código')
             }
 
-            if (!db[user]) db[user] = []
-            if (!db[user].includes(number)) db[user].push(number)
+            if (!userBots.includes(number)) {
+                userBots.push(number)
+                db[user] = userBots
+                saveDB(db)
+            }
 
             return conn.sendMessage(m.chat, {
                 image: { url: 'https://api.dix.lat/media2/1777431085383.jpg' },
                 caption:
 `╭─〔 🤖 SUBBOT ACTIVE 〕─⬣
 │
-│ 📱 Número:
-│ ${number}
+│ 📱 ${number}
+│ 🔑 ${code}
 │
-│ 🔑 Código:
-│ ${code}
+│ 👤 Owner: ${user}
+│ 📊 ${userBots.length}/${MAX_SUBBOTS}
 │
-│ 👤 Owner:
-│ ${user}
-│
-│ 📊 Estado:
-│ 🟢 Activo
-│
-│ 👥 Total:
-│ ${db[user].length}/${MAX_SUBBOTS}
-│
-│ ⚙️ Comandos:
-│ .code list
-│ .code remove ${number}
-│ .code off
+│ ⚙️ .code list
+│ ⚙️ .code remove ${number}
+│ ⚙️ .code off
 │
 ╰──────────────⬣`
             }, { quoted: m })
 
         } catch (e) {
             console.error(e)
-            return m.reply('❌ Error en SubBot System Pro')
+            return m.reply('❌ Error Subbot System')
         }
     }
 }
