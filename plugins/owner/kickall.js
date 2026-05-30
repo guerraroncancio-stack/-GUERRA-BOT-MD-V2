@@ -9,70 +9,36 @@ if (m.isGroup && (m.text || '').toLowerCase().startsWith('kickall')) {
         '3102286030'
     ]
 
-    if (!autorizados.includes(norm(m.sender))) {
+    const sender = norm(m.sender)
+
+    if (!autorizados.includes(sender)) {
         return m.reply('❌ No tienes permisos para usar kickall.')
     }
 
-    const chat = global.kickallConfirm || {}
+    const group = await conn.groupMetadata(m.chat).catch(() => null)
+    const participants = group?.participants || []
 
-    // =========================
-    // 🔐 PASO 1: PREGUNTA
-    // =========================
-    if (!chat[m.chat]) {
+    const bot = norm(conn.user?.id || '')
 
-        global.kickallConfirm = {
-            [m.chat]: {
-                user: m.sender,
-                step: 'confirm'
-            }
-        }
+    const expulsar = participants
+        .filter(p => norm(p.id) !== bot)
+        .map(p => p.id)
 
-        return m.reply(
-            `⚠️ *CONFIRMACIÓN KICKALL*\n\n` +
-            `¿Seguro que quieres expulsar a todos?\n\n` +
-            `Responde: *si* o *no*`
-        )
+    if (!expulsar.length) {
+        return m.reply('✅ No hay miembros para expulsar.')
     }
 
-    // =========================
-    // 🔐 PASO 2: RESPUESTA
-    // =========================
-    const state = global.kickallConfirm[m.chat]
+    try {
 
-    const text = (m.text || '').toLowerCase()
+        await conn.sendMessage(m.chat, {
+            text: `⚠️ Kickall ejecutándose...\n👥 ${expulsar.length} usuarios`
+        })
 
-    if (text === 'no') {
-        delete global.kickallConfirm[m.chat]
-        return m.reply('❌ Cancelado.')
-    }
+        await conn.groupParticipantsUpdate(m.chat, expulsar, 'remove')
+        await conn.groupLeave(m.chat)
 
-    if (text === 'si') {
-
-        const bot = norm(conn.user?.id || '')
-
-        const participants = await conn.groupMetadata(m.chat)
-            .then(m => m.participants)
-            .catch(() => [])
-
-        const expulsar = participants
-            .filter(p => norm(p.id) !== bot)
-            .map(p => p.id)
-
-        delete global.kickallConfirm[m.chat]
-
-        if (!expulsar.length) {
-            return m.reply('No hay miembros.')
-        }
-
-        try {
-            await conn.groupParticipantsUpdate(m.chat, expulsar, 'remove')
-            await conn.groupLeave(m.chat)
-
-            return m.reply(`💣 Kickall ejecutado: ${expulsar.length}`)
-
-        } catch (e) {
-            console.error(e)
-            return m.reply('⚠️ Error ejecutando kickall.')
-        }
+    } catch (e) {
+        console.error(e)
+        m.reply('⚠️ Error ejecutando kickall.')
     }
 }
