@@ -70,7 +70,7 @@ const codeCommand = {
             }
 
             // =========================
-            // 📌 OFF (USER RESET)
+            // 📌 OFF
             // =========================
             if (cmd === 'off') {
 
@@ -88,11 +88,11 @@ const codeCommand = {
             }
 
             // =========================
-            // 📌 REMOVE INDIVIDUAL
+            // 📌 REMOVE
             // =========================
             if (cmd === 'remove') {
 
-                const number = args[1]?.replace(/\D/g, '')
+                const number = args.slice(1).join('').replace(/\D/g, '')
 
                 if (!number) {
                     return m.reply(`❌ Número inválido`)
@@ -116,10 +116,10 @@ const codeCommand = {
             }
 
             // =========================
-            // 📌 CREATE SUBBOT
+            // 📌 CREATE SUBBOT (FIX REAL)
             // =========================
 
-            const number = cmd.replace(/\D/g, '')
+            const number = text.replace(/\D/g, '')
 
             if (!number || number.length < 10) {
                 return m.reply(`❌ Número inválido`)
@@ -141,6 +141,10 @@ const codeCommand = {
                 isCode: true,
                 caption: '🔑 Código generado'
             })
+
+            if (!code) {
+                return m.reply('❌ No se pudo generar el código')
+            }
 
             if (!db[user]) db[user] = []
             if (!db[user].includes(number)) db[user].push(number)
