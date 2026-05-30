@@ -21,47 +21,56 @@ function saveDB(db) {
 const normalize = (n) => String(n || '').replace(/\D/g, '').trim()
 
 // =========================
-// 🔥 GLOBAL STATE (CLUSTER CORE)
+// 🔥 GLOBAL STATE
 // =========================
 global.clusterSessions = global.clusterSessions || {}
 global.clusterIndex = global.clusterIndex || new Map()
-
-// 🔴 KILL REGISTER (CLAVE REAL)
 global.killedSubbots = global.killedSubbots || new Set()
 
 // =========================
-// 💀 HARD KILL SESSION (ULTRA)
+// 💣 DELETE SESSION FILES (CLAVE REAL)
+// =========================
+function deleteSessionFiles(number) {
+    try {
+        const path = `./sessions/subbot-${number}`
+
+        if (fs.existsSync(path)) {
+            fs.rmSync(path, { recursive: true, force: true })
+        }
+    } catch (e) {
+        console.log('session delete error:', e)
+    }
+}
+
+// =========================
+// 💀 HARD KILL REAL
 // =========================
 function killSession(number) {
 
     number = normalize(number)
 
-    // 🔴 marcar como muerto (EVITA RESTART)
+    // 🔴 BLOQUEA RESTART
     global.killedSubbots.add(number)
 
     const session = global.clusterSessions[number]
 
     if (session?.sock) {
         try {
-            // 🔴 eliminar listeners
             session.sock.ev?.removeAllListeners?.()
-
-            // 🔴 cerrar websocket real
             session.sock.ws?.close?.()
-
-            // 🔴 cerrar socket
             session.sock.end?.()
-        } catch (e) {
-            console.log('kill error:', e)
-        }
+        } catch (e) {}
     }
+
+    // 💣 BORRA ARCHIVOS DE SESIÓN (ESTO ES LO QUE TE FALTABA)
+    deleteSessionFiles(number)
 
     delete global.clusterSessions[number]
     global.clusterIndex.delete(number)
 }
 
 // =========================
-// ♻️ RESTORE ENGINE (respeta kill list)
+// ♻️ RESTORE ENGINE
 // =========================
 export async function startClusterEngine(conn) {
 
@@ -72,9 +81,7 @@ export async function startClusterEngine(conn) {
 
             const number = normalize(raw)
 
-            // 🔴 SI ESTÁ MATADO NO REVIENE
             if (global.killedSubbots.has(number)) continue
-
             if (global.clusterSessions[number]) continue
 
             try {
@@ -89,17 +96,15 @@ export async function startClusterEngine(conn) {
                     global.clusterIndex.set(number, user)
                 }
 
-                console.log(`♻️ restored: ${number}`)
-
             } catch (e) {
-                console.log(`❌ restore fail ${number}`, e)
+                console.log('restore fail:', number)
             }
         }
     }
 }
 
 // =========================
-// 🤖 COMMAND ENGINE
+// 🤖 COMMAND
 // =========================
 const MAX_SUBBOTS = 2
 
@@ -109,6 +114,7 @@ const codeCommand = {
     category: 'subbot',
 
     run: async (m, { conn, text }) => {
+
         try {
 
             const db = loadDB()
@@ -133,17 +139,11 @@ const codeCommand = {
                 db[user] = []
                 saveDB(db)
 
-                return m.reply(`╭─〔 💀 KILL ENGINE ULTRA 〕─⬣
-│
-│ 🔴 Todos los subbots fueron ELIMINADOS
-│ 💀 Sesiones destruidas
-│ 🧠 No volverán a reconectarse
-│
-╰──────────────⬣`)
+                return m.reply(`💀 TODOS LOS SUBBOTS FUERON ELIMINADOS`)
             }
 
             // =========================
-            // 📌 REMOVE (SOFT KILL)
+            // 📌 REMOVE
             // =========================
             if (cmd === 'remove') {
 
@@ -160,7 +160,7 @@ const codeCommand = {
                 db[user].splice(index, 1)
                 saveDB(db)
 
-                return m.reply(`🗑 KILLED: ${number}`)
+                return m.reply(`🗑 SUBBOT ELIMINADO: ${number}`)
             }
 
             // =========================
@@ -176,10 +176,10 @@ const codeCommand = {
                 return m.reply('❌ Límite alcanzado')
             }
 
-            // 🔴 SI ESTÁ MUERTO, LO REVIVE SOLO SI SE CREA DE NUEVO
+            // 🔴 si estaba muerto, lo desbloquea SOLO si se recrea
             global.killedSubbots.delete(number)
 
-            await m.reply('⚡ Starting subbot...')
+            await m.reply('⚡ Iniciando subbot...')
 
             const session = await startSubBot(m, conn, number, {
                 isCode: true,
@@ -195,16 +195,11 @@ const codeCommand = {
             db[user].push(number)
             saveDB(db)
 
-            return m.reply(`╭─〔 ⚡ ONLINE 〕─⬣
-│
-│ 📱 ${number}
-│ 🟢 ACTIVE
-│
-╰──────────────⬣`)
+            return m.reply(`🟢 SUBBOT ACTIVO: ${number}`)
 
         } catch (e) {
             console.error(e)
-            return m.reply('❌ Kill Engine error')
+            return m.reply('❌ Error')
         }
     }
 }
