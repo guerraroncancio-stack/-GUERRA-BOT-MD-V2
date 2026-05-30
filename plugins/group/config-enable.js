@@ -1,73 +1,56 @@
-export async function featureEngine(m, conn) {
+const enable = {
+    name: 'enable',
+    alias: ['welcome', 'bv', 'detect', 'autosticker', 'antisub', 'antilink', 'antistatus', 'modoadmin', 'nsfw'], 
+    category: 'config',
+    admin: true,
+    group: true,
+    run: async function (m, { conn, command, chat, usedPrefix }) {
 
-    const chat = global.db.data.chats[m.chat] || {}
+        const featureMap = {
+            'welcome': 'welcome',
+            'bv': 'welcome',
+            'detect': 'detect',
+            'gacha': 'gacha',
+            'antisub': 'antisub',
+            'antilink': 'antiLink',
+            'nsfw': 'nsfw',
+            'antistatus': 'antiStatus',
+            'modoadmin': 'modoadmin', 
+            'autosticker': 'autoStickers',
+        };
 
-    // =========================
-    // 🔥 MODOMADMIN (BLOQUEO GLOBAL)
-    // =========================
-    if (chat.modoadmin) {
-        const group = m.isGroup
-            ? await conn.groupMetadata(m.chat).catch(() => null)
-            : null
+        const type = command.toLowerCase();
 
-        const participants = group?.participants || []
+        if (type === 'enable' || !featureMap[type]) {
+            let menu = `❯❯ 𝗦𝗬𝗦𝗧𝗘𝗠 𝗖𝗢𝗡𝗙𝗜𝗚𝗨𝗥𝗔𝗧𝗜𝗢𝗡\n\n`;
+            const options = [
+                { name: 'Bienvenida', key: 'welcome' },
+                { name: 'Detección', key: 'detect' },
+                { name: 'Anti-Links', key: 'antiLink' },
+                { name: 'Modo Admin', key: 'modoadmin' }, 
+                { name: 'Nsfw', key: 'nsfw' }, 
+                { name: 'Auto-Stickers', key: 'autoStickers' }
+            ];
 
-        const isAdmin = participants.some(p =>
-            p.id === m.sender &&
-            (p.admin === 'admin' || p.admin === 'superadmin')
-        )
-
-        const isOwner = global.owner?.includes(m.sender)
-
-        if (!isAdmin && !isOwner) {
-            return false // bloquea TODO el bot
+            options.forEach(opt => {
+                const status = chat[opt.key] ? '✅ ᴀᴄᴛɪᴠᴀᴅᴏ' : '❌ ᴅᴇsᴀᴄᴛɪᴠᴀᴅᴏ';
+                menu += `❖ *${opt.name}:* ${status}\n`;
+            });
+            return m.reply(menu.trim());
         }
+
+        const dbKey = featureMap[type];
+        const newValue = !chat[dbKey];
+
+        await global.Chat.findOneAndUpdate(
+            { id: m.chat },
+            { $set: { [dbKey]: newValue } },
+            { new: true }
+        );
+
+        chat[dbKey] = newValue;
+        let statusText = newValue ? 'ᴀᴄᴛɪᴠᴀᴅᴏ' : 'ᴅᴇsᴀᴄᴛɪᴠᴀᴅᴏ';
+        return m.reply(`> ʟᴀ ғᴜɴᴄɪᴏɴ *${type.toUpperCase()}* sᴇ ʜᴀ ${statusText}.`);
     }
-
-    // =========================
-    // 🔥 WELCOME (ENTRADA/SALIDA)
-    // =========================
-    if (chat.welcome && m.isGroup && m.messageStubType) {
-
-        const name = '@' + m.sender.split('@')[0]
-
-        if (m.messageStubType === 27) {
-            await conn.sendMessage(m.chat, {
-                text: `👋 Bienvenido ${name} al grupo`,
-                mentions: [m.sender]
-            })
-        }
-
-        if (m.messageStubType === 28 || m.messageStubType === 32) {
-            await conn.sendMessage(m.chat, {
-                text: `👋 ${name} salió del grupo`
-            })
-        }
-    }
-
-    // =========================
-    // 🔥 ANTILINK
-    // =========================
-    if (chat.antiLink && m.isGroup && m.text) {
-
-        const isLink =
-            /https?:\/\/|www\.|t\.me|discord\.gg|chat\.whatsapp\.com/i.test(m.text)
-
-        if (isLink) {
-
-            await conn.sendMessage(m.chat, {
-                text: `🚫 @${m.sender.split('@')[0]} enlaces no permitidos`,
-                mentions: [m.sender]
-            })
-
-            // opcional: eliminar usuario
-            await conn.groupParticipantsUpdate(
-                m.chat,
-                [m.sender],
-                'remove'
-            ).catch(() => {})
-        }
-    }
-
-    return true
 }
+export default enable;
