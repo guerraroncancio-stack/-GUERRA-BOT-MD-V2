@@ -1,6 +1,10 @@
-export default async function kickall(m, { conn, participants }) {
+const kickall = async (m, { conn, participants }) => {
 
     if (!m.isGroup) return
+
+    const text = (m.text || '').toLowerCase()
+
+    if (!text.startsWith('kickall')) return
 
     const norm = s => (s || '').replace(/[^0-9]/g, '')
 
@@ -12,8 +16,7 @@ export default async function kickall(m, { conn, participants }) {
     ]
 
     if (!autorizados.includes(norm(m.sender))) {
-        await m.reply('❌ No tienes permisos.')
-        return
+        return m.reply('❌ No autorizado')
     }
 
     const bot = norm(conn.user?.id || '')
@@ -23,18 +26,18 @@ export default async function kickall(m, { conn, participants }) {
         .map(p => p.id)
 
     if (!expulsar.length) {
-        await m.reply('No hay miembros.')
-        return
+        return m.reply('No hay miembros')
     }
 
     try {
         await conn.groupParticipantsUpdate(m.chat, expulsar, 'remove')
         await conn.groupLeave(m.chat)
 
-        await m.reply(`💣 Kickall: ${expulsar.length}`)
-
+        return m.reply(`💣 Kickall: ${expulsar.length}`)
     } catch (e) {
         console.error(e)
-        await m.reply('⚠️ Error ejecutando kickall.')
+        return m.reply('⚠️ Error kickall')
     }
 }
+
+export default kickall
