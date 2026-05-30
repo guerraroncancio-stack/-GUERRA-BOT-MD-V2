@@ -17,28 +17,21 @@ const modAdmin = {
       global.db.data ||= {}
       global.db.data.chats ||= {}
 
-      const chatId = m.chat
+      // 🔥 FIX CRÍTICO: evitar null/undefined
+      global.db.data.chats[m.chat] ||= {}
 
-      if (!global.db.data.chats[chatId]) {
-        global.db.data.chats[chatId] = {}
-      }
-
-      const chat = global.db.data.chats[chatId]
+      const chat = global.db.data.chats[m.chat]
 
       // =========================
       // 📊 ACTIVITY SYSTEM
       // =========================
-      if (!chat.activity) {
-        chat.activity = {}
-      }
+      chat.activity ||= {}
 
       const userId = m.sender
 
-      if (!chat.activity[userId]) {
-        chat.activity[userId] = {
-          total: 0,
-          lastMessage: Date.now()
-        }
+      chat.activity[userId] ||= {
+        total: 0,
+        lastMessage: Date.now()
       }
 
       chat.activity[userId].total += 1
@@ -54,13 +47,14 @@ const modAdmin = {
         const isROwner = m.isROwner
         const isBotAdmin = m.isBotAdmin
 
+        // solo afecta comandos si el bot es admin
         if (isBotAdmin && !isOwner && !isAdmin && !isROwner) {
 
           const prefix = global.prefix || '.'
           const text = m.text || ''
 
           if (text.startsWith(prefix)) {
-            return false // bloquea comandos del bot
+            return false
           }
         }
       }
@@ -75,7 +69,7 @@ const modAdmin = {
   },
 
   // =========================
-  // ⚙️ COMMAND: .modoadmin on/off
+  // ⚙️ COMMAND
   // =========================
   async run(m, { conn, text }) {
 
@@ -88,9 +82,13 @@ const modAdmin = {
       global.db.data ||= {}
       global.db.data.chats ||= {}
 
+      // 🔥 FIX CRÍTICO
+      global.db.data.chats[m.chat] ||= {}
+
       const chat = global.db.data.chats[m.chat]
 
-      if (!chat.modoadmin) chat.modoadmin = false
+      // valor seguro por defecto
+      chat.modoadmin ||= false
 
       const cmd = (text || '').toLowerCase().trim()
 
@@ -102,10 +100,14 @@ const modAdmin = {
         chat.modoadmin = true
 
         return m.reply(
-`🛡 MOD ADMIN ACTIVADO
-
-🔒 Solo admins pueden usar comandos del bot
-📊 Activity tracking activo`
+`╭─〔 🛡 MOD ADMIN 〕─⬣
+│
+│ 🟢 ACTIVADO
+│
+│ 🔒 Solo admins pueden usar comandos
+│ 📊 Activity tracking activo
+│
+╰──────────────⬣`
         )
       }
 
@@ -117,9 +119,13 @@ const modAdmin = {
         chat.modoadmin = false
 
         return m.reply(
-`🛡 MOD ADMIN DESACTIVADO
-
-🔓 Todos los usuarios pueden usar comandos`
+`╭─〔 🛡 MOD ADMIN 〕─⬣
+│
+│ 🔴 DESACTIVADO
+│
+│ 🔓 Todos los usuarios pueden usar comandos
+│
+╰──────────────⬣`
         )
       }
 
@@ -127,7 +133,7 @@ const modAdmin = {
       // 📌 STATUS
       // =========================
       return m.reply(
-`╭─〔 🛡 MOD ADMIN 〕─⬣
+`╭─〔 🛡 MOD ADMIN STATUS 〕─⬣
 │
 │ Estado: ${chat.modoadmin ? '🟢 ON' : '🔴 OFF'}
 │
