@@ -9,41 +9,41 @@ const activos = {
     try {
 
       if (!m.isGroup) return
+      if (!m.sender) return
 
       global.db ||= {}
       global.db.data ||= {}
-      global.db.data.chats ||= {}
+      global.db.data.users ||= {}
 
-      if (!global.db.data.chats[m.chat]) {
-        global.db.data.chats[m.chat] = {}
+      if (!global.db.data.users[m.sender]) {
+        global.db.data.users[m.sender] = {}
       }
 
-      const chat =
-      global.db.data.chats[m.chat]
+      const user =
+      global.db.data.users[m.sender]
 
-      chat.activity ||= {}
+      if (!user.activity) {
 
-      if (!chat.activity[m.sender]) {
-        chat.activity[m.sender] = {
+        user.activity = {
           total: 0,
           week: 0,
           month: 0
         }
+
       }
 
-      chat.activity[m.sender].total++
-      chat.activity[m.sender].week++
-      chat.activity[m.sender].month++
+      user.activity.total++
+      user.activity.week++
+      user.activity.month++
 
     } catch (e) {
 
-      console.log(
-        '[ ACTIVITY TRACKER ]'
-      )
-
+      console.log('[ ACTIVITY TRACKER ]')
       console.log(e)
 
     }
+
+    return false
 
   },
 
@@ -54,89 +54,67 @@ const activos = {
       if (!m.isGroup)
       return m.reply('❌ Solo funciona en grupos')
 
-      const chat =
-      global.db?.data?.chats?.[m.chat]
+      const metadata =
+      await conn.groupMetadata(m.chat)
 
-      if (
-        !chat ||
-        !chat.activity
-      ) {
-
-        return m.reply(
-          '⚠️ Aún no existen registros de actividad.'
-        )
-
-      }
+      const members =
+      metadata.participants.map(v => v.id)
 
       const ranking =
-      Object.entries(chat.activity)
-      .sort(
-        (a, b) =>
-        b[1].total -
-        a[1].total
-      )
+      members
+      .map(jid => {
+
+        const user =
+        global.db?.data?.users?.[jid]
+
+        return [
+          jid,
+          user?.activity?.total || 0
+        ]
+
+      })
+      .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
 
-      if (!ranking.length) {
-
-        return m.reply(
-          '⚠️ No hay usuarios registrados.'
-        )
-
-      }
+      if (!ranking.length)
+      return m.reply('⚠️ No hay actividad registrada.')
 
       const totalMessages =
       ranking.reduce(
-        (a, b) =>
-        a + b[1].total,
+        (a, b) => a + b[1],
         0
       )
 
       let text =
 `╭━━〔 🏆 TOP ACTIVOS 🏆 〕━━⬣
 ┃
-┃ 📊 Ranking del grupo
+┃ 📊 Ranking de actividad
 ┃
 `
 
-      let mentions = []
+      const mentions = []
 
-      for (
-        let i = 0;
-        i < ranking.length;
-        i++
-      ) {
+      for (let i = 0; i < ranking.length; i++) {
 
-        const [
-          jid,
-          data
-        ] = ranking[i]
+        const [jid, total] =
+        ranking[i]
 
         mentions.push(jid)
 
-        const percent =
-        totalMessages
-        ? (
-          data.total /
-          totalMessages *
-          100
-        ).toFixed(1)
-        : 0
-
         let medal = '🏅'
 
-        if (i === 0)
-        medal = '🥇'
+        if (i === 0) medal = '🥇'
+        else if (i === 1) medal = '🥈'
+        else if (i === 2) medal = '🥉'
 
-        else if (i === 1)
-        medal = '🥈'
-
-        else if (i === 2)
-        medal = '🥉'
+        const percent =
+        totalMessages
+        ? ((total / totalMessages) * 100).toFixed(1)
+        : 0
 
         text +=
 `┃ ${medal} ${i + 1}. @${jid.split('@')[0]}
-┃ 💬 ${data.total} mensajes
+┃ 💬 ${total} mensajes
 ┃ 📈 ${percent}% actividad
 ┃
 `
@@ -157,10 +135,7 @@ const activos = {
 
     } catch (e) {
 
-      console.log(
-        '[ TOP ACTIVOS ]'
-      )
-
+      console.log('[ TOP ACTIVOS ]')
       console.log(e)
 
     }
