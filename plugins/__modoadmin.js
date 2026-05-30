@@ -1,152 +1,29 @@
-const modAdmin = {
+let handler = m => m;
+handler.before = async function (m, { conn, isAdmin, isBotAdmin, isOwner, isROwner, isPrems }) {
+  const chat = global.db.data.chats[m.chat];
+  const bot = global.db.data.settings[conn.user.jid] || {};
 
-  name: 'modoadmin_system',
-  alias: ['modoadmin'],
-  description: 'Sistema modoadmin + activity tracker',
+  const hl = global.prefix;  // Prefijo global
+  const adminMode = chat.modoadmin;  // Modo de administrador
 
-  // =========================
-  // 📊 BEFORE SYSTEM
-  // =========================
-  async before(m) {
-
-    try {
-
-      if (!m.isGroup) return
-
-      global.db ||= {}
-      global.db.data ||= {}
-      global.db.data.chats ||= {}
-
-      // 🔥 FIX CRÍTICO: evitar null/undefined
-      global.db.data.chats[m.chat] ||= {}
-
-      const chat = global.db.data.chats[m.chat]
-
-      // =========================
-      // 📊 ACTIVITY SYSTEM
-      // =========================
-      chat.activity ||= {}
-
-      const userId = m.sender
-
-      chat.activity[userId] ||= {
-        total: 0,
-        lastMessage: Date.now()
-      }
-
-      chat.activity[userId].total += 1
-      chat.activity[userId].lastMessage = Date.now()
-
-      // =========================
-      // 🛡 MOD ADMIN SYSTEM
-      // =========================
-      if (chat.modoadmin === true) {
-
-        const isOwner = global.owner?.includes?.(userId)
-        const isAdmin = m.isAdmin
-        const isROwner = m.isROwner
-        const isBotAdmin = m.isBotAdmin
-
-        // solo afecta comandos si el bot es admin
-        if (isBotAdmin && !isOwner && !isAdmin && !isROwner) {
-
-          const prefix = global.prefix || '.'
-          const text = m.text || ''
-
-          if (text.startsWith(prefix)) {
-            return false
-          }
-        }
-      }
-
-      if (global.db.write) {
-        await global.db.write()
-      }
-
-    } catch (e) {
-      console.log('[ MODADMIN BEFORE ERROR ]', e)
+  // Comprobamos si el mensaje está en un grupo y si el modo administrador está activado
+  if (m.isGroup) {
+    // Si el modo admin está activado y el usuario no tiene privilegios, rechazamos el mensaje
+    if (adminMode && !isOwner && !isROwner && !isAdmin) {
+      return false;  // Cancelamos la acción
     }
-  },
 
-  // =========================
-  // ⚙️ COMMAND
-  // =========================
-async run(m, { conn, text }) {
-
-    try {
-
-        if (!m.isGroup)
-            return m.reply('❌ Solo funciona en grupos')
-
-        global.db ||= {}
-        global.db.data ||= {}
-        global.db.data.chats ||= {}
-
-        // 🔥 FIX CRÍTICO
-        global.db.data.chats[m.chat] ||= {}
-
-        const chat = global.db.data.chats[m.chat]
-
-        chat.modoadmin ||= false
-
-        const cmd = (text || '').toLowerCase().trim()
-
-        if (cmd === 'on') {
-
-            chat.modoadmin = true
-
-            return m.reply(
-`╭─〔 🛡 MOD ADMIN 〕─⬣
-│
-│ 🟢 ACTIVADO
-│
-╰──────────────⬣`
-            )
-        }
-
-        if (cmd === 'off') {
-
-            chat.modoadmin = false
-
-            return m.reply(
-`╭─〔 🛡 MOD ADMIN 〕─⬣
-│
-│ 🔴 DESACTIVADO
-│
-╰──────────────⬣`
-            )
-        }
-
-        return m.reply(
-`╭─〔 🛡 MOD ADMIN 〕─⬣
-│ Estado: ${chat.modoadmin ? 'ON 🟢' : 'OFF 🔴'}
-╰──────────────⬣`
-        )
-
-    } catch (e) {
-        console.log('[ MODADMIN ERROR ]', e)
+    // Si el bot no es administrador en el grupo, rechazamos el mensaje
+    if (!isBotAdmin) {
+      return false;  // Cancelamos la acción
     }
-}
-
-      // =========================
-      // 📌 STATUS
-      // =========================
-      return m.reply(
-`╭─〔 🛡 MOD ADMIN STATUS 〕─⬣
-│
-│ Estado: ${chat.modoadmin ? '🟢 ON' : '🔴 OFF'}
-│
-│ Uso:
-│ .modoadmin on
-│ .modoadmin off
-│
-╰──────────────⬣`
-      )
-
-    } catch (e) {
-      console.log('[ MODADMIN COMMAND ERROR ]', e)
+  } else {
+    // Si no es un grupo, solo los usuarios con privilegios pueden enviar mensajes
+    if (isOwner || isROwner || isPrems) {
+      return true;  // Permitir acción
     }
+    return false;  // Cancelamos la acción
   }
 }
 
-export default modAdmin
+export default handler;
