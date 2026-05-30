@@ -7,11 +7,56 @@ const enable = {
 
     run: async function (m, { conn, command, chat }) {
 
+        const type = (command || '').toLowerCase();
+
+        chat = chat || {};
+
+        // 🔥 FUNCIONES REALES (EJECUTORES)
+        const featureActions = {
+            welcome: async (state) => {
+                chat.welcome = state;
+            },
+
+            detect: async (state) => {
+                chat.detect = state;
+            },
+
+            antiLink: async (state) => {
+                chat.antiLink = state;
+
+                if (state) {
+                    global.antiLinkGroups = global.antiLinkGroups || new Set();
+                    global.antiLinkGroups.add(m.chat);
+                } else {
+                    global.antiLinkGroups?.delete(m.chat);
+                }
+            },
+
+            antiStatus: async (state) => {
+                chat.antiStatus = state;
+            },
+
+            antisub: async (state) => {
+                chat.antisub = state;
+            },
+
+            autoStickers: async (state) => {
+                chat.autoStickers = state;
+            },
+
+            nsfw: async (state) => {
+                chat.nsfw = state;
+            },
+
+            modoadmin: async (state) => {
+                chat.modoadmin = state;
+            }
+        };
+
         const featureMap = {
             welcome: 'welcome',
             bv: 'welcome',
             detect: 'detect',
-            gacha: 'gacha',
             antisub: 'antisub',
             antilink: 'antiLink',
             nsfw: 'nsfw',
@@ -19,11 +64,6 @@ const enable = {
             modoadmin: 'modoadmin',
             autosticker: 'autoStickers',
         };
-
-        const type = (command || '').toLowerCase();
-
-        // 🔥 asegurar chat SIEMPRE
-        if (!chat) chat = {};
 
         // 🔥 MENU
         if (type === 'enable' || !featureMap[type]) {
@@ -50,30 +90,33 @@ const enable = {
             return m.reply(menu.trim());
         }
 
-        const dbKey = featureMap[type];
-        if (!dbKey) return;
+        const key = featureMap[type];
+        if (!key) return;
 
-        // 🔥 toggle seguro
-        const newValue = !(chat?.[dbKey] ?? false);
+        const newState = !(chat?.[key] ?? false);
 
-        // 🔥 guardar en Mongo SOLO si existe modelo
-        const ChatModel = global.Chat;
+        // 🔥 EJECUCIÓN REAL DE LA FUNCIÓN
+        const action = featureActions[key];
 
-        if (ChatModel && typeof ChatModel.findOneAndUpdate === 'function') {
-            await ChatModel.findOneAndUpdate(
+        if (action) {
+            await action(newState);
+        } else {
+            chat[key] = newState;
+        }
+
+        // 🔥 GUARDADO EN DB (SI EXISTE)
+        if (global.Chat?.findOneAndUpdate) {
+            await global.Chat.findOneAndUpdate(
                 { id: m.chat },
                 {
                     $setOnInsert: { id: m.chat },
-                    $set: { [dbKey]: newValue }
+                    $set: { [key]: newState }
                 },
                 { upsert: true, new: true }
             );
         }
 
-        // 🔥 fallback memoria runtime
-        chat[dbKey] = newValue;
-
-        const statusText = newValue ? 'ᴀᴄᴛɪᴠᴀᴅᴏ' : 'ᴅᴇsᴀᴄᴛɪᴠᴀᴅᴏ';
+        const statusText = newState ? 'ᴀᴄᴛɪᴠᴀᴅᴏ' : 'ᴅᴇsᴀᴄᴛɪᴠᴀᴅᴏ';
 
         return m.reply(`> ʟᴀ ғᴜɴᴄɪᴏɴ *${type.toUpperCase()}* sᴇ ʜᴀ ${statusText}.`);
     }
