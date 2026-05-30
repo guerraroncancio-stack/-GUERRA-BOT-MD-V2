@@ -2,6 +2,7 @@ import fs from 'fs'
 import { startSubBot } from '../lib/serbot.js'
 
 const DB_PATH = './sessions/subbots.json'
+const MAX_SUBBOTS = 2
 
 // =========================
 // 📦 STORAGE
@@ -11,66 +12,77 @@ function loadDB() {
     return JSON.parse(fs.readFileSync(DB_PATH))
 }
 
-function saveDB(data) {
-    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2))
+function saveDB(db) {
+    fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2))
 }
 
 // =========================
-// 🔥 CLUSTER REGISTRY
+// 🧠 NORMALIZER
 // =========================
-global.subbotCluster = global.subbotCluster || {}
+const normalize = (n) => String(n || '').replace(/\D/g, '').trim()
+
+// =========================
+// ⚡ ULTRA REGISTRY (O(1))
+// =========================
+global.clusterDB = global.clusterDB || loadDB()
+global.clusterIndex = global.clusterIndex || new Map()
+global.clusterSessions = global.clusterSessions || {}
 
 // =========================
 // 🔴 CLOSE SESSION
 // =========================
 function closeSession(number) {
-    try {
-        const session = global.subbotCluster[number]
-        if (session?.sock) {
+    number = normalize(number)
+
+    const session = global.clusterSessions[number]
+    if (session?.sock) {
+        try {
             session.sock.end()
-        }
-        delete global.subbotCluster[number]
-    } catch (e) {
-        console.log('Cluster close error:', e)
+        } catch {}
     }
+
+    delete global.clusterSessions[number]
+    global.clusterIndex.delete(number)
 }
 
 // =========================
-// ♻️ SILENT RESTORE ENGINE
+// ♻️ RESTORE ENGINE (SILENT)
 // =========================
 export async function startClusterEngine(conn) {
-    const db = loadDB()
+
+    const db = global.clusterDB
 
     for (const user in db) {
-        for (const number of db[user]) {
+        for (const raw of db[user]) {
 
-            if (global.subbotCluster[number]) continue
+            const number = normalize(raw)
+
+            if (global.clusterIndex.has(number)) continue
 
             try {
                 const session = await startSubBot(null, conn, number, {
                     isCode: false,
                     restart: true,
-                    silent: true // 🔥 MODO OCULTO
+                    silent: true
                 })
 
                 if (session) {
-                    global.subbotCluster[number] = session
+                    global.clusterSessions[number] = session
+                    global.clusterIndex.set(number, user)
                 }
 
                 console.log(`♻️ Cluster restored: ${number}`)
 
             } catch (e) {
-                console.log(`❌ Failed restore ${number}`, e)
+                console.log(`❌ restore failed ${number}`, e)
             }
         }
     }
 }
 
 // =========================
-// 🤖 SUBBOT ENGINE
+// 🤖 COMMAND ENGINE
 // =========================
-const MAX_SUBBOTS = 2
-
 const codeCommand = {
     name: 'code',
     alias: ['serbot', 'jadibot'],
@@ -79,12 +91,13 @@ const codeCommand = {
     run: async (m, { conn, text }) => {
         try {
 
-            const db = loadDB()
             const user = m.sender
+            const db = global.clusterDB
 
             if (!db[user]) db[user] = []
 
-            const userBots = db[user]
+            const userBots = db[user].map(normalize)
+
             const args = (text || '').trim().split(' ')
             const cmd = args[0]?.toLowerCase()
 
@@ -95,16 +108,15 @@ const codeCommand = {
                 return conn.sendMessage(m.chat, {
                     image: { url: 'https://api.dix.lat/media2/1777431085383.jpg' },
                     caption:
-`╭─〔 ⚡ CLUSTER ENGINE PRO 〕─⬣
+`╭─〔 ⚡ CLUSTER ULTRA ENGINE 〕─⬣
 │
-│ 📌 COMANDOS:
-│ .code <numero>
-│ .code list
-│ .code off
-│ .code remove <numero>
+│ 📌 .code <numero>
+│ 📌 .code list
+│ 📌 .code off
+│ 📌 .code remove <numero>
 │
-│ 🧠 Cluster:
-│ 🟢 Activos: ${userBots.length}/${MAX_SUBBOTS}
+│ 🧠 Activos:
+│ ${userBots.length}/${MAX_SUBBOTS}
 │
 ╰──────────────⬣`
                 }, { quoted: m })
@@ -115,13 +127,10 @@ const codeCommand = {
             // =========================
             if (cmd === 'list') {
 
-                const users = Object.keys(db)
-
                 let txt = `╭─〔 ⚡ CLUSTER ACTIVE 〕─⬣\n│\n`
 
-                for (const u of users) {
-                    txt += `│ 👤 ${u}\n`
-                    txt += `│ 🤖 ${db[u].length}\n│\n`
+                for (const u in db) {
+                    txt += `│ 👤 ${u}\n│ 🤖 ${(db[u] || []).length}\n│\n`
                 }
 
                 txt += `╰──────────────⬣`
@@ -134,51 +143,50 @@ const codeCommand = {
             // =========================
             if (cmd === 'off') {
 
-                for (let num of userBots) {
+                for (const num of userBots) {
                     closeSession(num)
                 }
 
                 db[user] = []
                 saveDB(db)
 
-                return m.reply(`╭─〔 🔴 CLUSTER STOPPED 〕─⬣
+                return m.reply(`╭─〔 🔴 CLUSTER OFF 〕─⬣
 │
-│ ❌ Todas las sesiones cerradas
+│ ❌ Sesiones cerradas
 │ 🧠 Cluster detenido
 │
 ╰──────────────⬣`)
             }
 
             // =========================
-            // 📌 REMOVE SINGLE
+            // 📌 REMOVE (O(1) FIX)
             // =========================
             if (cmd === 'remove') {
 
-                const number = args.slice(1).join('').replace(/\D/g, '')
+                const number = normalize(args.slice(1).join(''))
 
                 if (!number) {
                     return m.reply('❌ Número inválido')
                 }
 
-                const index = userBots.indexOf(number)
+                const index = db[user].map(normalize).indexOf(number)
 
                 if (index === -1) {
-                    return m.reply('❌ No existe')
+                    return m.reply('❌ Subbot no existe')
                 }
 
                 closeSession(number)
 
-                userBots.splice(index, 1)
-                db[user] = userBots
+                db[user].splice(index, 1)
                 saveDB(db)
 
-                return m.reply(`🗑 Cluster removed: ${number}`)
+                return m.reply(`🗑 Removed: ${number}`)
             }
 
             // =========================
-            // 📌 CREATE (CLUSTER NODE)
+            // 📌 CREATE NODE
             // =========================
-            const number = text.replace(/\D/g, '')
+            const number = normalize(text)
 
             if (!number || number.length < 10) {
                 return m.reply('❌ Número inválido')
@@ -188,41 +196,43 @@ const codeCommand = {
                 return m.reply('❌ Límite alcanzado')
             }
 
-            await m.reply('⚡ Iniciando cluster node...')
+            if (global.clusterIndex.has(number)) {
+                return m.reply('❌ Ya existe en cluster')
+            }
+
+            await m.reply('⚡ Starting node...')
 
             const session = await startSubBot(m, conn, number, {
                 isCode: true,
                 restart: true,
-                silent: true // 🔥 NO MENSAJE DE INICIO
+                silent: true
             })
 
             if (session) {
-                global.subbotCluster[number] = session
+                global.clusterSessions[number] = session
+                global.clusterIndex.set(number, user)
             }
 
-            if (!userBots.includes(number)) {
-                userBots.push(number)
-                db[user] = userBots
-                saveDB(db)
-            }
+            db[user].push(number)
+            saveDB(db)
 
             return conn.sendMessage(m.chat, {
                 image: { url: 'https://api.dix.lat/media2/1777431085383.jpg' },
                 caption:
-`╭─〔 ⚡ CLUSTER NODE ONLINE 〕─⬣
+`╭─〔 ⚡ NODE ONLINE 〕─⬣
 │
 │ 📱 ${number}
-│ 🟢 Estado: activo
-│ 🧠 Cluster conectado
+│ 🟢 ACTIVE
+│ 🧠 CLUSTER OK
 │
-│ 📊 ${userBots.length}/${MAX_SUBBOTS}
+│ 📊 ${userBots.length + 1}/${MAX_SUBBOTS}
 │
 ╰──────────────⬣`
             }, { quoted: m })
 
         } catch (e) {
             console.error(e)
-            return m.reply('❌ Cluster Engine error')
+            return m.reply('❌ Cluster Ultra Engine error')
         }
     }
 }
