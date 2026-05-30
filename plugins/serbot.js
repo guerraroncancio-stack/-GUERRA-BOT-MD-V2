@@ -1,48 +1,56 @@
 import { startSubBot } from '../lib/serbot.js'
 
+const MAX_SUBBOTS = 2
+
 const codeCommand = {
     name: 'code',
     alias: ['serbot', 'jadibot'],
     category: 'subbot',
 
-    run: async (m, { conn, text, command }) => {
+    run: async (m, { conn, text }) => {
         try {
 
-            let subbots = global.subbotUsers || (global.subbotUsers = {})
+            global.subbotUsers = global.subbotUsers || {}
+
+            const user = m.sender
+            const db = global.subbotUsers
+
+            const args = (text || '').trim().split(' ')
+            const cmd = args[0]?.toLowerCase()
+
+            const userBots = db[user] || []
 
             // =========================
-            // 📌 DESACTIVAR SUBBOT
+            // 📌 PANEL
             // =========================
-            if (command === 'subbot' && text === 'off') {
-
-                let user = m.sender
-
-                if (!subbots[user] || !subbots[user].length) {
-                    return m.reply(`╭─〔 🤖 SUBBOT 〕─⬣
+            if (!text) {
+                return conn.sendMessage(m.chat, {
+                    image: { url: 'https://i.imgur.com/5kQnL6X.jpeg' },
+                    caption:
+`╭─〔 🤖 SUBBOT SYSTEM PRO 〕─⬣
 │
-│ ❌ No tienes subbots activos
+│ 📌 COMANDOS:
+│ .code <numero>
+│ .code list
+│ .code off
+│ .code remove <numero>
 │
-╰──────────────⬣`)
-                }
-
-                delete subbots[user]
-
-                return m.reply(`╭─〔 🤖 SUBBOT OFF 〕─⬣
+│ 📊 Estado:
+│ 👤 Activos: ${userBots.length}/${MAX_SUBBOTS}
 │
-│ 🛑 Subbot desactivado correctamente
-│
-╰──────────────⬣`)
+╰──────────────⬣`
+                }, { quoted: m })
             }
 
             // =========================
-            // 📌 LISTA DE SUBBOTS
+            // 📌 LIST
             // =========================
-            if (text === 'list' || text === 'lista') {
+            if (cmd === 'list') {
 
-                let owners = Object.keys(subbots)
+                const users = Object.keys(db)
 
-                if (!owners.length) {
-                    return m.reply(`╭─〔 🤖 SUBBOTS ACTIVOS 〕─⬣
+                if (!users.length) {
+                    return m.reply(`╭─〔 🤖 SUBBOTS 〕─⬣
 │
 │ ❌ No hay subbots activos
 │
@@ -51,12 +59,9 @@ const codeCommand = {
 
                 let txt = `╭─〔 🤖 SUBBOTS ACTIVOS 〕─⬣\n│\n`
 
-                for (let owner of owners) {
-                    let bots = subbots[owner] || []
-
-                    txt += `│ 👤 Owner: ${owner}\n`
-                    txt += `│ 🤖 Activos: ${bots.length}\n`
-                    txt += `│\n`
+                for (const u of users) {
+                    txt += `│ 👤 ${u}\n`
+                    txt += `│ 🤖 ${db[u].length}\n│\n`
                 }
 
                 txt += `╰──────────────⬣`
@@ -65,60 +70,85 @@ const codeCommand = {
             }
 
             // =========================
-            // 📌 PANEL DE AYUDA
+            // 📌 OFF (USER RESET)
             // =========================
-            if (!text) {
-                return m.reply(
-`╭─〔 🤖 SUBBOT PANEL 〕─⬣
+            if (cmd === 'off') {
+
+                if (!userBots.length) {
+                    return m.reply(`❌ No tienes subbots activos`)
+                }
+
+                db[user] = []
+
+                return m.reply(`╭─〔 🛑 SUBBOT OFF 〕─⬣
 │
-│ 📌 Comandos:
-│ .code 573001234567
-│ .code list
-│ .subbot off
+│ ❌ Todos tus subbots fueron eliminados
 │
-│ ⚙️ Control:
-│ Activar → .code <numero>
-│ Desactivar → .subbot off
-│
-╰──────────────⬣`
-                )
+╰──────────────⬣`)
             }
 
             // =========================
-            // 📌 CREAR SUBBOT
+            // 📌 REMOVE INDIVIDUAL
+            // =========================
+            if (cmd === 'remove') {
+
+                const number = args[1]?.replace(/\D/g, '')
+
+                if (!number) {
+                    return m.reply(`❌ Número inválido`)
+                }
+
+                const index = userBots.indexOf(number)
+
+                if (index === -1) {
+                    return m.reply(`❌ Ese subbot no existe`)
+                }
+
+                userBots.splice(index, 1)
+                db[user] = userBots
+
+                return m.reply(`╭─〔 🗑 SUBBOT REMOVED 〕─⬣
+│
+│ 📱 ${number}
+│ ❌ Eliminado correctamente
+│
+╰──────────────⬣`)
+            }
+
+            // =========================
+            // 📌 CREATE SUBBOT
             // =========================
 
-            let number = text.replace(/\D/g, '')
+            const number = cmd.replace(/\D/g, '')
 
-            if (!number) {
+            if (!number || number.length < 10) {
                 return m.reply(`❌ Número inválido`)
             }
 
-            await m.reply('⏳ Generando código...')
+            // LIMIT CONTROL
+            if (userBots.length >= MAX_SUBBOTS) {
+                return m.reply(`╭─〔 ⚠️ LÍMITE ALCANZADO 〕─⬣
+│
+│ ❌ Máximo ${MAX_SUBBOTS} subbots permitidos
+│ 📊 Ya tienes: ${userBots.length}
+│
+╰──────────────⬣`)
+            }
 
-            const code = await startSubBot(
-                m,
-                conn,
-                number,
-                {
-                    isCode: true,
-                    caption: '🔑 Código generado'
-                }
-            )
+            await m.reply('⏳ Generando subbot...')
 
-            if (code) {
+            const code = await startSubBot(m, conn, number, {
+                isCode: true,
+                caption: '🔑 Código generado'
+            })
 
-                let owner = m.sender
+            if (!db[user]) db[user] = []
+            if (!db[user].includes(number)) db[user].push(number)
 
-                if (!subbots[owner]) subbots[owner] = []
-                subbots[owner].push(number)
-
-                await conn.sendMessage(m.chat, {
-                    image: {
-                        url: 'https://i.imgur.com/5kQnL6X.jpeg'
-                    },
-                    caption:
-`╭─〔 🤖 SUBBOT ACTIVO 〕─⬣
+            return conn.sendMessage(m.chat, {
+                image: { url: 'https://i.imgur.com/5kQnL6X.jpeg' },
+                caption:
+`╭─〔 🤖 SUBBOT ACTIVE 〕─⬣
 │
 │ 📱 Número:
 │ ${number}
@@ -126,21 +156,26 @@ const codeCommand = {
 │ 🔑 Código:
 │ ${code}
 │
+│ 👤 Owner:
+│ ${user}
+│
+│ 📊 Estado:
+│ 🟢 Activo
+│
+│ 👥 Total:
+│ ${db[user].length}/${MAX_SUBBOTS}
+│
 │ ⚙️ Comandos:
 │ .code list
-│ .subbot off
-│
-│ 👥 Vinculados:
-│ ${subbots[owner].length}/2
+│ .code remove ${number}
+│ .code off
 │
 ╰──────────────⬣`
-                }, { quoted: m })
-
-            }
+            }, { quoted: m })
 
         } catch (e) {
             console.error(e)
-            await m.reply('❌ Error en subbot system')
+            return m.reply('❌ Error en SubBot System Pro')
         }
     }
 }
