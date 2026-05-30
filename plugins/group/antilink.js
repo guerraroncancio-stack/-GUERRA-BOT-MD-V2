@@ -1,88 +1,85 @@
-import { jidNormalizedUser } from '@whiskeysockets/baileys';
+export const name = 'antilink_pro';
 
-const antiLinkPlugin = {
-    name: 'antilink_pro',
+export async function load(conn) {
 
-    async before(m, { conn, isAdmin, isBotAdmin, isOwner, chat }) {
+    conn.ev.on('messages.upsert', async ({ messages }) => {
 
-        const config = chat || {}
+        const m = messages[0];
+        if (!m || !m.message) return;
 
-        if (
-            !m.isGroup ||
-            !config.antiLink ||
-            isOwner ||
-            isAdmin ||
-            m.fromMe
-        ) return false;
+        const chat = global.db?.data?.chats?.[m.key.remoteJid] || {};
+
+        const isGroup = m.key.remoteJid.endsWith('@g.us');
+        if (!isGroup || !chat.antiLink) return;
 
         const text = (
-            m.text ||
             m.message?.conversation ||
             m.message?.extendedTextMessage?.text ||
             m.message?.imageMessage?.caption ||
             m.message?.videoMessage?.caption ||
             ''
-        ).toLowerCase().trim();
+        ).toLowerCase();
 
         const linkRegex = /chat\.whatsapp\.com\/([0-9a-z]{20,24})/i;
         const channelRegex = /whatsapp\.com\/channel\/([0-9a-z]{20,24})/i;
 
         const isLink =
             linkRegex.test(text) ||
-            channelRegex.test(text) ||
-            m.message?.extendedTextMessage?.contextInfo?.forwardedNewsletterMessageInfo;
+            channelRegex.test(text);
 
-        if (!isLink) return false;
+        if (!isLink) return;
 
-        // 🔥 ignorar link del propio grupo
-        if (linkRegex.test(text)) {
-            const code = await conn.groupInviteCode(m.chat).catch(() => null);
-            if (code && text.includes(code.toLowerCase())) return false;
+        const sender = m.key.participant || m.key.remoteJid;
+
+        const user = `@${sender.split('@')[0]}`;
+
+        // ❌ si no es admin bot
+        const metadata = await conn.groupMetadata(m.key.remoteJid).catch(() => null);
+        const botId = conn.user.id.split(':')[0] + '@s.whatsapp.net';
+
+        const botIsAdmin = metadata?.participants?.some(p =>
+            p.id === botId && (p.admin === 'admin' || p.admin === 'superadmin')
+        );
+
+        const isAdmin = metadata?.participants?.some(p =>
+            p.id === sender && (p.admin === 'admin' || p.admin === 'superadmin')
+        );
+
+        if (isAdmin) return;
+
+        if (!botIsAdmin) {
+            await conn.sendMessage(m.key.remoteJid, {
+                text: `🚫 ${user} envió un enlace, pero no soy admin para sancionar.`,
+                mentions: [sender]
+            });
+            return;
         }
 
-        const user = `@${m.sender.split('@')[0]}`;
-
-        // ❌ si bot no es admin
-        if (!isBotAdmin) {
-            await conn.sendMessage(m.chat, {
-                text:
-`🚫 *ENLACE DETECTADO*
-
-${user} intentó enviar un link.
-
-⚠️ No puedo aplicar sanciones porque no soy admin.
-🔐 El sistema anti-link está activo.`,
-                mentions: [m.sender]
-            }, { quoted: m });
-
-            return true;
-        }
-
-        // 🧹 BORRAR MENSAJE
+        // 🧹 borrar mensaje
         try {
-            await conn.sendMessage(m.chat, { delete: m.key });
+            await conn.sendMessage(m.key.remoteJid, { delete: m.key });
         } catch {}
 
-        // 👢 EXPULSAR USUARIO
+        // 👢 expulsar
         try {
-            await conn.groupParticipantsUpdate(m.chat, [m.sender], 'remove');
+            await conn.groupParticipantsUpdate(
+                m.key.remoteJid,
+                [sender],
+                'remove'
+            );
         } catch {}
 
-        // ⚠️ MENSAJE FINAL MEJORADO
-        await conn.sendMessage(m.chat, {
+        // ⚠️ aviso fuerte
+        await conn.sendMessage(m.key.remoteJid, {
             text:
 `🚫 *ANTI-LINK ACTIVADO*
 
-${user} ha sido eliminado del grupo.
+${user} fue eliminado del grupo.
 
-⚠️ *REGLA:* No está permitido enviar enlaces.
-📌 Si continúas, podrás ser expulsado permanentemente.
-🔒 Mantén el grupo libre de spam.`,
-            mentions: [m.sender]
+⚠️ No está permitido enviar enlaces.
+🔒 Respeta las reglas del grupo.`,
+            mentions: [sender]
         });
 
-        return true;
-    }
-};
-
-export default antiLinkPlugin;
+    });
+}
