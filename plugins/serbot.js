@@ -76,7 +76,7 @@ const codeCommand = {
 
                 await conn.sendMessage(m.chat, {
                     image: {
-                        url: 'https://i.imgur.com/5kQnL6X.jpeg'
+                        url: 'https://api.dix.lat/media2/1777431085383.jpg'
                     },
                     caption:
 `╭─〔 🤖 SUBBOT ACTIVO 〕─⬣
