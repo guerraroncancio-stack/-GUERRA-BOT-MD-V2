@@ -5,7 +5,7 @@ const enable = {
     admin: true,
     group: true,
 
-    run: async function (m, { conn, command, chat, usedPrefix }) {
+    run: async function (m, { conn, command, chat }) {
 
         const featureMap = {
             welcome: 'welcome',
@@ -22,9 +22,11 @@ const enable = {
 
         const type = (command || '').toLowerCase();
 
-        // 🔥 MENÚ
+        // 🔥 asegurar chat SIEMPRE
+        if (!chat) chat = {};
+
+        // 🔥 MENU
         if (type === 'enable' || !featureMap[type]) {
-            const chatData = chat || {};
 
             let menu = `❯❯ 𝗦𝗬𝗦𝗧𝗘𝗠 𝗖𝗢𝗡𝗙𝗜𝗚𝗨𝗥𝗔𝗧𝗜𝗢𝗡\n\n`;
 
@@ -38,7 +40,7 @@ const enable = {
             ];
 
             for (const opt of options) {
-                const status = (chatData?.[opt.key] ?? false)
+                const status = (chat?.[opt.key] ?? false)
                     ? '✅ ᴀᴄᴛɪᴠᴀᴅᴏ'
                     : '❌ ᴅᴇsᴀᴄᴛɪᴠᴀᴅᴏ';
 
@@ -51,30 +53,29 @@ const enable = {
         const dbKey = featureMap[type];
         if (!dbKey) return;
 
-        // 🔥 asegurar chat
-        chat = chat || {};
-
         // 🔥 toggle seguro
         const newValue = !(chat?.[dbKey] ?? false);
 
-        // 🔥 guardar en mongo con upsert (evita null doc)
-        await global.Chat.findOneAndUpdate(
-            { id: m.chat },
-            {
-                $setOnInsert: { id: m.chat },
-                $set: { [dbKey]: newValue }
-            },
-            { upsert: true, new: true }
-        );
+        // 🔥 guardar en Mongo SOLO si existe modelo
+        const ChatModel = global.Chat;
 
-        // 🔥 sync memoria runtime
+        if (ChatModel && typeof ChatModel.findOneAndUpdate === 'function') {
+            await ChatModel.findOneAndUpdate(
+                { id: m.chat },
+                {
+                    $setOnInsert: { id: m.chat },
+                    $set: { [dbKey]: newValue }
+                },
+                { upsert: true, new: true }
+            );
+        }
+
+        // 🔥 fallback memoria runtime
         chat[dbKey] = newValue;
 
         const statusText = newValue ? 'ᴀᴄᴛɪᴠᴀᴅᴏ' : 'ᴅᴇsᴀᴄᴛɪᴠᴀᴅᴏ';
 
-        return m.reply(
-            `> ʟᴀ ғᴜɴᴄɪᴏɴ *${type.toUpperCase()}* sᴇ ʜᴀ ${statusText}.`
-        );
+        return m.reply(`> ʟᴀ ғᴜɴᴄɪᴏɴ *${type.toUpperCase()}* sᴇ ʜᴀ ${statusText}.`);
     }
 };
 
