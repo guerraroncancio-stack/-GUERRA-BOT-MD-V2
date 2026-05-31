@@ -6,34 +6,32 @@ const panelCommand = {
     run: async (m, { conn }) => {
         try {
 
-            const botones = [
-                { id: '.menu', text: '⚔️ Menú Principal' },
-                { id: '.ping', text: '🚀 Velocidad' },
-                { id: '.owner', text: '👑 Owner' },
-                { id: '.serbot', text: '🤖 Ser SubBot' },
-                { id: '.grupos', text: '📢 Comunidad' }
-            ]
-
-            await conn.sendButtonMessage(
+            await conn.sendPreviewMessage(
                 m.chat,
-                `╭━━━〔 ⚔️ GUERRA BOT ⚔️ 〕━━━⬣
-┃
-┃ 🎮 Centro de control oficial
-┃ 🤖 Sistema operativo activo
-┃ ⚡ Comandos rápidos disponibles
-┃ 🛡️ Protección habilitada
-┃
-╰━━━━━━━━━━━━━━━━⬣
+`⚔️ GUERRA BOT ⚔️
 
-> Selecciona una opción del panel interactivo.`,
-                botones,
+🎮 Centro de control oficial
+🤖 Sistema operativo activo
+⚡ Comandos rápidos disponibles
+🛡️ Protección habilitada
+
+╭─〔 COMANDOS RÁPIDOS 〕─⬣
+│
+│ ⚔️ .menu
+│ 🚀 .ping
+│ 👑 .owner
+│ 🤖 .serbot
+│ 📢 .grupos
+│
+╰──────────────⬣`,
                 {
+                    type: 3,
+                    ratio: 'landscape',
+                    url: 'https://whatsapp.com/channel/',
+                    thumbnail: 'https://i.imgur.com/2L6YkQb.jpeg',
                     title: '⚔️ GUERRA BOT',
-                    footer: 'Battle System • Version 2.0',
-                    quoted: m,
-                    image: {
-                        url: 'https://i.imgur.com/2L6YkQb.jpeg'
-                    }
+                    body: 'Battle System • Version 2.0',
+                    quoted: m
                 }
             )
 
@@ -44,7 +42,7 @@ const panelCommand = {
 `╭━━━〔 ❌ ERROR 〕━━━⬣
 ┃
 ┃ No fue posible abrir
-┃ el panel interactivo.
+┃ el panel.
 ┃
 ╰━━━━━━━━━━━━━━⬣`
             )
