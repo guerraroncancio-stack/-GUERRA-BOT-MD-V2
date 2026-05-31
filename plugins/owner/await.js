@@ -1,4 +1,3 @@
-import syntaxerror from 'syntax-error'
 import { format, inspect } from 'util'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
@@ -12,56 +11,56 @@ const evala = {
     alias: ['await', 'exec'],
     category: 'owner',
     rowner: true,
-    run: async (m, _2) => {
-        let { conn, text, args, groupMetadata } = _2
-        if (!text) return
-        
-        let _return
-        let _text = text.trim()
+
+    run: async (m, { conn, text, args, groupMetadata }) => {
+        if (!text) return m.reply('❌ Ingresa código.')
 
         try {
-            let exec = new (async () => { }).constructor(
-                'print', 'm', 'message', 'require', 'conn', 'Array', 'process', 'args', 'groupMetadata', 'module', 'exports', 'argument',
-                `return (async () => { 
-                    try { 
-                        return ${_text} 
-                    } catch (e) { 
-                        return eval(\`${_text}\`)
-                    }
-                })()`
+
+            const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor
+
+            const exec = new AsyncFunction(
+                'm',
+                'conn',
+                'args',
+                'groupMetadata',
+                'require',
+                'process',
+                'console',
+                `
+                return await (async () => {
+                    ${text}
+                })()
+                `
             )
 
-            _return = await exec(
-                console.log,
+            let result = await exec(
                 m,
-                evala,
-                require,
                 conn,
-                CustomArray,
-                process,
                 args,
                 groupMetadata,
-                { exports: {} },
-                {},
-                [conn, _2]
+                require,
+                process,
+                console
             )
 
-            if (_return && typeof _return === 'object') {
-                _return = inspect(_return, { depth: 1, showHidden: false })
+            if (typeof result !== 'string') {
+                result = inspect(result, {
+                    depth: null,
+                    colors: false
+                })
             }
-        } catch (e) {
-            _return = e
-        } finally {
-            let finalMsg = typeof _return === 'string' ? _return : format(_return)
-            m.reply(finalMsg)
-        }
-    }
-}
 
-class CustomArray extends Array {
-    constructor(...args) {
-        if (typeof args[0] == 'number') return super(Math.min(args[0], 10000))
-        else return super(...args)
+            await m.reply(result || '✅ Ejecutado.')
+
+        } catch (err) {
+            await m.reply(
+                inspect(err, {
+                    depth: null,
+                    colors: false
+                })
+            )
+        }
     }
 }
 
