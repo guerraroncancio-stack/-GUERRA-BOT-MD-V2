@@ -12,14 +12,14 @@ const voiceAI = {
             const prompt = text || m.quoted?.text
 
             if (!prompt) {
-                return m.reply('🎙️ Uso: .voiceai ¿qué es la inteligencia artificial?')
+                return m.reply('🎙️ Uso: .voiceai ¿qué es la IA?')
             }
 
             // =========================
-            // 1. IA RESPONSE (SIMULADA PRO)
+            // 1. IA RESPONSE (OPENAI SAFE)
             // =========================
 
-            let aiResponse
+            let aiResponse = ''
 
             try {
                 const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -33,45 +33,67 @@ const voiceAI = {
                         messages: [
                             {
                                 role: "system",
-                                content: "Eres una IA útil, responde corto, claro y natural para voz."
+                                content: "Responde corto, claro y natural para convertir a voz."
                             },
                             {
                                 role: "user",
                                 content: prompt
                             }
-                        ]
+                        ],
+                        max_tokens: 120
                     })
                 })
 
                 const json = await res.json()
-                aiResponse = json?.choices?.[0]?.message?.content
 
-                if (!aiResponse) throw new Error("No AI response")
+                aiResponse =
+                    json?.choices?.[0]?.message?.content?.trim()
+
+                if (!aiResponse) throw new Error('Empty AI response')
 
             } catch (e) {
-                // FALLBACK SI NO HAY API KEY
-                aiResponse = `No tengo conexión a IA avanzada, pero según tu pregunta: ${prompt}`
+                aiResponse = `Según tu pregunta: ${prompt}. No pude conectar a IA avanzada.`
             }
 
             // =========================
-            // 2. TTS (VOZ)
+            // 2. LIMPIEZA DE TEXTO (CLAVE)
             // =========================
 
-            const voice = "Brian" // puedes cambiar: Matthew, es-ES, etc.
+            const cleanText = aiResponse
+                .replace(/[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜ¿?¡!.,\s]/g, '')
+                .slice(0, 200)
 
-            const ttsURL =
-                `https://api.streamelements.com/kappa/v2/speech?voice=${voice}&text=${encodeURIComponent(aiResponse)}`
+            // =========================
+            // 3. TTS (STABLE FALLBACK)
+            // =========================
 
-            const audioRes = await fetch(ttsURL)
+            let audioBuffer
 
-            if (!audioRes.ok) {
-                throw new Error("TTS failed")
+            try {
+                const ttsURL =
+                    `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=es&q=${encodeURIComponent(cleanText)}`
+
+                const audioRes = await fetch(ttsURL)
+
+                if (!audioRes.ok) throw new Error('TTS failed')
+
+                audioBuffer = Buffer.from(await audioRes.arrayBuffer())
+
+            } catch (e) {
+
+                // FALLBACK EXTRA (si Google falla)
+                const fallbackURL =
+                    `https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=${encodeURIComponent(cleanText.slice(0, 150))}`
+
+                const audioRes = await fetch(fallbackURL)
+
+                if (!audioRes.ok) throw new Error('All TTS failed')
+
+                audioBuffer = Buffer.from(await audioRes.arrayBuffer())
             }
 
-            const audioBuffer = Buffer.from(await audioRes.arrayBuffer())
-
             // =========================
-            // 3. ENVÍO WHATSAPP
+            // 4. SEND AUDIO
             // =========================
 
             await conn.sendMessage(m.chat, {
@@ -82,7 +104,7 @@ const voiceAI = {
 
         } catch (e) {
             console.log('[VOICEAI ERROR]', e)
-            m.reply('❌ VoiceAI falló generando respuesta.')
+            m.reply('❌ VoiceAI falló completamente.')
         }
     }
 }
