@@ -1,38 +1,78 @@
 import fetch from 'node-fetch'
+import { writeFileSync } from 'fs'
 
 const visionAI = {
     name: 'vision',
-    alias: ['iaimg', 'imgai', 'visionai', 'ver'],
-    category: 'ai',
 
     run: async (m, { conn, text }) => {
 
         try {
 
             // =========================
-            // 1. OBTENER IMAGEN
+            // 1. DETECTAR IMAGEN (BAILEYS V7 SAFE)
             // =========================
 
-            const quoted = m.quoted?.message?.imageMessage
-            const image = m.message?.imageMessage || quoted
+            const msg = m.message
 
-            if (!image) {
+            const imageMessage =
+                msg?.imageMessage ||
+                msg?.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage
+
+            if (!imageMessage) {
                 return m.reply('📸 Envía o responde una imagen con .vision')
             }
 
-            const buffer = await conn.downloadMediaMessage(m)
+            // =========================
+            // 2. DESCARGA UNIVERSAL (FIX REAL)
+            // =========================
+
+            let buffer
+
+            try {
+
+                if (conn.downloadContentFromMessage) {
+
+                    const stream = await conn.downloadContentFromMessage(
+                        imageMessage,
+                        'image'
+                    )
+
+                    let chunks = []
+
+                    for await (const chunk of stream) {
+                        chunks.push(chunk)
+                    }
+
+                    buffer = Buffer.concat(chunks)
+
+                } else if (conn.downloadMediaMessage) {
+
+                    buffer = await conn.downloadMediaMessage(msg)
+
+                } else {
+
+                    throw new Error("No download method found")
+                }
+
+            } catch (e) {
+                return m.reply('❌ No se pudo descargar la imagen')
+            }
 
             if (!buffer || buffer.length < 1000) {
-                return m.reply('❌ No se pudo leer la imagen')
+                return m.reply('❌ Imagen inválida')
             }
+
+            // =========================
+            // 3. BASE64
+            // =========================
 
             const base64 = buffer.toString('base64')
 
             // =========================
-            // 2. IA VISION (OPENAI SI EXISTE)
+            // 4. IA (OPENAI OPTIONAL)
             // =========================
 
-            let result
+            let result = ''
 
             try {
 
@@ -49,7 +89,7 @@ const visionAI = {
                         messages: [
                             {
                                 role: "system",
-                                content: "Eres una IA de visión. Describe imágenes de forma clara, corta y precisa."
+                                content: "Eres una IA de visión. Describe imágenes claramente."
                             },
                             {
                                 role: "user",
@@ -71,23 +111,19 @@ const visionAI = {
                 const json = await res.json()
                 result = json?.choices?.[0]?.message?.content
 
-                if (!result) throw new Error('no response')
+                if (!result) throw new Error()
 
             } catch (e) {
 
-                // =========================
-                // FALLBACK SIMPLE
-                // =========================
-
-                result = `No tengo IA avanzada activa, pero la imagen fue recibida correctamente.`
+                result = "📷 Imagen recibida correctamente, pero IA no disponible."
             }
 
             // =========================
-            // 3. RESPUESTA FINAL
+            // 5. RESPUESTA
             // =========================
 
             await conn.sendMessage(m.chat, {
-                text: `👁️ *IA VISION RESULT*\n\n${result}`
+                text: `👁️ *VISION AI*\n\n${result}`
             }, { quoted: m })
 
         } catch (e) {
