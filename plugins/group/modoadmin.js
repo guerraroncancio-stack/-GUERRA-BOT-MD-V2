@@ -1,8 +1,8 @@
-const modoadmin = async (m, { conn, isAdmin, isBotAdmin, isOwner, isROwner }) => {
+export async function modoadmin(m, { conn, isAdmin, isOwner, isROwner }) {
 
     try {
 
-        if (!m.isGroup) return;
+        if (!m.isGroup) return false;
 
         global.db.data = global.db.data || {};
         global.db.data.chats = global.db.data.chats || {};
@@ -10,29 +10,21 @@ const modoadmin = async (m, { conn, isAdmin, isBotAdmin, isOwner, isROwner }) =>
         const chat = global.db.data.chats[m.chat] =
             global.db.data.chats[m.chat] || {};
 
-        if (!chat.modoadmin) return;
+        // modo admin OFF
+        if (!chat.modoadmin) return false;
 
-        if (isOwner || isROwner) return;
-        if (isAdmin) return;
-        if (!isBotAdmin) return;
+        const senderIsAllowed =
+            isAdmin || isOwner || isROwner;
 
-        const text = m.text || '';
+        // ❌ si NO está permitido → bloquear comandos del bot
+        if (!senderIsAllowed) {
+            return true; // bloquea ejecución del bot en tu middleware
+        }
 
-        // no bloquear comandos
-        if (text.startsWith(global.prefix || '.')) return;
-
-        await conn.sendMessage(m.chat, {
-            text: `🚫 *MODO ADMIN ACTIVO*\n\nSolo administradores pueden escribir aquí.`
-        }, { quoted: m });
-
-        await conn.sendMessage(m.chat, {
-            delete: m.key
-        }).catch(() => {});
+        return false;
 
     } catch (e) {
         console.log('[MODADMIN ERROR]', e);
+        return false;
     }
-
-};
-
-export default modoadmin;
+}
