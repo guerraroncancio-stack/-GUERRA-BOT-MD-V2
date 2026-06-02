@@ -3,120 +3,33 @@ import fetch from 'node-fetch'
 global.voiceMemory = global.voiceMemory || {}
 
 const voices = {
-    siri: "EXAVITQu4vr4xnSDxMaL",
-    male: "ErXwobaYiN019PkySvjV"
+    siri: "EXAVITQu4vr4xnSDxMaL"
 }
 
 const voiceAI = {
     name: 'voiceai',
-    alias: ['siri', 'va', 'vozai', 'ttsai'],
-    category: 'ai',
 
     run: async (m, { conn, text }) => {
 
         try {
 
-            const user = m.sender
+            let input = text || m.quoted?.text
+            if (!input) return m.reply('🎙️ Usa: .voiceai texto')
 
-            if (!text && !m.quoted?.text) {
-                return m.reply('🎙️ Usa: .voiceai siri hola')
-            }
+            // =====================
+            // IA SIMPLE (fallback seguro)
+            // =====================
+            let response = input.slice(0, 200)
 
-            // =========================
-            // INPUT + VOICE SELECTOR
-            // =========================
-
-            let input = text || m.quoted.text
-            let voice = 'siri'
-
-            const parts = input.trim().split(' ')
-
-            if (voices[parts[0]?.toLowerCase()]) {
-                voice = parts[0].toLowerCase()
-                input = parts.slice(1).join(' ')
-            }
-
-            if (!input) return m.reply('❌ Escribe algo.')
-
-            // =========================
-            // MEMORIA (CHAT CONTINUO)
-            // =========================
-
-            if (!global.voiceMemory[user]) {
-                global.voiceMemory[user] = []
-            }
-
-            global.voiceMemory[user].push(input)
-
-            if (global.voiceMemory[user].length > 6) {
-                global.voiceMemory[user].shift()
-            }
-
-            const context = global.voiceMemory[user].join('. ')
-
-            // =========================
-            // IA (SIMPLIFICADA ROBUSTA)
-            // =========================
-
-            let aiResponse = ''
-
-            try {
-
-                const res = await fetch("https://api.openai.com/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${global.openai_key || ""}`
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-4o-mini",
-                        messages: [
-                            {
-                                role: "system",
-                                content: "Eres una IA tipo Siri. Respondes corto, natural y conversacional."
-                            },
-                            {
-                                role: "user",
-                                content: context
-                            }
-                        ],
-                        max_tokens: 120
-                    })
-                })
-
-                const json = await res.json()
-                aiResponse = json?.choices?.[0]?.message?.content?.trim()
-
-                if (!aiResponse) throw new Error("No AI")
-
-            } catch {
-
-                aiResponse = `Entendido: ${input}`
-            }
-
-            // =========================
-            // LIMPIEZA
-            // =========================
-
-            const clean = aiResponse
-                .replace(/[*_`~]/g, '')
-                .replace(/[^\w\sáéíóúñ¿?¡!.,-]/gi, '')
-                .slice(0, 220)
-
-            // =========================
-            // ELEVENLABS (CON FIX KEY ERROR)
-            // =========================
-
+            // =====================
+            // ELEVENLABS
+            // =====================
             let audioBuffer
 
             try {
 
-                if (!global.eleven_key || global.eleven_key.length < 10) {
-                    throw new Error("NO KEY")
-                }
-
                 const res = await fetch(
-                    `https://api.elevenlabs.io/v1/text-to-speech/${voices[voice]}/stream`,
+                    `https://api.elevenlabs.io/v1/text-to-speech/${voices.siri}/stream`,
                     {
                         method: "POST",
                         headers: {
@@ -125,28 +38,26 @@ const voiceAI = {
                             "Accept": "audio/mpeg"
                         },
                         body: JSON.stringify({
-                            text: clean,
+                            text: response,
                             model_id: "eleven_multilingual_v2",
                             voice_settings: {
-                                stability: 0.5,
-                                similarity_boost: 0.75
+                                stability: 0.4,
+                                similarity_boost: 0.8
                             }
                         })
                     }
                 )
 
-                if (!res.ok) throw new Error("ELEVEN FAIL")
+                if (!res.ok) throw new Error("Eleven fail")
 
-                audioBuffer = Buffer.from(await res.arrayBuffer())
+                const arrayBuffer = await res.arrayBuffer()
+                audioBuffer = Buffer.from(arrayBuffer)
 
             } catch (e) {
 
-                // =========================
-                // FALLBACK GOOGLE TTS
-                // =========================
+                console.log('[FALLBACK TTS]')
 
-                const url =
-                    `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=es&q=${encodeURIComponent(clean)}`
+                const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=es&q=${encodeURIComponent(response)}`
 
                 const fb = await fetch(url, {
                     headers: {
@@ -158,17 +69,17 @@ const voiceAI = {
                 audioBuffer = Buffer.from(await fb.arrayBuffer())
             }
 
-            // =========================
-            // VALIDACIÓN FINAL
-            // =========================
+            // =====================
+            // 🔥 FIX CLAVE (NO CORRUPCIÓN)
+            // =====================
 
-            if (!audioBuffer || audioBuffer.length < 1500) {
-                return m.reply('❌ Audio inválido.')
+            if (!audioBuffer || audioBuffer.length < 2000) {
+                return m.reply('❌ Audio inválido generado')
             }
 
-            // =========================
-            // SEND
-            // =========================
+            // =====================
+            // ENVIAR COMO PTM REAL (FIX WHATSAPP)
+            // =====================
 
             await conn.sendMessage(m.chat, {
                 audio: audioBuffer,
@@ -177,8 +88,8 @@ const voiceAI = {
             }, { quoted: m })
 
         } catch (e) {
-            console.log('[VOICEAI ULTRA ERROR]', e)
-            m.reply('❌ VoiceAI Siri Ultra falló.')
+            console.log('[VOICEAI ERROR]', e)
+            m.reply('❌ Error generando voz')
         }
     }
 }
