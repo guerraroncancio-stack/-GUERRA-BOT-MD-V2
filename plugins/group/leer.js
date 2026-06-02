@@ -17,10 +17,18 @@ const leer = {
 
             const url = `https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=${encodeURIComponent(contenido)}`
 
+            const response = await fetch(url)
+
+            if (!response.ok) {
+                return m.reply(`❌ StreamElements respondió ${response.status}`)
+            }
+
+            const audio = Buffer.from(await response.arrayBuffer())
+
             await conn.sendMessage(
                 m.chat,
                 {
-                    audio: { url },
+                    audio,
                     mimetype: 'audio/mp4',
                     ptt: true
                 },
