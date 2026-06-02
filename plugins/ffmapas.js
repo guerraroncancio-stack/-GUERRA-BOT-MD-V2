@@ -9,35 +9,28 @@ const mapasDefault = [
     'Nexterra 🌌'
 ]
 
+const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣']
+
 const mapas = {
     name: 'mapas',
-    alias: ['map', 'mapa', 'maps'],
+    alias: ['map', 'maps'],
     category: 'games',
 
-    run: async (m, { conn, text }) => {
+    run: async (m, { conn }) => {
 
         if (!reactionRegistered) register(conn)
 
-        const chat = m.chat
-
-        const lista = mapasDefault
-
-        const data = {
-            chat,
-            host: m.sender,
-            votes: {},
-            msgKey: null,
-            active: true,
-            maps: lista
-        }
-
-        const msg = await conn.sendMessage(chat, {
-            text: render(lista),
+        const msg = await conn.sendMessage(m.chat, {
+            text: render(mapasDefault, {}),
             mentions: []
         }, { quoted: m })
 
-        data.msgKey = msg.key
-        mapasData[msg.key.id] = data
+        mapasData[msg.key.id] = {
+            chat: m.chat,
+            msgKey: msg.key,
+            votes: {},   // user => index
+            maps: mapasDefault
+        }
     }
 }
 
@@ -46,26 +39,24 @@ export default mapas
 // =========================
 // UI
 // =========================
-function render(maps) {
+function render(maps, count) {
 
-    let txt = `🗺️ *SELECCIÓN DE MAPA*
+    let txt = `🗺️ *VOTACIÓN DE MAPAS*
 
-📌 Reacciona para votar:
+📌 Reacciona:
 
 `
 
-    const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣']
-
     maps.forEach((m, i) => {
-        txt += `${emojis[i]} ${m}\n`
+        txt += `${emojis[i]} ${m} | 🗳️ ${count[i] || 0} votos\n`
     })
 
-    txt += `\n⚔️ El mapa con más votos será seleccionado automáticamente.`
+    txt += `\n⚔️ Puedes cambiar tu voto en cualquier momento.`
     return txt
 }
 
 // =========================
-// REACTIONS ENGINE
+// ENGINE REACCIONES
 // =========================
 function register(conn) {
 
@@ -89,23 +80,16 @@ function register(conn) {
 
             const emoji = normalize(msg.message.reactionMessage.text)
 
-            const mapIndex = {
-                '1️⃣': 0,
-                '2️⃣': 1,
-                '3️⃣': 2,
-                '4️⃣': 3,
-                '5️⃣': 4
-            }[emoji]
-
-            if (mapIndex === undefined) continue
+            const index = emojis.indexOf(emoji)
+            if (index === -1) continue
 
             // =========================
-            // GUARDAR VOTO (1 por usuario)
+            // GUARDAR / CAMBIAR VOTO
             // =========================
-            data.votes[user] = mapIndex
+            data.votes[user] = index
 
             // =========================
-            // CONTAR VOTOS
+            // RECONTAR VOTOS REALES
             // =========================
             const count = [0, 0, 0, 0, 0]
 
@@ -113,7 +97,10 @@ function register(conn) {
                 if (count[v] !== undefined) count[v]++
             })
 
-            const newText = buildResult(data.maps, count)
+            // =========================
+            // ACTUALIZAR MENSAJE
+            // =========================
+            const newText = render(data.maps, count)
 
             try {
                 await conn.sendMessage(data.chat, {
@@ -132,23 +119,6 @@ function register(conn) {
             }
         }
     })
-}
-
-// =========================
-// RESULT BUILDER
-// =========================
-function buildResult(maps, count) {
-
-    let txt = `🗺️ *RESULTADO DE MAPA*\n\n`
-
-    maps.forEach((m, i) => {
-        txt += `${m} → ${count[i]} votos\n`
-    })
-
-    const winnerIndex = count.indexOf(Math.max(...count))
-
-    txt += `\n🏆 *MAPA GANADOR:* ${maps[winnerIndex]}`
-    return txt
 }
 
 function normalize(e = '') {
