@@ -1,56 +1,119 @@
 import fetch from 'node-fetch'
 
+global.voiceMemory = global.voiceMemory || {}
+
 const voices = {
-    siri: "EXAVITQu4vr4xnSDxMaL",   // Bella (tipo Siri femenina)
-    male: "ErXwobaYiN019PkySvjV"    // Adam (masculina)
+    siri: "EXAVITQu4vr4xnSDxMaL",
+    male: "ErXwobaYiN019PkySvjV"
 }
 
 const voiceAI = {
     name: 'voiceai',
-    alias: ['siri', 'vozai', 'va', 'ttsai'],
+    alias: ['siri', 'va', 'vozai', 'ttsai'],
     category: 'ai',
 
     run: async (m, { conn, text }) => {
 
         try {
 
-            let input = text || m.quoted?.text
+            const user = m.sender
 
-            if (!input) {
-                return m.reply('🎙️ Uso: .voiceai siri hola mundo')
+            if (!text && !m.quoted?.text) {
+                return m.reply('🎙️ Usa: .voiceai siri hola')
             }
 
             // =========================
-            // VOZ SELECTOR
+            // INPUT + VOICE SELECTOR
             // =========================
 
+            let input = text || m.quoted.text
             let voice = 'siri'
-            let prompt = input
 
             const parts = input.trim().split(' ')
+
             if (voices[parts[0]?.toLowerCase()]) {
                 voice = parts[0].toLowerCase()
-                prompt = parts.slice(1).join(' ')
+                input = parts.slice(1).join(' ')
             }
 
-            if (!prompt) return m.reply('❌ Escribe el texto.')
+            if (!input) return m.reply('❌ Escribe algo.')
 
             // =========================
-            // LIMPIEZA CRÍTICA
+            // MEMORIA (CHAT CONTINUO)
             // =========================
 
-            const clean = prompt
+            if (!global.voiceMemory[user]) {
+                global.voiceMemory[user] = []
+            }
+
+            global.voiceMemory[user].push(input)
+
+            if (global.voiceMemory[user].length > 6) {
+                global.voiceMemory[user].shift()
+            }
+
+            const context = global.voiceMemory[user].join('. ')
+
+            // =========================
+            // IA (SIMPLIFICADA ROBUSTA)
+            // =========================
+
+            let aiResponse = ''
+
+            try {
+
+                const res = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${global.openai_key || ""}`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-4o-mini",
+                        messages: [
+                            {
+                                role: "system",
+                                content: "Eres una IA tipo Siri. Respondes corto, natural y conversacional."
+                            },
+                            {
+                                role: "user",
+                                content: context
+                            }
+                        ],
+                        max_tokens: 120
+                    })
+                })
+
+                const json = await res.json()
+                aiResponse = json?.choices?.[0]?.message?.content?.trim()
+
+                if (!aiResponse) throw new Error("No AI")
+
+            } catch {
+
+                aiResponse = `Entendido: ${input}`
+            }
+
+            // =========================
+            // LIMPIEZA
+            // =========================
+
+            const clean = aiResponse
                 .replace(/[*_`~]/g, '')
                 .replace(/[^\w\sáéíóúñ¿?¡!.,-]/gi, '')
-                .slice(0, 250)
+                .slice(0, 220)
 
             // =========================
-            // ELEVENLABS TTS
+            // ELEVENLABS (CON FIX KEY ERROR)
             // =========================
 
             let audioBuffer
 
             try {
+
+                if (!global.eleven_key || global.eleven_key.length < 10) {
+                    throw new Error("NO KEY")
+                }
 
                 const res = await fetch(
                     `https://api.elevenlabs.io/v1/text-to-speech/${voices[voice]}/stream`,
@@ -65,24 +128,18 @@ const voiceAI = {
                             text: clean,
                             model_id: "eleven_multilingual_v2",
                             voice_settings: {
-                                stability: 0.4,
-                                similarity_boost: 0.8
+                                stability: 0.5,
+                                similarity_boost: 0.75
                             }
                         })
                     }
                 )
 
-                if (!res.ok) {
-                    const err = await res.text()
-                    throw new Error("ElevenLabs error: " + err)
-                }
+                if (!res.ok) throw new Error("ELEVEN FAIL")
 
-                const arrayBuffer = await res.arrayBuffer()
-                audioBuffer = Buffer.from(arrayBuffer)
+                audioBuffer = Buffer.from(await res.arrayBuffer())
 
             } catch (e) {
-
-                console.log('[ELEVEN FALLBACK]', e.message)
 
                 // =========================
                 // FALLBACK GOOGLE TTS
@@ -102,15 +159,15 @@ const voiceAI = {
             }
 
             // =========================
-            // VALIDACIÓN FINAL (CLAVE)
+            // VALIDACIÓN FINAL
             // =========================
 
-            if (!audioBuffer || audioBuffer.length < 2000) {
-                throw new Error("Audio corrupto o vacío")
+            if (!audioBuffer || audioBuffer.length < 1500) {
+                return m.reply('❌ Audio inválido.')
             }
 
             // =========================
-            // ENVÍO WHATSAPP (FIX REAL)
+            // SEND
             // =========================
 
             await conn.sendMessage(m.chat, {
@@ -120,8 +177,8 @@ const voiceAI = {
             }, { quoted: m })
 
         } catch (e) {
-            console.log('[VOICEAI SIRI ERROR]', e)
-            m.reply('❌ VoiceAI no pudo generar audio estable.')
+            console.log('[VOICEAI ULTRA ERROR]', e)
+            m.reply('❌ VoiceAI Siri Ultra falló.')
         }
     }
 }
