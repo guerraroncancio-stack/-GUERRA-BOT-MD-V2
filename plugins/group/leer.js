@@ -17,12 +17,20 @@ const leer = {
 
             await m.react('🎙️')
 
-            const url = `https://api.streamelements.com/kappa/v2/speech?voice=es-ES-AlvaroNeural&text=${encodeURIComponent(contenido)}`
+            const url = `https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=${encodeURIComponent(contenido)}`
+
+            const res = await fetch(url)
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`)
+            }
+
+            const buffer = Buffer.from(await res.arrayBuffer())
 
             await conn.sendMessage(
                 m.chat,
                 {
-                    audio: { url },
+                    audio: buffer,
                     mimetype: 'audio/mp4',
                     ptt: true
                 },
@@ -32,10 +40,9 @@ const leer = {
             await m.react('✅')
 
         } catch (e) {
-
             console.error(e)
             await m.react('❌')
-            m.reply('❌ Error al generar la voz.')
+            m.reply(`❌ Error:\n${e.message}`)
         }
     }
 }
