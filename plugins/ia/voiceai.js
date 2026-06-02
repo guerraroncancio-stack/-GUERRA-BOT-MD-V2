@@ -1,109 +1,127 @@
 import fetch from 'node-fetch'
 
+const voices = {
+    brian: "pNInz6obpgDQGcFmaJgB",
+    adam: "ErXwobaYiN019PkySvjV",
+    bella: "EXAVITQu4vr4xnSDxMaL"
+}
+
 const voiceAI = {
     name: 'voiceai',
-    alias: ['va', 'vozai', 'ttsai', 'speakai'],
+    alias: ['va', 'vozai', 'ttsai', 'godvoice'],
     category: 'ai',
 
     run: async (m, { conn, text }) => {
 
         try {
 
-            const prompt = text || m.quoted?.text
+            let input = text || m.quoted?.text
 
-            if (!prompt) {
-                return m.reply('🎙️ Uso: .voiceai hola mundo')
+            if (!input) {
+                return m.reply('🎙️ Uso: .voiceai [voz] texto\nEj: .voiceai brian hola mundo')
             }
 
             // =========================
-            // 1. IA (OPENAI)
+            // VOZ SELECCIÓN
             // =========================
 
-            let aiResponse = ''
+            let voice = "brian"
+            let cleanText = input
 
-            try {
-                const res = await fetch("https://api.openai.com/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${global.openai_key || ""}`
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-4o-mini",
-                        messages: [
-                            {
-                                role: "system",
-                                content: "Responde claro, corto y natural para voz."
-                            },
-                            {
-                                role: "user",
-                                content: prompt
-                            }
-                        ],
-                        max_tokens: 120
-                    })
-                })
+            const parts = input.split(' ')
+            if (voices[parts[0]?.toLowerCase()]) {
+                voice = parts[0].toLowerCase()
+                cleanText = parts.slice(1).join(' ')
+            }
 
-                const json = await res.json()
-
-                aiResponse =
-                    json?.choices?.[0]?.message?.content?.trim()
-
-                if (!aiResponse) throw new Error("No AI")
-
-            } catch {
-                aiResponse = `No pude usar IA avanzada. Respuesta: ${prompt}`
+            if (!cleanText) {
+                return m.reply('❌ Escribe texto para hablar.')
             }
 
             // =========================
-            // 2. LIMPIEZA CRÍTICA
+            // LIMPIEZA
             // =========================
 
-            const clean = aiResponse
+            cleanText = cleanText
                 .replace(/[*_`~]/g, '')
                 .replace(/[^\w\sáéíóúñ¿?¡!.,-]/gi, '')
-                .slice(0, 180)
+                .slice(0, 250)
 
             // =========================
-            // 3. TTS SEGURO (GOOGLE BASE)
+            // ELEVENLABS TTS
             // =========================
 
-            const ttsURL =
-                `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=es&q=${encodeURIComponent(clean)}`
+            let audioBuffer
 
-            const audioRes = await fetch(ttsURL, {
-                headers: {
-                    "User-Agent": "Mozilla/5.0",
-                    "Referer": "https://translate.google.com/"
-                }
-            })
+            try {
 
-            if (!audioRes.ok) throw new Error("TTS FAIL")
+                const res = await fetch(
+                    `https://api.elevenlabs.io/v1/text-to-speech/${voices[voice]}`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "xi-api-key": global.eleven_key,
+                            "Content-Type": "application/json",
+                            "accept": "audio/mpeg"
+                        },
+                        body: JSON.stringify({
+                            text: cleanText,
+                            model_id: "eleven_multilingual_v2",
+                            voice_settings: {
+                                stability: 0.5,
+                                similarity_boost: 0.7
+                            }
+                        })
+                    }
+                )
 
-            const arrayBuffer = await audioRes.arrayBuffer()
-            const buffer = Buffer.from(arrayBuffer)
+                if (!res.ok) throw new Error("ElevenLabs fail")
 
-            // =========================
-            // 4. VALIDACIÓN ANTI AUDIO ROTO
-            // =========================
+                const arrayBuffer = await res.arrayBuffer()
+                audioBuffer = Buffer.from(arrayBuffer)
 
-            if (!buffer || buffer.length < 1000) {
-                throw new Error("Audio corrupto")
+            } catch (e) {
+
+                // =========================
+                // FALLBACK GOOGLE TTS
+                // =========================
+
+                const fallbackURL =
+                    `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=es&q=${encodeURIComponent(cleanText)}`
+
+                const fb = await fetch(fallbackURL, {
+                    headers: {
+                        "User-Agent": "Mozilla/5.0",
+                        "Referer": "https://translate.google.com/"
+                    }
+                })
+
+                const fbBuffer = Buffer.from(await fb.arrayBuffer())
+
+                audioBuffer = fbBuffer
             }
 
             // =========================
-            // 5. ENVÍO WHATSAPP
+            // VALIDACIÓN AUDIO
+            // =========================
+
+            if (!audioBuffer || audioBuffer.length < 1000) {
+                throw new Error("Audio inválido")
+            }
+
+            // =========================
+            // SEND WHATSAPP
             // =========================
 
             await conn.sendMessage(m.chat, {
-                audio: buffer,
+                audio: audioBuffer,
                 mimetype: 'audio/mp4',
                 ptt: true
             }, { quoted: m })
 
         } catch (e) {
-            console.log('[VOICEAI PRO ERROR]', e)
-            m.reply('❌ VoiceAI falló generando audio estable.')
+            console.log('[VOICEAI GOD ERROR]', e)
+            m.reply('❌ VoiceAI GOD falló generando voz.')
         }
     }
 }
