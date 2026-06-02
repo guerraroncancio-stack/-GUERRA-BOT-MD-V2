@@ -17,11 +17,15 @@ const leer = {
 
             await m.react('🎙️')
 
-            const url = `https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=${encodeURIComponent(contenido)}`
+            const voice = 'Brian' // Cambia aquí la voz
+
+            const url = `https://api.streamelements.com/kappa/v2/speech?voice=${voice}&text=${encodeURIComponent(contenido)}`
 
             const res = await fetch(url)
 
             if (!res.ok) {
+                const errorText = await res.text()
+                console.log('TTS ERROR:', errorText)
                 throw new Error(`HTTP ${res.status}`)
             }
 
@@ -40,9 +44,10 @@ const leer = {
             await m.react('✅')
 
         } catch (e) {
+
             console.error(e)
             await m.react('❌')
-            m.reply(`❌ Error:\n${e.message}`)
+            m.reply(`❌ Error al generar la voz.\n${e.message}`)
         }
     }
 }
