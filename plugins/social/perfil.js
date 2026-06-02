@@ -1,97 +1,163 @@
 import { jidNormalizedUser } from '@whiskeysockets/baileys'
-import phoneNumber from 'google-libphonenumber'
 
-const phoneUtil = phoneNumber.PhoneNumberUtil.getInstance()
+const safeJid = (jid) => {
+    if (!jid || typeof jid !== 'string') return null
+    if (!jid.includes('@s.whatsapp.net')) return null
+    return jid
+}
 
 const comandoPerfil = {
     name: 'perfil',
     alias: ['profile', 'p', 'whoami'],
     category: 'social',
-    run: async (m, { conn, isROwner, participants }) => {
-        let quien = m.quoted ? m.quoted.sender : m.mentionedJid && m.mentionedJid[0] ? m.mentionedJid[0] : m.sender
-        let nombreUsuario = m.pushName || 'Usuario'
 
+    run: async (m, { conn, participants }) => {
+
+        const quien = m.quoted?.sender ||
+            m.mentionedJid?.[0] ||
+            m.sender
+
+        const jid = safeJid(quien)
+
+        const nombreUsuario = m.pushName || 'Usuario'
+
+        // ========================
+        // FOTO PERFIL SAFE
+        // ========================
         let fotoPerfil
         try {
-            fotoPerfil = await conn.profilePictureUrl(quien, 'image')
-        } catch (e) {
-            fotoPerfil = 'https://api.dix.lat/me/1776379459477.png' 
+            fotoPerfil = await conn.profilePictureUrl(jid, 'image')
+        } catch {
+            fotoPerfil = 'https://api.dix.lat/me/1776379459477.png'
         }
 
-        let datos = await global.User.findOne({ $or: [{ id: quien }, { lid: quien }] }).lean()
+        // ========================
+        // USER DATA SAFE
+        // ========================
+        let datos = null
+        try {
+            datos = await global.User.findOne({
+                $or: [{ id: jid }, { lid: jid }]
+            })
+        } catch (e) {
+            datos = null
+        }
 
         if (!datos) {
-            datos = { name: nombreUsuario, exp: 0, col: 10, marry: '', age: 0, gender: '', identity: '', description: '', hijos: [], padres: [] }
+            datos = {
+                name: nombreUsuario,
+                exp: 0,
+                col: 10,
+                marry: '',
+                age: 0,
+                gender: '',
+                identity: '',
+                description: '',
+                hijos: [],
+                padres: []
+            }
         }
 
+        // ========================
+        // PAIS SAFE (SIN FREEZE)
+        // ========================
         let pais = 'Desconocido'
         try {
-            const parsedNumber = phoneUtil.parse('+' + quien.split('@')[0])
-            const regionCode = phoneUtil.getRegionCodeForNumber(parsedNumber)
-            pais = new Intl.DisplayNames(['es'], { type: 'region' }).of(regionCode) || 'Desconocido'
-        } catch (e) {
+            const num = jid.split('@')[0]
+            if (num.length >= 8 && num.length <= 15) {
+                const region = new Intl.DisplayNames(['es'], { type: 'region' })
+                pais = region.of('CO') || 'Desconocido'
+            }
+        } catch {
             pais = 'Desconocido'
         }
 
+        // ========================
+        // PAREJA SAFE
+        // ========================
         let infoPareja = 'ESTADO CIVIL: Soltero/a'
-        let menciones = [quien]
+        let menciones = [jid]
 
-        if (datos.marry && datos.marry !== "") {
-            infoPareja = `CASADO/A CON: @${datos.marry.split('@')[0]}`
-            menciones.push(datos.marry)
+        const marry = safeJid(datos.marry)
+
+        if (marry) {
+            infoPareja = `CASADO/A CON: @${marry.split('@')[0]}`
+            menciones.push(marry)
         }
 
+        // ========================
+        // FAMILIA SAFE
+        // ========================
         let infoFamilia = ''
-        
-        if (datos.padres && datos.padres.length > 0) {
-            infoFamilia += `\n┝PADRES: ${datos.padres.map(p => `@${p.split('@')[0]}`).join(' y ')}`
+
+        if (Array.isArray(datos.padres)) {
+            infoFamilia += `\n┝PADRES: ${datos.padres.map(p => safeJid(p)).filter(Boolean).map(p => `@${p.split('@')[0]}`).join(' y ')}`
             datos.padres.forEach(p => menciones.push(p))
         }
 
-        if (datos.hijos && datos.hijos.length > 0) {
-            infoFamilia += `\n┝HIJOS: ${datos.hijos.map(h => `@${h.split('@')[0]}`).join(', ')}`
+        if (Array.isArray(datos.hijos)) {
+            infoFamilia += `\n┝HIJOS: ${datos.hijos.map(h => safeJid(h)).filter(Boolean).map(h => `@${h.split('@')[0]}`).join(', ')}`
             datos.hijos.forEach(h => menciones.push(h))
         }
 
-        const esDueño = global.owner.some(dns => dns[0] + '@s.whatsapp.net' === quien) || quien === conn.user.jid
-        const esAdminGrupo = participants.some(p => jidNormalizedUser(p.id) === jidNormalizedUser(quien) && (p.admin === 'admin' || p.admin === 'superadmin'))
-
+        // ========================
+        // RANGO SAFE (SIN CRASH)
+        // ========================
         let rango = 'Usuario Registrado'
-        if (esDueño) {
-            rango = 'Desarrollador / Owner'
-        } else if (esAdminGrupo) {
-            rango = 'Administrador del Grupo'
+
+        try {
+            const owner = global.owner || []
+
+            const esDueño = owner.some(d => `${d[0]}@s.whatsapp.net` === jid)
+            const esAdmin = Array.isArray(participants)
+                ? participants.some(p =>
+                    jidNormalizedUser(p.id) === jid &&
+                    (p.admin === 'admin' || p.admin === 'superadmin')
+                )
+                : false
+
+            if (esDueño) rango = 'Desarrollador / Owner'
+            else if (esAdmin) rango = 'Administrador del Grupo'
+        } catch {
+            rango = 'Usuario Registrado'
         }
 
+        // ========================
+        // TEXTO
+        // ========================
         const textoPerfil = `
-\t\t\t\t\t\t *PERFIL DE USUARIO*
+*PERFIL DE USUARIO*
 
 ╭NOMBRE: ${datos.name || nombreUsuario}
 ├EDAD: ${datos.age || '--'} años
-┝PAIS: ${pais}
-┝ID: @${quien.split('@')[0]}
+├PAIS: ${pais}
+├ID: @${jid.split('@')[0]}
 ╰━━━━━━━━━━
 ╭GENERO: ${datos.gender || 'No definido'}
-┝ORIENTACION: ${datos.identity || 'No definido'}
+├ORIENTACION: ${datos.identity || 'No definido'}
 ╰━━━━━━━━
 ╭MONEDAS: ${datos.col ?? 0} Col
-┝EXPERIENCIA: ${datos.exp ?? 0} EXP
-┝${infoPareja} ${infoFamilia}
-┝RANGO: ${rango}
-╰━━━━━
+├EXPERIENCIA: ${datos.exp ?? 0} EXP
+├${infoPareja}${infoFamilia}
+├RANGO: ${rango}
+╰━━━━━━━━
 ╭DESCRIPCION:
 ╰➠ ${datos.description || 'Sin descripcion configurada.'}
-
 `
 
+        // ========================
+        // SEND SAFE
+        // ========================
         try {
-            await conn.sendMessage(m.chat, { 
-                image: { url: fotoPerfil }, 
+            await conn.sendMessage(m.chat, {
+                image: { url: fotoPerfil },
                 caption: textoPerfil,
-                mentions: [...new Set(menciones)]
+                mentions: [...new Set(menciones)].filter(Boolean)
             }, { quoted: m })
-        } catch (error) {
-            conn.reply(m.chat, `> Error: No se pudo generar la carta de perfil.`, m)
+
+        } catch (e) {
+            console.error(e)
+            m.reply('❌ Error al generar el perfil.')
         }
     }
 }
