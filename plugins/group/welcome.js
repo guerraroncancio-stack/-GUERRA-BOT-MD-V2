@@ -1,210 +1,111 @@
-import { WAMessageStubType } from '@whiskeysockets/baileys'
-import fetch from 'node-fetch'
+import { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys'
 
-const DEFAULT_PP = 'https://api.dix.lat/media2/1777604199636.jpg'
+const { state, saveCreds } = await useMultiFileAuthState('./session')
+const { version } = await fetchLatestBaileysVersion()
+
+global.conn = makeWASocket({
+    version,
+    auth: state,
+    printQRInTerminal: true,
+    emitOwnEvents: true
+})
+
+conn.ev.on('creds.update', saveCreds)
 
 // =========================
-// SAFE BUFFER
+// DB SAFE
 // =========================
-async function safeFetchBuffer(url) {
-    try {
-        const res = await fetch(url)
-        if (!res.ok) return null
-        const buf = await res.buffer()
-        return Buffer.isBuffer(buf) ? buf : null
-    } catch {
-        return null
+global.db = global.db || { data: { chats: {}, users: {} } }
+
+// =========================
+// PLUGINS
+// =========================
+global.plugins = global.plugins || []
+
+// =========================
+// MESSAGE HANDLER
+// =========================
+conn.ev.on('messages.upsert', async ({ messages }) => {
+
+    for (let m of messages) {
+
+        if (!m.message) continue
+
+        const chatId = m.key.remoteJid
+
+        const msg = {
+            ...m,
+            chat: chatId,
+            sender: m.key.participant || m.key.remoteJid,
+            isGroup: chatId.endsWith('@g.us')
+        }
+
+        // ejecutar plugins tipo run/before
+        for (let p of global.plugins) {
+            try {
+                if (p.before) await p.before(msg, { conn })
+                if (p.run) await p.run(msg, { conn })
+            } catch (e) {
+                console.log('[PLUGIN ERROR]', e)
+            }
+        }
     }
-}
+})
 
 // =========================
-// TEMPLATE ENGINE
+// GROUP EVENTS (WELCOME FIJO)
 // =========================
-function applyTemplate(template, vars, fallback) {
-    if (!template || typeof template !== 'string') return fallback
+conn.ev.on('group-participants.update', async (update) => {
 
-    return template
-        .replace(/@user/g, vars.user)
-        .replace(/@group/g, vars.group)
-        .replace(/@desc/g, vars.desc)
-}
+    try {
 
-// =========================
-// NORMALIZE JID
-// =========================
-function normalizeJid(jid) {
-    if (!jid) return null
-    return jid.includes('@') ? jid : jid + '@s.whatsapp.net'
-}
+        const { id, participants, action } = update
 
-// =========================
-// MAIN PLUGIN
-// =========================
-const welcome = {
+        global.db.data.chats[id] = global.db.data.chats[id] || {}
+        const chat = global.db.data.chats[id]
 
-    name: 'welcome',
-    alias: ['bienvenida', 'setwelcome', 'setbye'],
-    category: 'group',
+        if (chat.welcome === false) return
 
-    run: async (m, { conn, args, isAdmin, isOwner }) => {
+        for (let user of participants) {
 
-        if (!m.isGroup) return
+            let text = ''
 
-        global.db.data = global.db.data || {}
-        global.db.data.chats = global.db.data.chats || {}
-
-        let chat = global.db.data.chats[m.chat] =
-            global.db.data.chats[m.chat] || {}
-
-        chat.welcome = chat.welcome ?? true
-        chat.sWelcome = chat.sWelcome ?? ''
-        chat.sBye = chat.sBye ?? ''
-
-        const cmd = (args[0] || '').toLowerCase()
-
-        // =========================
-        // PANEL
-        // =========================
-        if (!cmd) {
-            return conn.sendMessage(m.chat, {
-                text:
-`👋 *WELCOME SYSTEM*
-
-📌 Estado: ${chat.welcome ? '🟢 ON' : '🔴 OFF'}
-
-⚙️ Comandos:
-.welcome on
-.welcome off
-.welcome set <texto>
-.welcome bye <texto>
-
-Variables:
-@user @group @desc`
-            }, { quoted: m })
-        }
-
-        // =========================
-        // ON
-        // =========================
-        if (cmd === 'on') {
-            if (!isAdmin && !isOwner) return m.reply('❌ Solo admins')
-
-            chat.welcome = true
-            return m.reply('🟢 Bienvenida activada')
-        }
-
-        // =========================
-        // OFF
-        // =========================
-        if (cmd === 'off') {
-            if (!isAdmin && !isOwner) return m.reply('❌ Solo admins')
-
-            chat.welcome = false
-            return m.reply('🔴 Bienvenida desactivada')
-        }
-
-        // =========================
-        // SET WELCOME
-        // =========================
-        if (cmd === 'set') {
-            if (!isAdmin && !isOwner) return m.reply('❌ Solo admins')
-
-            chat.sWelcome = args.slice(1).join(' ')
-            return m.reply('✅ Mensaje de bienvenida actualizado')
-        }
-
-        // =========================
-        // SET BYE
-        // =========================
-        if (cmd === 'bye') {
-            if (!isAdmin && !isOwner) return m.reply('❌ Solo admins')
-
-            chat.sBye = args.slice(1).join(' ')
-            return m.reply('✅ Mensaje de despedida actualizado')
-        }
-
-        return m.reply('❌ Comando inválido')
-
-    },
-
-    // =========================
-    // EVENT LISTENER
-    // =========================
-    before: async (m, { conn, groupMetadata }) => {
-
-        try {
-
-            if (!m.isGroup) return
-            if (!m.messageStubType) return
-
-            global.db.data = global.db.data || {}
-            global.db.data.chats = global.db.data.chats || {}
-
-            let chat = global.db.data.chats[m.chat]
-            if (!chat) return
-
-            if (chat.welcome === false) return
-
-            const params = m.messageStubParameters || []
-            if (!params.length) return
-
-            const group = groupMetadata?.subject || 'Grupo'
-            const desc = groupMetadata?.desc || 'sin descripción'
-
-            const isAdd = m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_ADD
-            const isLeave = m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_LEAVE
-            const isKick = m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_REMOVE
-
-            if (!isAdd && !isLeave && !isKick) return
-
-            for (let raw of params) {
-
-                const jid = normalizeJid(raw)
-                if (!jid) continue
-
-                const user = '@' + jid.split('@')[0]
-
-                let text = ''
-
-                if (isAdd) {
-                    text = applyTemplate(
-                        chat.sWelcome,
-                        { user, group, desc },
-                        `👋 Bienvenido ${user} al grupo *${group}*`
-                    )
-                }
-
-                if (isLeave) {
-                    text = applyTemplate(
-                        chat.sBye,
-                        { user, group, desc },
-                        `👋 ${user} ha salido del grupo`
-                    )
-                }
-
-                if (isKick) {
-                    text = `🚫 ${user} fue expulsado del grupo`
-                }
-
-                let pp = DEFAULT_PP
-                try {
-                    pp = await conn.profilePictureUrl(jid, 'image')
-                } catch {}
-
-                const img = await safeFetchBuffer(pp)
-
-                const payload = img
-                    ? { image: img, caption: text, mentions: [jid] }
-                    : { text, mentions: [jid] }
-
-                await conn.sendMessage(m.chat, payload)
-
+            if (action === 'add') {
+                text = chat.sWelcome || `👋 Bienvenido @${user.split('@')[0]}`
             }
 
-        } catch (e) {
-            console.log('[WELCOME ERROR]', e)
+            if (action === 'remove') {
+                text = chat.sBye || `👋 @${user.split('@')[0]} salió`
+            }
+
+            await conn.sendMessage(id, {
+                text,
+                mentions: [user]
+            })
+
+        }
+
+    } catch (e) {
+        console.log('[GROUP EVENT ERROR]', e)
+    }
+
+})
+
+// =========================
+// STUB EVENTS (ANTI LINK ETC)
+// =========================
+conn.ev.on('messages.upsert', async ({ messages }) => {
+
+    for (let m of messages) {
+
+        if (!m.messageStubType) continue
+
+        for (let p of global.plugins) {
+            try {
+                if (p.before) await p.before(m, { conn })
+            } catch (e) {
+                console.log('[STUB ERROR]', e)
+            }
         }
     }
-}
-
-export default welcome
+})
