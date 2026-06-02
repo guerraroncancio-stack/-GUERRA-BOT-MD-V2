@@ -1,4 +1,8 @@
 import fetch from 'node-fetch'
+import { exec } from 'child_process'
+import fs from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
 global.voiceMemory = global.voiceMemory || {}
 
@@ -11,85 +15,90 @@ const voiceAI = {
 
     run: async (m, { conn, text }) => {
 
+        const input = text || m.quoted?.text
+        if (!input) return m.reply('🎙️ Uso: .voiceai texto')
+
         try {
 
-            let input = text || m.quoted?.text
-            if (!input) return m.reply('🎙️ Usa: .voiceai texto')
+            const clean = input.slice(0, 200)
 
-            // =====================
-            // IA SIMPLE (fallback seguro)
-            // =====================
-            let response = input.slice(0, 200)
+            // =========================
+            // 1. ELEVENLABS TTS
+            // =========================
 
-            // =====================
-            // ELEVENLABS
-            // =====================
-            let audioBuffer
+            const res = await fetch(
+                `https://api.elevenlabs.io/v1/text-to-speech/${voices.siri}/stream`,
+                {
+                    method: "POST",
+                    headers: {
+                        "xi-api-key": global.eleven_key,
+                        "Content-Type": "application/json",
+                        "Accept": "audio/mpeg"
+                    },
+                    body: JSON.stringify({
+                        text: clean,
+                        model_id: "eleven_multilingual_v2",
+                        voice_settings: {
+                            stability: 0.5,
+                            similarity_boost: 0.8
+                        }
+                    })
+                }
+            )
 
-            try {
+            if (!res.ok) throw new Error("ElevenLabs fail")
 
-                const res = await fetch(
-                    `https://api.elevenlabs.io/v1/text-to-speech/${voices.siri}/stream`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "xi-api-key": global.eleven_key,
-                            "Content-Type": "application/json",
-                            "Accept": "audio/mpeg"
-                        },
-                        body: JSON.stringify({
-                            text: response,
-                            model_id: "eleven_multilingual_v2",
-                            voice_settings: {
-                                stability: 0.4,
-                                similarity_boost: 0.8
-                            }
-                        })
+            const buffer = Buffer.from(await res.arrayBuffer())
+
+            // =========================
+            // 2. ARCHIVO TEMPORAL MP3
+            // =========================
+
+            const mp3Path = join(tmpdir(), `voice_${Date.now()}.mp3`)
+            const oggPath = join(tmpdir(), `voice_${Date.now()}.ogg`)
+
+            fs.writeFileSync(mp3Path, buffer)
+
+            // =========================
+            // 3. FFmpeg CONVERSIÓN OGG OPUS
+            // =========================
+
+            await new Promise((resolve, reject) => {
+
+                exec(
+                    `ffmpeg -y -i ${mp3Path} -c:a libopus -b:a 64k ${oggPath}`,
+                    (err) => {
+                        if (err) reject(err)
+                        else resolve()
                     }
                 )
 
-                if (!res.ok) throw new Error("Eleven fail")
+            })
 
-                const arrayBuffer = await res.arrayBuffer()
-                audioBuffer = Buffer.from(arrayBuffer)
+            // =========================
+            // 4. LECTURA FINAL
+            // =========================
 
-            } catch (e) {
+            const audio = fs.readFileSync(oggPath)
 
-                console.log('[FALLBACK TTS]')
+            // cleanup
+            fs.unlinkSync(mp3Path)
+            fs.unlinkSync(oggPath)
 
-                const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=es&q=${encodeURIComponent(response)}`
-
-                const fb = await fetch(url, {
-                    headers: {
-                        "User-Agent": "Mozilla/5.0",
-                        "Referer": "https://translate.google.com/"
-                    }
-                })
-
-                audioBuffer = Buffer.from(await fb.arrayBuffer())
-            }
-
-            // =====================
-            // 🔥 FIX CLAVE (NO CORRUPCIÓN)
-            // =====================
-
-            if (!audioBuffer || audioBuffer.length < 2000) {
-                return m.reply('❌ Audio inválido generado')
-            }
-
-            // =====================
-            // ENVIAR COMO PTM REAL (FIX WHATSAPP)
-            // =====================
+            // =========================
+            // 5. ENVÍO WHATSAPP (100% COMPATIBLE)
+            // =========================
 
             await conn.sendMessage(m.chat, {
-                audio: audioBuffer,
-                mimetype: 'audio/mp4',
+                audio,
+                mimetype: 'audio/ogg; codecs=opus',
                 ptt: true
             }, { quoted: m })
 
         } catch (e) {
-            console.log('[VOICEAI ERROR]', e)
-            m.reply('❌ Error generando voz')
+
+            console.log('[VOICEAI FFmpeg ERROR]', e)
+            m.reply('❌ VoiceAI FFmpeg falló')
         }
     }
 }
