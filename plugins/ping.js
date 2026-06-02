@@ -1,40 +1,41 @@
 const ping = {
     name: 'ping',
-    alias: ['p', 'latencia', 'speed'],
+    alias: ['p', 'latencia'],
     category: 'tools',
 
     run: async (m, { conn }) => {
 
-        const start = Date.now()
-
         try {
 
+            const start = m.messageTimestamp || Date.now()
+
             const sent = await conn.sendMessage(m.chat, {
-                text: '🏓 Calculando ping...'
+                text: '🏓 midiendo ping...'
             }, { quoted: m })
 
             const end = Date.now()
 
-            const latency = end - start
+            // diferencia entre mensaje del usuario y respuesta del bot
+            const latency = end - (start * 1000)
 
-            let status = '🟢 Excelente'
-            if (latency > 500) status = '🟡 Normal'
-            if (latency > 1000) status = '🔴 Lento'
+            let estado = '🟢 Excelente'
+            if (latency > 500) estado = '🟡 Normal'
+            if (latency > 1000) estado = '🔴 Alto'
 
             await conn.sendMessage(m.chat, {
-                text: `🏓 *PING DEL BOT*
+                text: `🏓 *PING DEL USUARIO*
 
-⚡ Latencia: ${latency} ms
-📡 Estado: ${status}
-🤖 Bot: Activo
+⚡ Tu latencia: ${latency} ms
+📡 Estado: ${estado}
+👤 Usuario: @${m.sender.split('@')[0]}
 
 ⏱️ Hora: ${new Date().toLocaleTimeString()}`,
-                edit: sent.key
-            })
+                mentions: [m.sender]
+            }, { quoted: m })
 
         } catch (e) {
             console.error(e)
-            m.reply('❌ Error midiendo ping.')
+            m.reply('❌ Error al calcular ping.')
         }
     }
 }
