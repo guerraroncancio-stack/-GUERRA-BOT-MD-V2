@@ -10,7 +10,7 @@ const clanSystem = {
     run: async (m, { conn, text }) => {
 
         const user = m.sender
-        const args = (text || '').split(' ')
+        const args = (text || '').trim().split(' ')
         const sub = (args[0] || '').toLowerCase()
 
         // =========================
@@ -22,6 +22,7 @@ const clanSystem = {
 
 .clan crear <nombre>
 .clan join <nombre>
+.clan add @usuario
 .clan leave
 .clan info
 
@@ -39,9 +40,10 @@ const clanSystem = {
             const name = args.slice(1).join(' ')
             if (!name) return m.reply('⚠️ Usa: .clan crear Nombre')
 
-            if (Object.values(global.clans).find(c => c.owner === user)) {
-                return m.reply('❌ Ya tienes un clan.')
-            }
+            const exists = Object.values(global.clans)
+                .find(c => c.owner === user)
+
+            if (exists) return m.reply('❌ Ya tienes un clan.')
 
             const id = 'clan_' + Date.now()
 
@@ -57,6 +59,42 @@ const clanSystem = {
             }
 
             return m.reply(`🛡️ Clan creado: ${name}`)
+        }
+
+        // =========================
+        // ADD MEMBER (NEW FIX)
+        // =========================
+        if (sub === 'add') {
+
+            const clan = Object.values(global.clans)
+                .find(c => c.owner === user)
+
+            if (!clan) return m.reply('❌ Solo el dueño puede agregar miembros.')
+
+            let target =
+                m.mentionedJid?.[0] ||
+                m.quoted?.sender ||
+                (args[1] ? args[1].replace(/[^0-9]/g, '') + '@s.whatsapp.net' : null)
+
+            if (!target) {
+                return m.reply('⚠️ Usa: .clan add @usuario')
+            }
+
+            if (clan.members.includes(target)) {
+                return m.reply('⚠️ Este usuario ya está en el clan.')
+            }
+
+            clan.members.push(target)
+
+            return conn.sendMessage(m.chat, {
+                text: `🛡️ *CLAN UPDATE*
+
+➕ Usuario agregado:
+👤 @${target.split('@')[0]}
+
+🏷️ Clan: ${clan.name}`,
+                mentions: [target]
+            }, { quoted: m })
         }
 
         // =========================
@@ -137,7 +175,7 @@ const clanSystem = {
         }
 
         // =========================
-        // CLAN WAR (SIMPLE MATCH)
+        // CLAN WAR
         // =========================
         if (sub === 'war') {
 
@@ -177,7 +215,7 @@ const clanSystem = {
         }
 
         // =========================
-        // TOURNAMENT (RANDOM)
+        // TOURNAMENT
         // =========================
         if (sub === 'tournament') {
 
