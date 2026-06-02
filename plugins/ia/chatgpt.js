@@ -50,53 +50,49 @@ const chatgptCommand = {
 
             const lowerText = text.toLowerCase()
 
-            const creatorQuestions = [
+const creatorQuestions = [
+    'quien te creo',
+    'quién te creó',
+    'quien es tu creador',
+    'quién es tu creador',
+    'quien te hizo',
+    'quién te hizo',
+    'developer',
+    'owner',
+    'creador',
+    'autor'
+]
 
-                'quien te creo',
-                'quién te creó',
-                'quien es tu creador',
-                'quién es tu creador',
-                'quien te hizo',
-                'quién te hizo',
-                'creador',
-                'developer',
-                'owner'
-            ]
+if (creatorQuestions.some(v => lowerText.includes(v))) {
 
-            if (
-                creatorQuestions.some(v =>
-                    lowerText.includes(v)
-                )
-            ) {
-
-                await m.react('✅')
-
-                return conn.sendMessage(
-                    m.chat,
-                    {
-                        text:
+    return conn.sendMessage(
+        m.chat,
+        {
+            text:
 `┏━━━〔 👑 GUERRA IA 👑 〕━━━⬣
 ┃
 ┃ 🤖 Soy GUERRA IA
 ┃
-┃ 👑 Mi creador,
-┃ desarrollador y propietario
-┃ oficial es:
+┃ Mi creador, desarrollador
+┃ y propietario oficial es:
 ┃
-┃ ➥ Kevin Guerra
+┃ 👑 Kevin Guerra
 ┃
-┃ ⚡ Sistema desarrollado
-┃ para automatización,
-┃ inteligencia artificial
-┃ y asistencia avanzada.
+┃ Especialista en:
+┃ • Automatización
+┃ • WhatsApp Bots
+┃ • Inteligencia Artificial
+┃ • Sistemas Avanzados
+┃
+┃ Estoy diseñada para ayudar
+┃ a los usuarios respondiendo
+┃ preguntas y resolviendo dudas.
 ┃
 ┗━━━━━━━━━━━━━━━━━━━━⬣`
-                    },
-                    {
-                        quoted: m
-                    }
-                )
-            }
+        },
+        { quoted: m }
+    )
+}
 
             const controller =
             new AbortController()
