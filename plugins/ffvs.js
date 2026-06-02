@@ -1,166 +1,147 @@
-const vsclan = global.vsclan = global.vsclan || {}
+let vsData = global.vsData = global.vsData || {}
+let reactionRegistered = false
+
+const limits = {
+    '1vs1': { a: 1, b: 1 },
+    '2vs2': { a: 2, b: 2 },
+    '4vs4': { a: 4, b: 4 }
+}
 
 const vs = {
     name: 'vs',
-    alias: ['clanvs', 'war', 'guerra'],
+    alias: ['versus', 'war', 'clanvs'],
     category: 'games',
 
     run: async (m, { conn, text }) => {
 
+        if (!reactionRegistered) register(conn)
+
         const chat = m.chat
-        const jid = m.sender
+        const mode = (text || '').toLowerCase()
 
-        vsclan[chat] = vsclan[chat] || {
-            active: false,
-            playersA: [],
-            playersB: [],
-            host: null,
-            limit: 4,
-            msgKey: null,
-            stage: 'wait'
+        if (!limits[mode]) {
+            return m.reply(`⚔️ Usa:
+.vs 1vs1
+.vs 2vs2
+.vs 4vs4`)
         }
 
-        const data = vsclan[chat]
+        const limit = limits[mode]
 
-        const cmd = (text || '').toLowerCase()
-
-        // =========================
-        // START VS
-        // =========================
-        if (cmd.startsWith('start')) {
-
-            if (data.active) return m.reply('⚠️ Ya hay una guerra activa.')
-
-            const limit = parseInt(cmd.split(' ')[1]) || 4
-
-            data.active = true
-            data.host = jid
-            data.limit = limit
-            data.playersA = []
-            data.playersB = []
-            data.stage = 'joinA'
-
-            const msg = await conn.sendMessage(chat, {
-                text: `
-⚔️ *VS CLAN INICIADO*
-
-👑 Host: @${jid.split('@')[0]}
-📊 Límite por equipo: ${limit}
-
-🅰️ EQUIPO A: REACCIONA ❤️ PARA ENTRAR
-
-📌 Reacciona al mensaje para unirte al Equipo A
-                `,
-                mentions: [jid]
-            }, { quoted: m })
-
-            data.msgKey = msg.key
-
-            return
+        const data = {
+            chat,
+            mode,
+            host: m.sender,
+            teamA: [],
+            teamB: [],
+            msgId: null,
+            active: true
         }
 
-        // =========================
-        // JOIN MANUAL (fallback)
-        // =========================
-        if (cmd === 'join') {
+        const msg = await conn.sendMessage(chat, {
+            text: render(mode, data.teamA, data.teamB),
+            mentions: []
+        }, { quoted: m })
 
-            if (!data.active) return m.reply('❌ No hay guerra activa.')
-
-            if (data.playersA.includes(jid) || data.playersB.includes(jid)) {
-                return m.reply('⚠️ Ya estás registrado.')
-            }
-
-            if (data.stage === 'joinA') {
-
-                if (data.playersA.length >= data.limit) {
-                    data.stage = 'joinB'
-                    return m.reply('🅰️ Equipo A lleno. Ahora Equipo B.')
-                }
-
-                data.playersA.push(jid)
-
-            } else {
-
-                if (data.playersB.length >= data.limit) {
-                    return m.reply('🚫 Ambos equipos llenos.')
-                }
-
-                data.playersB.push(jid)
-            }
-
-            return conn.sendMessage(chat, {
-                text: `⚔️ @${jid.split('@')[0]} se unió al VS`,
-                mentions: [jid]
-            }, { quoted: m })
-        }
-
-        // =========================
-        // LISTA
-        // =========================
-        if (cmd === 'list') {
-
-            if (!data.active) return m.reply('❌ No hay guerra activa.')
-
-            let txt = `
-⚔️ *VS CLAN LOBBY*
-
-🅰️ Equipo A (${data.playersA.length}/${data.limit})
-${data.playersA.map((p, i) => `#${i + 1} @${p.split('@')[0]}`).join('\n') || '— vacío'}
-
-\n🅱️ Equipo B (${data.playersB.length}/${data.limit})
-${data.playersB.map((p, i) => `#${i + 1} @${p.split('@')[0]}`).join('\n') || '— vacío'}
-`
-
-            return conn.sendMessage(chat, {
-                text: txt,
-                mentions: [...data.playersA, ...data.playersB]
-            }, { quoted: m })
-        }
-
-        // =========================
-        // END
-        // =========================
-        if (cmd === 'end') {
-
-            if (!data.active) return m.reply('❌ No hay guerra activa.')
-            if (jid !== data.host) return m.reply('⚠️ Solo el host puede finalizar.')
-
-            const allA = data.playersA
-            const allB = data.playersB
-
-            const winnerTeam = Math.random() < 0.5 ? 'A' : 'B'
-            const winners = winnerTeam === 'A' ? allA : allB
-
-            data.active = false
-
-            return conn.sendMessage(chat, {
-                text: `
-🏆 *RESULTADO VS CLAN*
-
-🥇 Ganador: Equipo ${winnerTeam}
-
-🅰️ A: ${allA.length} jugadores
-🅱️ B: ${allB.length} jugadores
-
-🔥 Ganadores:
-${winners.map(p => `@${p.split('@')[0]}`).join('\n')}
-                `,
-                mentions: [...allA, ...allB]
-            }, { quoted: m })
-        }
-
-        // =========================
-        // HELP
-        // =========================
-        return m.reply(`
-⚔️ *VS CLAN SYSTEM*
-
-.vs start <limite> → iniciar
-.vs join → entrar manual
-.vs list → ver equipos
-.vs end → finalizar
-        `)
+        data.msgId = msg.key.id
+        vsData[msg.key.id] = data
     }
 }
 
 export default vs
+
+// =========================
+// RENDER
+// =========================
+function render(mode, A, B) {
+
+    const format = (arr, max) => {
+        let out = ''
+        for (let i = 0; i < max; i++) {
+            out += arr[i]
+                ? `👤 @${arr[i].split('@')[0]}\n`
+                : `➖ vacío\n`
+        }
+        return out
+    }
+
+    const maxA = mode === '1vs1' ? 1 : mode === '2vs2' ? 2 : 4
+    const maxB = maxA
+
+    return `
+⚔️ *VS ${mode.toUpperCase()}*
+
+🅰️ EQUIPO A
+${format(A, maxA)}
+
+🅱️ EQUIPO B
+${format(B, maxB)}
+
+📌 Reacciona:
+❤️ = Equipo A
+👍 = Equipo B
+👎 = salir
+❌ = reset (admin)
+`
+}
+
+// =========================
+// REACTIONS
+// =========================
+function register(conn) {
+
+    reactionRegistered = true
+
+    conn.ev.on('messages.upsert', async ({ messages }) => {
+
+        for (const msg of messages) {
+
+            if (!msg.message?.reactionMessage) continue
+
+            const id = msg.message.reactionMessage.key.id
+            const data = vsData[id]
+            if (!data) continue
+
+            const user = msg.key.participant || msg.key.remoteJid
+            const emoji = normalize(msg.message.reactionMessage.text)
+
+            if (!user) continue
+
+            // admin reset
+            if (emoji === '❌' && user === data.host) {
+                delete vsData[id]
+                await conn.sendMessage(data.chat, {
+                    text: '♻️ VS reiniciado por host'
+                })
+                continue
+            }
+
+            // remove user first
+            data.teamA = data.teamA.filter(x => x !== user)
+            data.teamB = data.teamB.filter(x => x !== user)
+
+            const max = limits[data.mode]
+
+            if (emoji === '❤️') {
+                if (data.teamA.length < max.a) data.teamA.push(user)
+            }
+
+            if (emoji === '👍') {
+                if (data.teamB.length < max.b) data.teamB.push(user)
+            }
+
+            // update message
+            const newMsg = await conn.sendMessage(data.chat, {
+                text: render(data.mode, data.teamA, data.teamB),
+                mentions: [...data.teamA, ...data.teamB]
+            })
+
+            delete vsData[id]
+            vsData[newMsg.key.id] = data
+        }
+    })
+}
+
+function normalize(e = '') {
+    return e.replace(/\uFE0F/g, '').trim()
+}
