@@ -67,10 +67,12 @@ function register(conn) {
 
         for (const msg of messages) {
 
-            if (!msg.message?.reactionMessage) continue
+            const reaction = msg.message?.reactionMessage
+            if (!reaction) continue
 
-            const key = msg.message.reactionMessage.key
-            const id = key.id
+            // ⚠️ ID correcto del mensaje reaccionado
+            const id = reaction.key?.id
+            if (!id) continue
 
             const data = mapasData[id]
             if (!data) continue
@@ -78,27 +80,34 @@ function register(conn) {
             const user = msg.key.participant || msg.key.remoteJid
             if (!user) continue
 
-            const emoji = normalize(msg.message.reactionMessage.text)
+            // ⚠️ EMOJI REAL (FIX IMPORTANTE)
+            const emoji =
+                reaction.text ||
+                reaction.emoji ||
+                reaction.reaction ||
+                ''
 
-            const index = emojis.indexOf(emoji)
-            if (index === -1) continue
+            const clean = emoji.replace(/\uFE0F/g, '').trim()
+
+            const index = emojis.indexOf(clean)
+            if (index === -1) return
 
             // =========================
-            // GUARDAR / CAMBIAR VOTO
+            // GUARDAR VOTO REAL
             // =========================
             data.votes[user] = index
 
             // =========================
-            // RECONTAR VOTOS REALES
+            // RECONTAR
             // =========================
             const count = [0, 0, 0, 0, 0]
 
-            Object.values(data.votes).forEach(v => {
+            for (const v of Object.values(data.votes)) {
                 if (count[v] !== undefined) count[v]++
-            })
+            }
 
             // =========================
-            // ACTUALIZAR MENSAJE
+            // EDITAR MENSAJE
             // =========================
             const newText = render(data.maps, count)
 
@@ -107,7 +116,7 @@ function register(conn) {
                     text: newText,
                     edit: data.msgKey
                 })
-            } catch (e) {
+            } catch (err) {
 
                 const sent = await conn.sendMessage(data.chat, {
                     text: newText,
