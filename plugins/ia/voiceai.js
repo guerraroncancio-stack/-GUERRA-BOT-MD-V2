@@ -2,7 +2,7 @@ import fetch from 'node-fetch'
 
 const voiceAI = {
     name: 'voiceai',
-    alias: ['va', 'vozai', 'ttsai'],
+    alias: ['va', 'vozai', 'ttsai', 'speakai'],
     category: 'ai',
 
     run: async (m, { conn, text }) => {
@@ -11,13 +11,15 @@ const voiceAI = {
 
             const prompt = text || m.quoted?.text
 
-            if (!prompt) return m.reply('🎙️ Escribe algo')
+            if (!prompt) {
+                return m.reply('🎙️ Uso: .voiceai hola mundo')
+            }
 
             // =========================
-            // IA SIMPLE (fallback seguro)
+            // 1. IA (OPENAI)
             // =========================
 
-            let aiResponse = prompt
+            let aiResponse = ''
 
             try {
                 const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -29,7 +31,14 @@ const voiceAI = {
                     body: JSON.stringify({
                         model: "gpt-4o-mini",
                         messages: [
-                            { role: "user", content: prompt }
+                            {
+                                role: "system",
+                                content: "Responde claro, corto y natural para voz."
+                            },
+                            {
+                                role: "user",
+                                content: prompt
+                            }
                         ],
                         max_tokens: 120
                     })
@@ -38,40 +47,52 @@ const voiceAI = {
                 const json = await res.json()
 
                 aiResponse =
-                    json?.choices?.[0]?.message?.content || prompt
+                    json?.choices?.[0]?.message?.content?.trim()
 
-            } catch {}
+                if (!aiResponse) throw new Error("No AI")
+
+            } catch {
+                aiResponse = `No pude usar IA avanzada. Respuesta: ${prompt}`
+            }
 
             // =========================
-            // LIMPIEZA CRÍTICA
+            // 2. LIMPIEZA CRÍTICA
             // =========================
 
             const clean = aiResponse
                 .replace(/[*_`~]/g, '')
-                .replace(/[^\w\sáéíóúñ¿?¡!,.-]/gi, '')
+                .replace(/[^\w\sáéíóúñ¿?¡!.,-]/gi, '')
                 .slice(0, 180)
 
             // =========================
-            // TTS (GOOGLE - ESTABLE)
+            // 3. TTS SEGURO (GOOGLE BASE)
             // =========================
 
-            const url =
+            const ttsURL =
                 `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=es&q=${encodeURIComponent(clean)}`
 
-            const resAudio = await fetch(url, {
+            const audioRes = await fetch(ttsURL, {
                 headers: {
                     "User-Agent": "Mozilla/5.0",
                     "Referer": "https://translate.google.com/"
                 }
             })
 
-            if (!resAudio.ok) throw new Error('TTS fail')
+            if (!audioRes.ok) throw new Error("TTS FAIL")
 
-            const arrayBuffer = await resAudio.arrayBuffer()
+            const arrayBuffer = await audioRes.arrayBuffer()
             const buffer = Buffer.from(arrayBuffer)
 
             // =========================
-            // ENVÍO WHATSAPP (IMPORTANTE)
+            // 4. VALIDACIÓN ANTI AUDIO ROTO
+            // =========================
+
+            if (!buffer || buffer.length < 1000) {
+                throw new Error("Audio corrupto")
+            }
+
+            // =========================
+            // 5. ENVÍO WHATSAPP
             // =========================
 
             await conn.sendMessage(m.chat, {
@@ -81,8 +102,8 @@ const voiceAI = {
             }, { quoted: m })
 
         } catch (e) {
-            console.log('[VOICEAI ERROR]', e)
-            m.reply('❌ Error generando voz.')
+            console.log('[VOICEAI PRO ERROR]', e)
+            m.reply('❌ VoiceAI falló generando audio estable.')
         }
     }
 }
