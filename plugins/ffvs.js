@@ -47,7 +47,7 @@ const vs = {
 👑 Host: @${jid.split('@')[0]}
 📊 Límite por equipo: ${limit}
 
-🅰️ EQUIPO A: REACCIONA ⚔️ PARA ENTRAR
+🅰️ EQUIPO A: REACCIONA ❤️ PARA ENTRAR
 
 📌 Reacciona al mensaje para unirte al Equipo A
                 `,
