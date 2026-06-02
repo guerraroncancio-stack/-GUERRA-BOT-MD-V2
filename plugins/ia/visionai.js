@@ -11,73 +11,41 @@ const visionAI = {
 
         try {
 
-            const msg = m.message
-
             // =========================
-            // 1. EXTRAER IMAGEN (FIX REAL BAILEYS)
+            // 1. DESCARGA (SOLO WRAPPER TUYO)
             // =========================
 
-            let imageMessage =
-                msg?.imageMessage ||
-                msg?.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage ||
-                msg?.extendedTextMessage?.contextInfo?.quotedMessage?.viewOnceMessage?.message?.imageMessage
-
-            if (!imageMessage) {
-                return m.reply('📸 Envía o responde una imagen (no texto)')
-            }
-
-            // =========================
-            // 2. DESCARGA SEGURA (SIN m.download)
-            // =========================
-
-            let stream
+            let buffer
 
             try {
 
-                stream = await conn.downloadContentFromMessage(imageMessage, 'image')
+                if (typeof m.download === 'function') {
+                    buffer = await m.download()
+                } else {
+                    return m.reply('❌ Este bot no soporta descarga de medios')
+                }
 
             } catch (e) {
-
-                // 🔥 FALLBACK VIEWONCE / STRUCT ROTO
-                try {
-                    const q = m.quoted?.message
-                    const alt = q?.imageMessage || q?.viewOnceMessage?.message?.imageMessage
-
-                    if (!alt) throw new Error('no alt image')
-
-                    stream = await conn.downloadContentFromMessage(alt, 'image')
-
-                } catch (e2) {
-                    console.log('[DOWNLOAD FAIL]', e2)
-                    return m.reply('❌ No se pudo descargar la imagen (formato no soportado)')
-                }
+                console.log('[DOWNLOAD FAIL]', e)
+                return m.reply('❌ No se pudo descargar la imagen')
             }
-
-            // =========================
-            // 3. STREAM → BUFFER
-            // =========================
-
-            const chunks = []
-            for await (const chunk of stream) chunks.push(chunk)
-
-            const buffer = Buffer.concat(chunks)
 
             if (!buffer || buffer.length < 1000) {
-                return m.reply('❌ Imagen inválida o corrupta')
+                return m.reply('❌ Imagen inválida o vacía')
             }
 
             // =========================
-            // 4. TEMP FILE
+            // 2. TEMP FILE
             // =========================
 
             const file = join(tmpdir(), `vision_${Date.now()}.jpg`)
             fs.writeFileSync(file, buffer)
 
             // =========================
-            // 5. IA HUMANA (SAFE)
+            // 3. IA HUMANA
             // =========================
 
-            let analysis = ''
+            let result = ''
 
             try {
 
@@ -96,7 +64,7 @@ const visionAI = {
                         messages: [
                             {
                                 role: "system",
-                                content: "Eres una IA que describe imágenes como humano, natural y directo."
+                                content: "Eres una IA visión que describe imágenes como humano."
                             },
                             {
                                 role: "user",
@@ -116,28 +84,28 @@ const visionAI = {
                 })
 
                 const json = await res.json()
-                analysis = json?.choices?.[0]?.message?.content
+                result = json?.choices?.[0]?.message?.content
 
-                if (!analysis) throw new Error()
+                if (!result) throw new Error()
 
             } catch (e) {
 
-                analysis = "📷 Imagen recibida correctamente, pero IA no disponible."
+                result = "📷 Imagen recibida correctamente (IA no disponible)"
             }
 
             // =========================
-            // 6. OUTPUT FINAL
+            // 4. RESPUESTA FINAL
             // =========================
 
             await conn.sendMessage(m.chat, {
-                text: `👁️ *VISION AI PRO FIX*\n\n🧠 ${analysis}`
+                text: `👁️ *VISION AI PRO FIX*\n\n🧠 ${result}`
             }, { quoted: m })
 
             fs.unlinkSync(file)
 
         } catch (e) {
-            console.log('[VISION FINAL ERROR]', e)
-            m.reply('❌ Vision falló completamente')
+            console.log('[VISION ERROR]', e)
+            m.reply('❌ Vision falló')
         }
     }
 }
