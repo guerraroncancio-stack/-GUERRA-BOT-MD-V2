@@ -1,209 +1,77 @@
-import { WAMessageStubType } from '@whiskeysockets/baileys'
-import fetch from 'node-fetch'
-
-const DEFAULT_PP = 'https://api.dix.lat/media2/1777604199636.jpg'
-
-// =========================
-// SAFE BUFFER
-// =========================
-async function safeFetchBuffer(url) {
-    try {
-        const res = await fetch(url)
-        if (!res.ok) return null
-        const buf = await res.buffer()
-        return Buffer.isBuffer(buf) ? buf : null
-    } catch {
-        return null
-    }
-}
-
-// =========================
-// TEMPLATE ENGINE
-// =========================
-function applyTemplate(template, vars, fallback) {
-    if (!template || typeof template !== 'string') return fallback
-
-    return template
-        .replace(/@user/g, vars.user)
-        .replace(/@group/g, vars.group)
-        .replace(/@desc/g, vars.desc)
-}
-
-// =========================
-// NORMALIZE JID
-// =========================
-function normalizeJid(jid) {
-    if (!jid) return null
-    return jid.includes('@') ? jid : jid + '@s.whatsapp.net'
-}
-
-// =========================
-// MAIN PLUGIN
-// =========================
 const welcome = {
-
     name: 'welcome',
-    alias: ['bienvenida', 'setwelcome', 'setbye'],
-    category: 'group',
 
-    run: async (m, { conn, args, isAdmin, isOwner }) => {
+    run: async () => {},
 
-        if (!m.isGroup) return
+    init: (conn) => {
 
-        global.db.data = global.db.data || {}
-        global.db.data.chats = global.db.data.chats || {}
+        conn.ev.on('group-participants.update', async (update) => {
 
-        let chat = global.db.data.chats[m.chat] =
-            global.db.data.chats[m.chat] || {}
+            try {
 
-        chat.welcome = chat.welcome ?? true
-        chat.sWelcome = chat.sWelcome ?? ''
-        chat.sBye = chat.sBye ?? ''
+                const { id, participants, action } = update
 
-        const cmd = (args[0] || '').toLowerCase()
+                global.db.data = global.db.data || {}
+                global.db.data.chats = global.db.data.chats || {}
 
-        // =========================
-        // PANEL
-        // =========================
-        if (!cmd) {
-            return conn.sendMessage(m.chat, {
-                text:
-`👋 *WELCOME SYSTEM*
+                let chat = global.db.data.chats[id]
+                if (!chat) return
 
-📌 Estado: ${chat.welcome ? '🟢 ON' : '🔴 OFF'}
+                if (chat.welcome === false) return
 
-⚙️ Comandos:
-.welcome on
-.welcome off
-.welcome set <texto>
-.welcome bye <texto>
+                const groupMetadata = await conn.groupMetadata(id)
 
-Variables:
-@user @group @desc`
-            }, { quoted: m })
-        }
+                const group = groupMetadata.subject
+                const desc = groupMetadata.desc || 'sin descripción'
 
-        // =========================
-        // ON
-        // =========================
-        if (cmd === 'on') {
-            if (!isAdmin && !isOwner) return m.reply('❌ Solo admins')
+                for (let user of participants) {
 
-            chat.welcome = true
-            return m.reply('🟢 Bienvenida activada')
-        }
+                    const tag = '@' + user.split('@')[0]
 
-        // =========================
-        // OFF
-        // =========================
-        if (cmd === 'off') {
-            if (!isAdmin && !isOwner) return m.reply('❌ Solo admins')
+                    let text = ''
 
-            chat.welcome = false
-            return m.reply('🔴 Bienvenida desactivada')
-        }
+                    if (action === 'add') {
+                        text = chat.sWelcome ||
+                            `👋 Bienvenido ${tag} al grupo *${group}*`
+                    }
 
-        // =========================
-        // SET WELCOME
-        // =========================
-        if (cmd === 'set') {
-            if (!isAdmin && !isOwner) return m.reply('❌ Solo admins')
+                    if (action === 'remove') {
+                        text = chat.sBye ||
+                            `👋 ${tag} ha salido del grupo`
+                    }
 
-            chat.sWelcome = args.slice(1).join(' ')
-            return m.reply('✅ Mensaje de bienvenida actualizado')
-        }
+                    if (action === 'promote') continue
+                    if (action === 'demote') continue
 
-        // =========================
-        // SET BYE
-        // =========================
-        if (cmd === 'bye') {
-            if (!isAdmin && !isOwner) return m.reply('❌ Solo admins')
+                    let pp
+                    try {
+                        pp = await conn.profilePictureUrl(user, 'image')
+                    } catch {
+                        pp = null
+                    }
 
-            chat.sBye = args.slice(1).join(' ')
-            return m.reply('✅ Mensaje de despedida actualizado')
-        }
+                    let img = null
+                    if (pp) {
+                        try {
+                            const res = await fetch(pp)
+                            img = Buffer.from(await res.arrayBuffer())
+                        } catch {}
+                    }
 
-        return m.reply('❌ Comando inválido')
+                    const payload = img
+                        ? { image: img, caption: text, mentions: [user] }
+                        : { text, mentions: [user] }
 
-    },
+                    await conn.sendMessage(id, payload)
 
-    // =========================
-    // EVENT LISTENER
-    // =========================
-    before: async (m, { conn, groupMetadata }) => {
-
-        try {
-
-            if (!m.isGroup) return
-            if (!m.messageStubType) return
-
-            global.db.data = global.db.data || {}
-            global.db.data.chats = global.db.data.chats || {}
-
-            let chat = global.db.data.chats[m.chat]
-            if (!chat) return
-
-            if (chat.welcome === false) return
-
-            const params = m.messageStubParameters || []
-            if (!params.length) return
-
-            const group = groupMetadata?.subject || 'Grupo'
-            const desc = groupMetadata?.desc || 'sin descripción'
-
-            const isAdd = m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_ADD
-            const isLeave = m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_LEAVE
-            const isKick = m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_REMOVE
-
-            if (!isAdd && !isLeave && !isKick) return
-
-            for (let raw of params) {
-
-                const jid = normalizeJid(raw)
-                if (!jid) continue
-
-                const user = '@' + jid.split('@')[0]
-
-                let text = ''
-
-                if (isAdd) {
-                    text = applyTemplate(
-                        chat.sWelcome,
-                        { user, group, desc },
-                        `👋 Bienvenido ${user} al grupo *${group}*`
-                    )
                 }
 
-                if (isLeave) {
-                    text = applyTemplate(
-                        chat.sBye,
-                        { user, group, desc },
-                        `👋 ${user} ha salido del grupo`
-                    )
-                }
-
-                if (isKick) {
-                    text = `🚫 ${user} fue expulsado del grupo`
-                }
-
-                let pp = DEFAULT_PP
-                try {
-                    pp = await conn.profilePictureUrl(jid, 'image')
-                } catch {}
-
-                const img = await safeFetchBuffer(pp)
-
-                const payload = img
-                    ? { image: img, caption: text, mentions: [jid] }
-                    : { text, mentions: [jid] }
-
-                await conn.sendMessage(m.chat, payload)
-
+            } catch (e) {
+                console.log('[WELCOME FIX ERROR]', e)
             }
 
-        } catch (e) {
-            console.log('[WELCOME ERROR]', e)
-        }
+        })
+
     }
 }
 
