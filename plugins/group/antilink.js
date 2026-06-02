@@ -1,73 +1,107 @@
-export async function featureAntiLink(m, conn) {
+const linkRegex = /chat\.whatsapp\.com\/(?:invite\/)?([0-9A-Za-z]{20,24})/i
+const channelLinkRegex = /whatsapp\.com\/channel\/([0-9A-Za-z]{20,30})/i
 
-    const chat = global.db?.data?.chats?.[m.chat] || {}
+export async function before(m, { conn, isAdmin, isBotAdmin, isOwner, isROwner }) {
 
-    if (!m.isGroup || !chat.antiLink || m.fromMe) return
+    try {
 
-    const text = (
-        m.text ||
-        m.message?.conversation ||
-        m.message?.extendedTextMessage?.text ||
-        m.message?.imageMessage?.caption ||
-        m.message?.videoMessage?.caption ||
-        ''
-    ).toLowerCase()
+        if (!m.isGroup) return;
+        if (!m.text) return;
+        if (m.isBaileys || m.fromMe) return;
 
-    const linkRegex = /chat\.whatsapp\.com\/([0-9a-z]{20,24})/i
-    const channelRegex = /whatsapp\.com\/channel\/([0-9a-z]{20,24})/i
+        const chat = global.db.data.chats[m.chat] =
+            global.db.data.chats[m.chat] || {};
 
-    const isLink = linkRegex.test(text) || channelRegex.test(text)
+        const user = m.sender;
 
-    if (!isLink) return
+        // =========================
+        // CONFIG
+        // =========================
 
-    const sender = m.sender || m.key.participant
-    const user = `@${sender.split('@')[0]}`
+        if (!chat.antiLink) return;
 
-    const metadata = await conn.groupMetadata(m.chat).catch(() => null)
-    const participants = metadata?.participants || []
+        const isGroupLink = linkRegex.test(m.text);
+        const isChannelLink = channelLinkRegex.test(m.text);
 
-    const isAdmin = participants.some(p =>
-        p.id === sender &&
-        (p.admin === 'admin' || p.admin === 'superadmin')
-    )
+        if (!isGroupLink && !isChannelLink) return;
 
-    const botId = conn.user.id.split(':')[0] + '@s.whatsapp.net'
+        // =========================
+        // PROTECCIONES
+        // =========================
 
-    const botIsAdmin = participants.some(p =>
-        p.id === botId &&
-        (p.admin === 'admin' || p.admin === 'superadmin')
-    )
+        if (isAdmin || isOwner || isROwner) return;
 
-    // 🚫 admins no son sancionados
-    if (isAdmin) return
+        if (!isBotAdmin) {
+            return conn.reply(
+                m.chat,
+                `⚠️ Necesito ser admin para activar anti-link.`,
+                m
+            );
+        }
 
-    // ❌ bot sin permisos
-    if (!botIsAdmin) {
+        // =========================
+        // INIT WARNING DB
+        // =========================
+
+        chat.warn = chat.warn || {}
+        chat.warn[user] = chat.warn[user] || 0
+
+        // =========================
+        // BLOQUEO MISMO GRUPO
+        // =========================
+
+        try {
+            const code = await conn.groupInviteCode(m.chat)
+            const myLink = `https://chat.whatsapp.com/${code}`
+
+            if (m.text.includes(myLink)) return
+        } catch {}
+
+        // =========================
+        // DELETE MESSAGE
+        // =========================
+
         await conn.sendMessage(m.chat, {
-            text: `🚫 @${sender.split('@')[0]} envió un link, pero no soy admin para sancionar.`,
-            mentions: [sender]
+            delete: m.key
+        }).catch(() => {})
+
+        // =========================
+        // WARNING SYSTEM
+        // =========================
+
+        chat.warn[user] += 1
+
+        const warns = chat.warn[user]
+
+        // =========================
+        // RESPUESTA
+        // =========================
+
+        if (warns < 2) {
+
+            return conn.sendMessage(m.chat, {
+                text: `⚠️ *ANTILINK ACTIVADO*\n\n@${user.split('@')[0]} no está permitido enviar enlaces.\n\n⚠️ Advertencia: ${warns}/2`,
+                mentions: [user]
+            })
+
+        }
+
+        // =========================
+        // KICK (2 WARNINGS)
+        // =========================
+
+        chat.warn[user] = 0
+
+        await conn.sendMessage(m.chat, {
+            text: `🚫 *EXPULSADO POR ANTILINK*\n\n@${user.split('@')[0]} alcanzó 2 advertencias.`,
+            mentions: [user]
         })
-        return
+
+        await conn.groupParticipantsUpdate(m.chat, [user], 'remove')
+
+    } catch (e) {
+        console.log('[ANTILINK ERROR]', e)
     }
 
-    // 🧹 borrar mensaje
-    try {
-        await conn.sendMessage(m.chat, { delete: m.key })
-    } catch {}
-
-    // 👢 expulsar usuario
-    try {
-        await conn.groupParticipantsUpdate(m.chat, [sender], 'remove')
-    } catch {}
-
-    // ⚠️ aviso final
-    await conn.sendMessage(m.chat, {
-        text:
-`🚫 *ANTI-LINK ACTIVADO*
-
-${user} fue eliminado del grupo.
-
-⚠️ No está permitido enviar enlaces.`,
-        mentions: [sender]
-    })
+    return true
 }
