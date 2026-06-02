@@ -5,76 +5,144 @@ const doxear = {
     group: true,
 
     run: async (m, { conn }) => {
-        let user =
-            m.mentionedJid?.[0] ||
-            m.quoted?.sender ||
-            m.sender
+        try {
 
-        const nombres = [
-            'Carlos Pérez',
-            'Juan Gómez',
-            'Andrés López',
-            'Kevin Ramírez',
-            'David Torres'
-        ]
+            let user =
+                m.mentionedJid?.[0] ||
+                m.quoted?.sender ||
+                m.sender
 
-        const ciudades = [
-            'Bogotá',
-            'Medellín',
-            'Cali',
-            'Barranquilla',
-            'Cartagena'
-        ]
+            const nombres = [
+                'Kevin Ramírez',
+                'Juan Gómez',
+                'David Torres',
+                'Carlos Pérez',
+                'Andrés López',
+                'Sebastián Díaz'
+            ]
 
-        const ips = [
-            '192.168.1.55',
-            '10.0.0.74',
-            '172.16.0.33',
-            '201.54.78.102'
-        ]
+            const ciudades = [
+                'Bogotá',
+                'Medellín',
+                'Cali',
+                'Barranquilla',
+                'Cartagena',
+                'Bucaramanga'
+            ]
 
-        const nombre = nombres[Math.floor(Math.random() * nombres.length)]
-        const ciudad = ciudades[Math.floor(Math.random() * ciudades.length)]
-        const ip = ips[Math.floor(Math.random() * ips.length)]
+            const sistemas = [
+                'Android 15',
+                'Android 14',
+                'iOS 18',
+                'Windows 11',
+                'Linux'
+            ]
 
-        const edad = Math.floor(Math.random() * 20) + 18
-        const dinero = Math.floor(Math.random() * 5000000)
+            const operadores = [
+                'Claro',
+                'Movistar',
+                'Tigo',
+                'WOM'
+            ]
 
-        const texto = `
-╭━━〔 ☠️ DOXEO FAKE ☠️ 〕━━⬣
-┃
-┃ 👤 Objetivo:
-┃ @${user.split('@')[0]}
-┃
-┃ 📛 Nombre:
-┃ ${nombre}
-┃
-┃ 🎂 Edad:
-┃ ${edad} años
-┃
-┃ 🌎 Ciudad:
-┃ ${ciudad}
-┃
-┃ 📡 IP:
-┃ ${ip}
-┃
-┃ 💰 Saldo:
-┃ $${dinero.toLocaleString()}
-┃
-┃ ⚠️ INFORMACIÓN FICTICIA
-┃ ⚠️ SOLO ENTRETENIMIENTO
-┃
-╰━━━━━━━━━━━━━━⬣
+            const nombre = nombres[Math.floor(Math.random() * nombres.length)]
+            const ciudad = ciudades[Math.floor(Math.random() * ciudades.length)]
+            const sistema = sistemas[Math.floor(Math.random() * sistemas.length)]
+            const operador = operadores[Math.floor(Math.random() * operadores.length)]
+
+            const edad = Math.floor(Math.random() * 20) + 18
+            const dinero = Math.floor(Math.random() * 10000000)
+            const bateria = Math.floor(Math.random() * 100)
+            const ping = Math.floor(Math.random() * 80) + 10
+
+            const ip = `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`
+
+            await m.reply(`
+🟢 Iniciando rastreo...
+▰▱▱▱▱▱▱▱▱▱ 10%
+`)
+
+            await new Promise(r => setTimeout(r, 1000))
+
+            await m.reply(`
+🟢 Localizando objetivo...
+▰▰▰▰▱▱▱▱▱▱ 40%
+`)
+
+            await new Promise(r => setTimeout(r, 1000))
+
+            await m.reply(`
+🟢 Descifrando registros...
+▰▰▰▰▰▰▰▱▱▱ 75%
+`)
+
+            await new Promise(r => setTimeout(r, 1000))
+
+            const texto = `
+╔══════════════════════════════╗
+║      🟩 GUERRA BOT OS 🟩      ║
+╚══════════════════════════════╝
+
+[████████████████████] 100%
+
+╭─〔 ☠️ INFORME OBTENIDO ☠️ 〕─⬣
+│
+│ 🎯 OBJETIVO
+│ @${user.split('@')[0]}
+│
+├────────────────⬣
+│
+│ 👤 Nombre:
+│ ${nombre}
+│
+│ 🎂 Edad:
+│ ${edad} años
+│
+│ 🌎 Ciudad:
+│ ${ciudad}
+│
+│ 📡 IP:
+│ ${ip}
+│
+│ 📱 Sistema:
+│ ${sistema}
+│
+│ 📶 Operador:
+│ ${operador}
+│
+│ 🔋 Batería:
+│ ${bateria}%
+│
+│ ⚡ Ping:
+│ ${ping}ms
+│
+│ 💰 Saldo:
+│ $${dinero.toLocaleString()}
+│
+╰────────────────⬣
+
+🟢 ACCESO CONCEDIDO
+🟢 REGISTROS RECUPERADOS
+🟢 OPERACIÓN COMPLETADA
+
+> ⚠️ INFORMACIÓN FICTICIA
+> ⚠️ COMANDO DE ENTRETENIMIENTO
+> ⚠️ NO REPRESENTA DATOS REALES
 `
 
-        await conn.sendMessage(
-            m.chat,
-            {
-                text: texto,
-                mentions: [user]
-            },
-            { quoted: m }
-        )
+            await conn.sendMessage(
+                m.chat,
+                {
+                    text: texto,
+                    mentions: [user]
+                },
+                { quoted: m }
+            )
+
+        } catch (e) {
+            console.error(e)
+            m.reply('❌ Error al ejecutar el doxeo.')
+        }
     }
 }
 
