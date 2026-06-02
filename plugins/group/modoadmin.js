@@ -1,30 +1,33 @@
-export async function modoadmin(m, { conn, isAdmin, isOwner, isROwner }) {
+const modoadmin = {
+    name: 'modoadmin',
+    alias: ['modoadmin', 'adminbot'],
+    category: 'group',
 
-    try {
+    run: async (m, { conn, isAdmin, isOwner, isROwner }) => {
 
-        if (!m.isGroup) return false;
+        try {
 
-        global.db.data = global.db.data || {};
-        global.db.data.chats = global.db.data.chats || {};
+            if (!m.isGroup) return;
 
-        const chat = global.db.data.chats[m.chat] =
-            global.db.data.chats[m.chat] || {};
+            global.db.data = global.db.data || {};
+            global.db.data.chats = global.db.data.chats || {};
 
-        // modo admin OFF
-        if (!chat.modoadmin) return false;
+            const chat = global.db.data.chats[m.chat] =
+                global.db.data.chats[m.chat] || {};
 
-        const senderIsAllowed =
-            isAdmin || isOwner || isROwner;
+            if (!chat.modoadmin) return;
 
-        // ❌ si NO está permitido → bloquear comandos del bot
-        if (!senderIsAllowed) {
-            return true; // bloquea ejecución del bot en tu middleware
+            const allowed = isAdmin || isOwner || isROwner;
+
+            if (!allowed) return true; // bloquea en middleware
+
+            return false;
+
+        } catch (e) {
+            console.log('[MODADMIN ERROR]', e);
+            return false;
         }
-
-        return false;
-
-    } catch (e) {
-        console.log('[MODADMIN ERROR]', e);
-        return false;
     }
-}
+};
+
+export default modoadmin;
