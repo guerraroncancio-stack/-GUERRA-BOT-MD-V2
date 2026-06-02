@@ -1,52 +1,50 @@
-const linkRegex = /chat\.whatsapp\.com\/(?:invite\/)?([0-9A-Za-z]{20,24})/i
-const channelLinkRegex = /whatsapp\.com\/channel\/([0-9A-Za-z]{20,30})/i
-
 const antilink = {
     name: 'antilink',
+    alias: ['antilink', 'anti-link'],
     category: 'group',
 
-    before: async (m, { conn, isAdmin, isBotAdmin, isOwner, isROwner }) => {
+    run: async (m, { conn }) => {
 
         try {
 
             if (!m.isGroup) return;
             if (!m.text) return;
-            if (m.isBaileys || m.fromMe) return;
 
             const chat = global.db.data.chats[m.chat] =
                 global.db.data.chats[m.chat] || {};
 
+            // OFF
             if (!chat.antiLink) return;
+
+            const linkRegex = /chat\.whatsapp\.com/i;
+            const channelRegex = /whatsapp\.com\/channel/i;
+
+            if (!linkRegex.test(m.text) && !channelRegex.test(m.text)) return;
 
             const user = m.sender;
 
-            const isGroupLink = linkRegex.test(m.text);
-            const isChannelLink = channelLinkRegex.test(m.text);
+            // permisos
+            const isAdmin = m.isAdmin || false;
+            const isOwner = m.isOwner || false;
 
-            if (!isGroupLink && !isChannelLink) return;
+            if (isAdmin || isOwner) return;
 
-            if (isAdmin || isOwner || isROwner) return;
-
-            if (!isBotAdmin) {
+            // bot admin check
+            if (!m.isBotAdmin) {
                 return conn.reply(m.chat, '⚠️ Necesito ser admin para anti-link', m);
             }
 
+            // warns
             chat.warn = chat.warn || {};
-            chat.warn[user] = chat.warn[user] || 0;
+            chat.warn[user] = (chat.warn[user] || 0) + 1;
 
-            try {
-                const code = await conn.groupInviteCode(m.chat);
-                const myLink = `https://chat.whatsapp.com/${code}`;
-                if (m.text.includes(myLink)) return;
-            } catch {}
+            const warns = chat.warn[user];
 
             await conn.sendMessage(m.chat, { delete: m.key }).catch(() => {});
 
-            chat.warn[user]++;
-
-            if (chat.warn[user] < 2) {
+            if (warns < 2) {
                 return conn.sendMessage(m.chat, {
-                    text: `⚠️ *ANTILINK*\n\n@${user.split('@')[0]} advertencia ${chat.warn[user]}/2`,
+                    text: `⚠️ *ANTILINK*\n\n@${user.split('@')[0]} advertencia ${warns}/2`,
                     mentions: [user]
                 });
             }
@@ -65,6 +63,6 @@ const antilink = {
         }
 
     }
-}
+};
 
 export default antilink;
