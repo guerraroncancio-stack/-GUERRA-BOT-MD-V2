@@ -1,174 +1,381 @@
 const antiPrivateCommand = {
 
     name: 'antiprivado',
-    alias: ['antipriv', 'privado', 'bloqueados', 'unblock', 'desbloquear'],
+
+    alias: [
+        'antipriv',
+        'privado',
+        'listblock',
+        'bloqueados',
+        'unblock',
+        'desbloquear'
+    ],
+
     category: 'owner',
 
-    // =========================
-    // 🔥 UTILITIES
-    // =========================
+    // =========================================
+    // 🔥 BEFORE
+    // =========================================
 
-    getOwners(conn) {
-        const a = global.owner || []
-        const b = a.map(v => v[0] + '@s.whatsapp.net')
-        const c = conn.user?.id ? [conn.user.id] : []
-        return [...new Set([...b, ...c])]
-    },
-
-    isValidJid(jid = '') {
-        return typeof jid === 'string' && jid.endsWith('@s.whatsapp.net')
-    },
-
-    // =========================
-    // 🔥 BEFORE (ANTI PRIVADO)
-    // =========================
-
-    async before(m, { conn }) {
+    async before(m, { conn, isOwner, isROwner }) {
 
         try {
 
-            if (!m.message) return
-            if (m.isGroup) return
-            if (m.chat === 'status@broadcast') return
+            if (!m.message) return false;
+            if (m.isGroup) return false;
+            if (m.fromMe) return false;
+            if (m.key?.fromMe) return false;
+            if (m.chat === 'status@broadcast') return false;
 
-            const jid = m.sender
+            // OWNER SI PUEDE
+            if (isOwner || isROwner) return false;
 
-            // ❌ SOLO JIDS REALES
-            if (!this.isValidJid(jid)) return
+            // =========================================
+            // DATABASE
+            // =========================================
 
-            const owners = this.getOwners(conn)
+            global.db.data = global.db.data || {};
+            global.db.data.settings = global.db.data.settings || {};
 
-            // ❌ OWNER NO TOCAR
-            if (owners.includes(jid)) return
+            const botNumber =
+                conn.user?.jid || conn.user?.id;
 
-            global.db.data = global.db.data || {}
-            global.db.data.settings = global.db.data.settings || {}
+            if (!global.db.data.settings[botNumber]) {
 
-            const botId = conn.user?.id || 'default'
-
-            if (!global.db.data.settings[botId]) {
-                global.db.data.settings[botId] = {
+                global.db.data.settings[botNumber] = {
                     antiPrivate: true,
                     blockedUsers: []
-                }
+                };
+
             }
 
-            const settings = global.db.data.settings[botId]
+            const settings =
+                global.db.data.settings[botNumber];
 
-            if (!settings.antiPrivate) return
+            // APAGADO
+            if (!settings.antiPrivate)
+                return false;
 
-            // ❌ EVITAR DUPLICADOS
-            if (!settings.blockedUsers.includes(jid)) {
-                settings.blockedUsers.push(jid)
+            // =========================================
+            // GUARDAR BLOQUEADO
+            // =========================================
+
+            if (
+                !settings.blockedUsers.includes(
+                    m.sender
+                )
+            ) {
+
+                settings.blockedUsers.push(
+                    m.sender
+                );
+
             }
 
-            await conn.sendMessage(m.chat, {
-                text:
-`╭━━〔 🚫 ANTI PRIVADO PRO MAX 🚫 〕━━⬣
+            // =========================================
+            // MENSAJE
+            // =========================================
+
+            await conn.sendMessage(
+                m.chat,
+                {
+                    text:
+`╭━━〔 🚫 ANTI PRIVADO 🚫 〕━━⬣
 ┃
-┃ ❌ Este bot no recibe mensajes
-┃ en privado.
+┃ ❌ No puedes escribir
+┃ al privado del bot.
 ┃
-┃ 👑 Solo el owner puede usarlo.
+┃ 👑 Solo el owner
+┃ tiene acceso.
 ┃
-┃ 🚷 Serás bloqueado automáticamente.
+┃ 🚷 Serás bloqueado.
+┃
 ╰━━━━━━━━━━━━━━━━━━⬣`
-            }, { quoted: m })
+                },
+                { quoted: m }
+            );
 
-            await new Promise(r => setTimeout(r, 1000))
+            // ESPERA
+            await new Promise(resolve =>
+                setTimeout(resolve, 1500)
+            );
 
-            await conn.updateBlockStatus(jid, 'block').catch(() => {})
+            // BLOQUEAR
+            await conn.updateBlockStatus(
+                m.sender,
+                'block'
+            );
+
+            // BORRAR CHAT
+            if (conn.chatModify) {
+
+                await conn.chatModify(
+                    {
+                        delete: true,
+                        lastMessages: []
+                    },
+                    m.chat
+                ).catch(() => {});
+
+            }
 
         } catch (e) {
-            console.log('[ ANTIPRIVADO ERROR ]', e)
+
+            console.log(
+                '[ ANTIPRIVADO ERROR ]',
+                e
+            );
+
         }
 
-        return false
+        return false;
+
     },
 
-    // =========================
-    // 🔥 RUN (CONTROL PANEL)
-    // =========================
+    // =========================================
+    // 🔥 RUN
+    // =========================================
 
     async run(m, { conn, args, command }) {
 
-        const owners = this.getOwners(conn)
+        try {
 
-        if (!owners.includes(m.sender)) {
-            return m.reply('❌ Solo owner.')
-        }
+            global.db.data = global.db.data || {};
+            global.db.data.settings = global.db.data.settings || {};
 
-        global.db.data = global.db.data || {}
-        global.db.data.settings = global.db.data.settings || {}
+            const botNumber =
+                conn.user?.jid || conn.user?.id;
 
-        const botId = conn.user?.id || 'default'
+            if (!global.db.data.settings[botNumber]) {
 
-        if (!global.db.data.settings[botId]) {
-            global.db.data.settings[botId] = {
-                antiPrivate: true,
-                blockedUsers: []
-            }
-        }
+                global.db.data.settings[botNumber] = {
+                    antiPrivate: true,
+                    blockedUsers: []
+                };
 
-        const settings = global.db.data.settings[botId]
-
-        const option = (args[0] || '').toLowerCase()
-
-        // =========================
-        // ON / OFF
-        // =========================
-
-        if (option === 'on') {
-            settings.antiPrivate = true
-            return m.reply('🚫 AntiPrivado ACTIVADO')
-        }
-
-        if (option === 'off') {
-            settings.antiPrivate = false
-            return m.reply('🚫 AntiPrivado DESACTIVADO')
-        }
-
-        // =========================
-        // LISTA
-        // =========================
-
-        if (command === 'bloqueados') {
-
-            const list = settings.blockedUsers || []
-
-            if (!list.length) return m.reply('📭 No hay bloqueados.')
-
-            let txt = `🚫 *USUARIOS BLOQUEADOS*\n\n`
-
-            for (let u of list) {
-                txt += `• wa.me/${u.split('@')[0]}\n`
             }
 
-            return m.reply(txt)
+            const settings =
+                global.db.data.settings[botNumber];
+
+            // =========================================
+            // ON / OFF
+            // =========================================
+
+            if (
+                command === 'antiprivado' ||
+                command === 'antipriv' ||
+                command === 'privado'
+            ) {
+
+                const option =
+                    (args[0] || '').toLowerCase();
+
+                // ON
+                if (option === 'on') {
+
+                    settings.antiPrivate = true;
+
+                    return conn.sendMessage(
+                        m.chat,
+                        {
+                            text:
+`╭━━〔 🚫 ANTI PRIVADO 🚫 〕━━⬣
+┃
+┃ ✅ Sistema activado.
+┃
+┃ El bot bloqueará
+┃ automáticamente
+┃ los privados.
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+                        },
+                        { quoted: m }
+                    );
+
+                }
+
+                // OFF
+                if (option === 'off') {
+
+                    settings.antiPrivate = false;
+
+                    return conn.sendMessage(
+                        m.chat,
+                        {
+                            text:
+`╭━━〔 🚫 ANTI PRIVADO 🚫 〕━━⬣
+┃
+┃ ❌ Sistema desactivado.
+┃
+┃ El bot ya no
+┃ bloqueará privados.
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+                        },
+                        { quoted: m }
+                    );
+
+                }
+
+                // USO
+                return conn.sendMessage(
+                    m.chat,
+                    {
+                        text:
+`╭━━〔 🚫 ANTI PRIVADO 🚫 〕━━⬣
+┃
+┃ Uso:
+┃ ➥ .antiprivado on
+┃ ➥ .antiprivado off
+┃ ➥ .bloqueados
+┃ ➥ .desbloquear numero
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+                    },
+                    { quoted: m }
+                );
+
+            }
+
+            // =========================================
+            // 📋 LISTA BLOQUEADOS
+            // =========================================
+
+            if (
+                command === 'listblock' ||
+                command === 'bloqueados'
+            ) {
+
+                const blocked =
+                    settings.blockedUsers || [];
+
+                if (!blocked.length) {
+
+                    return conn.sendMessage(
+                        m.chat,
+                        {
+                            text:
+`╭━━〔 🚫 BLOQUEADOS 🚫 〕━━⬣
+┃
+┃ No hay usuarios
+┃ bloqueados.
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+                        },
+                        { quoted: m }
+                    );
+
+                }
+
+                let txt =
+`╭━━〔 🚫 LISTA BLOQUEADOS 🚫 〕━━⬣\n┃\n`;
+
+                blocked.forEach((user, i) => {
+
+                    txt +=
+`┃ ${i + 1}. wa.me/${user.split('@')[0]}\n`;
+
+                });
+
+                txt +=
+`┃\n╰━━━━━━━━━━━━━━━━━━⬣`;
+
+                return conn.sendMessage(
+                    m.chat,
+                    {
+                        text: txt
+                    },
+                    { quoted: m }
+                );
+
+            }
+
+            // =========================================
+            // 🔓 DESBLOQUEAR
+            // =========================================
+
+            if (
+                command === 'unblock' ||
+                command === 'desbloquear'
+            ) {
+
+                let number =
+                    args[0] ||
+                    (
+                        m.quoted?.sender
+                        ? m.quoted.sender.split('@')[0]
+                        : null
+                    );
+
+                if (!number) {
+
+                    return conn.sendMessage(
+                        m.chat,
+                        {
+                            text:
+`╭━━〔 🔓 DESBLOQUEAR 🔓 〕━━⬣
+┃
+┃ Uso:
+┃ ➥ .desbloquear 573xx
+┃
+┃ O responde un mensaje.
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+                        },
+                        { quoted: m }
+                    );
+
+                }
+
+                number =
+                    number.replace(/[^0-9]/g, '');
+
+                const jid =
+                    number + '@s.whatsapp.net';
+
+                // DESBLOQUEAR
+                await conn.updateBlockStatus(
+                    jid,
+                    'unblock'
+                );
+
+                // ELIMINAR DE LISTA
+                settings.blockedUsers =
+                    settings.blockedUsers.filter(
+                        v => v !== jid
+                    );
+
+                return conn.sendMessage(
+                    m.chat,
+                    {
+                        text:
+`╭━━〔 🔓 DESBLOQUEADO 🔓 〕━━⬣
+┃
+┃ ✅ Usuario desbloqueado:
+┃ ➥ wa.me/${number}
+┃
+┃ ⚠️ Si vuelve a escribir
+┃ será bloqueado otra vez.
+┃
+╰━━━━━━━━━━━━━━━━━━⬣`
+                    },
+                    { quoted: m }
+                );
+
+            }
+
+        } catch (e) {
+
+            console.log(
+                '[ ANTIPRIVADO ERROR ]',
+                e
+            );
+
         }
 
-        // =========================
-        // UNBLOCK
-        // =========================
-
-        if (command === 'unblock' || command === 'desbloquear') {
-
-            let num = args[0] ||
-                (m.quoted?.sender ? m.quoted.sender.split('@')[0] : null)
-
-            if (!num) return m.reply('Uso: .desbloquear 57xxx')
-
-            num = num.replace(/[^0-9]/g, '')
-            const jid = num + '@s.whatsapp.net'
-
-            await conn.updateBlockStatus(jid, 'unblock').catch(() => {})
-
-            settings.blockedUsers =
-                settings.blockedUsers.filter(v => v !== jid)
-
-            return m.reply(`🔓 Desbloqueado: ${num}`)
-        }
     }
-}
 
-export default antiPrivateCommand
+};
+
+export default antiPrivateCommand;
