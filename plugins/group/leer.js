@@ -1,4 +1,7 @@
-import fetch from 'node-fetch'
+import edgeTTS from 'edge-tts'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 
 const leer = {
     name: 'leer',
@@ -6,6 +9,7 @@ const leer = {
     category: 'tools',
 
     async run(m, { conn, text }) {
+
         const contenido = text || m.quoted?.text
 
         if (!contenido) {
@@ -13,34 +17,41 @@ const leer = {
         }
 
         try {
+
             await m.react('🎙️')
 
-            const url = `https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=${encodeURIComponent(contenido)}`
+            const file = path.join(
+                os.tmpdir(),
+                `tts_${Date.now()}.mp3`
+            )
 
-            const response = await fetch(url)
+            await edgeTTS.save({
+                text: contenido,
+                voice: 'es-ES-AlvaroNeural',
+                file
+            })
 
-            if (!response.ok) {
-                return m.reply(`❌ StreamElements respondió ${response.status}`)
-            }
-
-            const audio = Buffer.from(await response.arrayBuffer())
+            const audio = fs.readFileSync(file)
 
             await conn.sendMessage(
                 m.chat,
                 {
                     audio,
-                    mimetype: 'audio/mp4',
+                    mimetype: 'audio/mpeg',
                     ptt: true
                 },
                 { quoted: m }
             )
 
+            fs.unlinkSync(file)
+
             await m.react('✅')
 
         } catch (e) {
+
             console.error(e)
             await m.react('❌')
-            m.reply('❌ Error al generar la voz.')
+            m.reply(`❌ Error:\n${e.message}`)
         }
     }
 }
