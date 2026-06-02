@@ -90,6 +90,7 @@ ${format(B, maxB)}
 // =========================
 function register(conn) {
 
+    if (reactionRegistered) return
     reactionRegistered = true
 
     conn.ev.on('messages.upsert', async ({ messages }) => {
@@ -107,7 +108,7 @@ function register(conn) {
 
             if (!user) continue
 
-            // admin reset
+            // ❌ RESET SOLO HOST
             if (emoji === '❌' && user === data.host) {
                 delete vsData[id]
                 await conn.sendMessage(data.chat, {
@@ -116,7 +117,9 @@ function register(conn) {
                 continue
             }
 
-            // remove user first
+            // =========================
+            // LIMPIAR USUARIO ANTES
+            // =========================
             data.teamA = data.teamA.filter(x => x !== user)
             data.teamB = data.teamB.filter(x => x !== user)
 
@@ -130,14 +133,30 @@ function register(conn) {
                 if (data.teamB.length < max.b) data.teamB.push(user)
             }
 
-            // update message
-            const newMsg = await conn.sendMessage(data.chat, {
-                text: render(data.mode, data.teamA, data.teamB),
-                mentions: [...data.teamA, ...data.teamB]
-            })
+            if (emoji === '👎') {
+                // solo salir
+            }
 
-            delete vsData[id]
-            vsData[newMsg.key.id] = data
+            // =========================
+            // 🔥 EDITAR MISMO MENSAJE (CLAVE)
+            // =========================
+            const newText = render(data.mode, data.teamA, data.teamB)
+
+            try {
+                await conn.sendMessage(data.chat, {
+                    text: newText,
+                    edit: msg.message.reactionMessage.key
+                })
+            } catch (err) {
+                // fallback seguro (solo si edit falla)
+                const sent = await conn.sendMessage(data.chat, {
+                    text: newText,
+                    mentions: [...data.teamA, ...data.teamB]
+                })
+
+                delete vsData[id]
+                vsData[sent.key.id] = data
+            }
         }
     })
 }
