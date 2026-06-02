@@ -5,101 +5,123 @@ const scrim = {
     alias: ['torneo', 'match', 'custom'],
     category: 'games',
 
-    run: async (m, { conn, text, command }) => {
+    run: async (m, { conn, text }) => {
 
         const chat = m.chat
+        const cmd = (text || '').toLowerCase()
 
         scrims[chat] = scrims[chat] || {
             active: false,
             players: [],
-            host: m.sender
+            host: null,
+            limit: 0
         }
 
         const data = scrims[chat]
 
-        const sub = (text || '').toLowerCase()
+        const jid = m.sender
 
         // =========================
-        // INICIAR SCRIM
+        // START SCRIM
         // =========================
-        if (sub === 'start') {
-            if (data.active) return m.reply('⚠️ Ya hay un scrim activo.')
+        if (cmd.startsWith('start')) {
+
+            if (data.active) return m.reply('⚠️ Ya hay una scrim activa.')
+
+            const limit = parseInt(cmd.split(' ')[1]) || 4 // default 4 jugadores
 
             data.active = true
             data.players = []
+            data.host = jid
+            data.limit = limit
 
             return conn.sendMessage(chat, {
-                text: `🎮 *SCRIM INICIADA*
+                text: `🎮 *SCRIM ABIERTA*
 
-📢 Host: @${m.sender.split('@')[0]}
-🔥 Estado: ABIERTA
-📌 Escribe *.scrim join* para entrar`,
-                mentions: [m.sender]
+👑 Host: @${jid.split('@')[0]}
+👥 Límite: ${limit} jugadores
+
+📌 Usa:
+.scrim join → para entrar
+.scrim list → ver jugadores`,
+                mentions: [jid]
             }, { quoted: m })
         }
 
         // =========================
-        // UNIRSE
+        // JOIN
         // =========================
-        if (sub === 'join') {
+        if (cmd === 'join') {
+
             if (!data.active) return m.reply('❌ No hay scrim activa.')
 
-            if (data.players.includes(m.sender)) {
+            if (data.players.includes(jid)) {
                 return m.reply('⚠️ Ya estás registrado.')
             }
 
-            data.players.push(m.sender)
+            if (data.players.length >= data.limit) {
+                return m.reply('🚫 Scrim llena.')
+            }
+
+            data.players.push(jid)
 
             return conn.sendMessage(chat, {
-                text: `✅ @${m.sender.split('@')[0]} se unió a la scrim`,
-                mentions: [m.sender]
+                text: `✅ @${jid.split('@')[0]} se registró
+👥 ${data.players.length}/${data.limit}`,
+                mentions: [jid]
             }, { quoted: m })
         }
 
         // =========================
-        // LISTA
+        // LIST
         // =========================
-        if (sub === 'list') {
+        if (cmd === 'list') {
+
             if (!data.active) return m.reply('❌ No hay scrim activa.')
 
-            let list = `🎮 *SCRIM PLAYERS*\n\n`
+            let txt = `🎮 *SCRIM LOBBY*\n\n`
+            txt += `👑 Host: @${data.host.split('@')[0]}\n`
+            txt += `👥 Jugadores: ${data.players.length}/${data.limit}\n\n`
+            txt += `📋 *REGISTRADOS:*\n\n`
 
-            data.players.forEach((p, i) => {
-                list += `#${i + 1} @${p.split('@')[0]}\n`
-            })
+            if (!data.players.length) {
+                txt += `— Aún no hay jugadores`
+            } else {
+                data.players.forEach((p, i) => {
+                    txt += `#${i + 1} @${p.split('@')[0]}\n`
+                })
+            }
 
             return conn.sendMessage(chat, {
-                text: list,
-                mentions: data.players
+                text: txt,
+                mentions: [data.host, ...data.players]
             }, { quoted: m })
         }
 
         // =========================
-        // FINALIZAR
+        // END SCRIM
         // =========================
-        if (sub === 'end') {
+        if (cmd === 'end') {
+
             if (!data.active) return m.reply('❌ No hay scrim activa.')
 
-            if (m.sender !== data.host) {
+            if (jid !== data.host) {
                 return m.reply('⚠️ Solo el host puede cerrar la scrim.')
             }
 
-            if (!data.players.length) {
-                data.active = false
-                return m.reply('❌ No hubo participantes.')
-            }
-
-            const winner = data.players[Math.floor(Math.random() * data.players.length)]
-
             data.active = false
+
+            const winner = data.players.length
+                ? data.players[Math.floor(Math.random() * data.players.length)]
+                : null
 
             return conn.sendMessage(chat, {
                 text: `🏆 *SCRIM FINALIZADA*
 
-👑 Ganador: @${winner.split('@')[0]}
-
-🔥 Participantes: ${data.players.length}`,
-                mentions: data.players
+👑 Host: @${data.host.split('@')[0]}
+🎮 Participantes: ${data.players.length}/${data.limit}
+${winner ? `\n🥇 Ganador random: @${winner.split('@')[0]}` : ''}`,
+                mentions: [data.host, ...data.players]
             }, { quoted: m })
         }
 
@@ -107,11 +129,11 @@ const scrim = {
         // HELP
         // =========================
         return m.reply(`
-🎮 *SCRIM SYSTEM*
+🎮 *SCRIM PRO*
 
-.scrim start → iniciar
-.scrim join → entrar
-.scrim list → ver jugadores
+.scrim start <limite> → iniciar (ej: start 8)
+.scrim join → registrarse
+.scrim list → ver lobby
 .scrim end → finalizar (host)
         `)
     }
