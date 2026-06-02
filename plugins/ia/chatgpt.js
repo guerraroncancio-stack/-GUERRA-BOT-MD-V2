@@ -100,7 +100,7 @@ if (creatorQuestions.some(v => lowerText.includes(v))) {
             const timeout =
             setTimeout(() => {
                 controller.abort()
-            }, 30000)
+            }, 60000)
 
 const prompt = `
 Eres GUERRA IA, una inteligencia artificial avanzada creada por Kevin Guerra.
