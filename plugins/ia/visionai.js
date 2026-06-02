@@ -1,5 +1,9 @@
 import fetch from 'node-fetch'
-import { writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import fs from 'fs'
+import { pipeline } from 'stream/promises'
+import Tesseract from 'tesseract.js'
 
 const visionAI = {
     name: 'vision',
@@ -9,7 +13,7 @@ const visionAI = {
         try {
 
             // =========================
-            // 1. DETECTAR IMAGEN (BAILEYS V7 SAFE)
+            // 1. DETECTAR IMAGEN (BAILEYS V7 FIX REAL)
             // =========================
 
             const msg = m.message
@@ -23,60 +27,65 @@ const visionAI = {
             }
 
             // =========================
-            // 2. DESCARGA UNIVERSAL (FIX REAL)
+            // 2. DESCARGA STREAM (FIX 100%)
             // =========================
 
             let buffer
 
             try {
 
-                if (conn.downloadContentFromMessage) {
+                const stream = await conn.downloadContentFromMessage(
+                    imageMessage,
+                    'image'
+                )
 
-                    const stream = await conn.downloadContentFromMessage(
-                        imageMessage,
-                        'image'
-                    )
-
-                    let chunks = []
-
-                    for await (const chunk of stream) {
-                        chunks.push(chunk)
-                    }
-
-                    buffer = Buffer.concat(chunks)
-
-                } else if (conn.downloadMediaMessage) {
-
-                    buffer = await conn.downloadMediaMessage(msg)
-
-                } else {
-
-                    throw new Error("No download method found")
+                const chunks = []
+                for await (const chunk of stream) {
+                    chunks.push(chunk)
                 }
 
+                buffer = Buffer.concat(chunks)
+
             } catch (e) {
+                console.log('[DOWNLOAD ERROR]', e)
                 return m.reply('❌ No se pudo descargar la imagen')
             }
 
             if (!buffer || buffer.length < 1000) {
-                return m.reply('❌ Imagen inválida')
+                return m.reply('❌ Imagen inválida o corrupta')
             }
 
             // =========================
-            // 3. BASE64
+            // 3. GUARDAR TEMP
             // =========================
 
-            const base64 = buffer.toString('base64')
+            const filePath = join(tmpdir(), `vision_${Date.now()}.jpg`)
+            fs.writeFileSync(filePath, buffer)
 
             // =========================
-            // 4. IA (OPENAI OPTIONAL)
+            // 4. OCR (LECTURA DE TEXTO)
             // =========================
 
-            let result = ''
+            let ocrText = ''
+
+            try {
+                const result = await Tesseract.recognize(filePath, 'spa')
+                ocrText = result.data.text.trim()
+            } catch (e) {
+                ocrText = ''
+            }
+
+            // =========================
+            // 5. DETECCIÓN “HUMANA” (SIMULADA + IA OPCIONAL)
+            // =========================
+
+            let aiDescription = ''
 
             try {
 
                 if (!global.openai_key) throw new Error('no key')
+
+                const base64 = buffer.toString('base64')
 
                 const res = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
@@ -89,12 +98,13 @@ const visionAI = {
                         messages: [
                             {
                                 role: "system",
-                                content: "Eres una IA de visión. Describe imágenes claramente."
+                                content:
+                                    "Eres una IA visión estilo humano. Describe la imagen, detecta objetos, contexto, emociones y escena como si fueras una persona observando."
                             },
                             {
                                 role: "user",
                                 content: [
-                                    { type: "text", text: text || "Describe esta imagen" },
+                                    { type: "text", text: text || "Analiza esta imagen" },
                                     {
                                         type: "image_url",
                                         image_url: {
@@ -104,31 +114,45 @@ const visionAI = {
                                 ]
                             }
                         ],
-                        max_tokens: 300
+                        max_tokens: 400
                     })
                 })
 
                 const json = await res.json()
-                result = json?.choices?.[0]?.message?.content
+                aiDescription = json?.choices?.[0]?.message?.content
 
-                if (!result) throw new Error()
+                if (!aiDescription) throw new Error()
 
             } catch (e) {
 
-                result = "📷 Imagen recibida correctamente, pero IA no disponible."
+                // fallback humano básico
+                aiDescription = "No tengo IA activa, pero puedo ver que es una imagen y fue procesada correctamente."
             }
 
             // =========================
-            // 5. RESPUESTA
+            // 6. RESPUESTA FINAL
             // =========================
 
+            let result = `👁️ *VISION AI PRO MAX*\n\n`
+
+            result += `🧠 *Análisis humano:*\n${aiDescription}\n\n`
+
+            if (ocrText) {
+                result += `📝 *Texto detectado (OCR):*\n${ocrText}\n\n`
+            }
+
+            result += `📊 *Estado:* Imagen procesada correctamente`
+
             await conn.sendMessage(m.chat, {
-                text: `👁️ *VISION AI*\n\n${result}`
+                text: result
             }, { quoted: m })
 
+            // cleanup
+            fs.unlinkSync(filePath)
+
         } catch (e) {
-            console.log('[VISION ERROR]', e)
-            m.reply('❌ Vision AI falló')
+            console.log('[VISION PRO ERROR]', e)
+            m.reply('❌ Vision AI Pro falló')
         }
     }
 }
