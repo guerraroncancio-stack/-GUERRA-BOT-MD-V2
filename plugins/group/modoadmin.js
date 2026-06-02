@@ -1,28 +1,63 @@
-async function onMessage(m, conn) {
+export async function modoadmin(m, conn, opts = {}) {
 
-    // 🔐 AQUÍ VA EL MODO ADMIN
-    const chat = global.db.data.chats[m.chat] || {}
+    try {
 
-    if (m.isGroup && chat.modoadmin) {
+        if (!m.isGroup) return;
 
-        const group = await conn.groupMetadata(m.chat).catch(() => null)
-        const participants = group?.participants || []
+        const {
+            isAdmin,
+            isBotAdmin,
+            isOwner,
+            isROwner
+        } = opts;
 
-        const isAdmin = participants.some(p =>
-            p.id === m.sender &&
-            (p.admin === 'admin' || p.admin === 'superadmin')
-        )
+        // =========================
+        // DB SAFE INIT
+        // =========================
 
-        const isOwner = global.owner?.includes(m.sender)
+        global.db.data = global.db.data || {};
+        global.db.data.chats = global.db.data.chats || {};
 
-        if (!isAdmin && !isOwner) {
+        const chat = global.db.data.chats[m.chat] = global.db.data.chats[m.chat] || {};
+
+        const adminMode = chat.modoadmin === true;
+
+        if (!adminMode) return;
+
+        // =========================
+        // PERMISOS GLOBALES
+        // =========================
+
+        if (isOwner || isROwner) return;
+        if (isAdmin) return;
+
+        if (!isBotAdmin) return;
+
+        // =========================
+        // FILTRO INTELIGENTE
+        // =========================
+
+        const text = m.text || ''
+
+        // no bloquear comandos
+        if (text.startsWith(global.prefix || '.')) return;
+
+        // =========================
+        // ACCIÓN
+        // =========================
+
+        await conn.sendMessage(m.chat, {
+            text: `🚫 *MODO ADMIN ACTIVADO*\n\nSolo administradores pueden escribir en este grupo.`
+        }, { quoted: m })
+
+        // borrar mensaje si es posible
+        try {
             await conn.sendMessage(m.chat, {
-                text: `🔐 MODO ADMIN ACTIVADO`,
-                mentions: [m.sender]
+                delete: m.key
             })
-            return
-        }
-    }
+        } catch {}
 
-    // 👉 aquí sigue TODO tu bot normal
+    } catch (e) {
+        console.log('[MODADMIN ERROR]', e)
+    }
 }
