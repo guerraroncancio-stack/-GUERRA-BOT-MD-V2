@@ -1,92 +1,165 @@
+const vsclan = global.vsclan = global.vsclan || {}
+
 const vs = {
     name: 'vs',
-    alias: ['versus', 'fight', '1v1'],
+    alias: ['clanvs', 'war', 'guerra'],
     category: 'games',
 
     run: async (m, { conn, text }) => {
 
-        const jid = (id) => {
-            if (!id) return null
-            if (typeof id !== 'string') return null
-            if (!id.includes('@s.whatsapp.net')) return null
-            return id
+        const chat = m.chat
+        const jid = m.sender
+
+        vsclan[chat] = vsclan[chat] || {
+            active: false,
+            playersA: [],
+            playersB: [],
+            host: null,
+            limit: 4,
+            msgKey: null,
+            stage: 'wait'
         }
 
-        const user1 = jid(m.sender)
+        const data = vsclan[chat]
 
-        let user2 =
-            m.mentionedJid?.[0] ||
-            m.quoted?.sender ||
-            (text ? text.replace(/[^0-9]/g, '') + '@s.whatsapp.net' : null)
+        const cmd = (text || '').toLowerCase()
 
-        user2 = jid(user2)
+        // =========================
+        // START VS
+        // =========================
+        if (cmd.startsWith('start')) {
 
-        if (!user2 || user2 === user1) {
-            return m.reply('⚔️ Uso:\n.vs @usuario o responde a alguien')
+            if (data.active) return m.reply('⚠️ Ya hay una guerra activa.')
+
+            const limit = parseInt(cmd.split(' ')[1]) || 4
+
+            data.active = true
+            data.host = jid
+            data.limit = limit
+            data.playersA = []
+            data.playersB = []
+            data.stage = 'joinA'
+
+            const msg = await conn.sendMessage(chat, {
+                text: `
+⚔️ *VS CLAN INICIADO*
+
+👑 Host: @${jid.split('@')[0]}
+📊 Límite por equipo: ${limit}
+
+🅰️ EQUIPO A: REACCIONA ⚔️ PARA ENTRAR
+
+📌 Reacciona al mensaje para unirte al Equipo A
+                `,
+                mentions: [jid]
+            }, { quoted: m })
+
+            data.msgKey = msg.key
+
+            return
         }
 
-        const name1 = user1.split('@')[0]
-        const name2 = user2.split('@')[0]
+        // =========================
+        // JOIN MANUAL (fallback)
+        // =========================
+        if (cmd === 'join') {
+
+            if (!data.active) return m.reply('❌ No hay guerra activa.')
+
+            if (data.playersA.includes(jid) || data.playersB.includes(jid)) {
+                return m.reply('⚠️ Ya estás registrado.')
+            }
+
+            if (data.stage === 'joinA') {
+
+                if (data.playersA.length >= data.limit) {
+                    data.stage = 'joinB'
+                    return m.reply('🅰️ Equipo A lleno. Ahora Equipo B.')
+                }
+
+                data.playersA.push(jid)
+
+            } else {
+
+                if (data.playersB.length >= data.limit) {
+                    return m.reply('🚫 Ambos equipos llenos.')
+                }
+
+                data.playersB.push(jid)
+            }
+
+            return conn.sendMessage(chat, {
+                text: `⚔️ @${jid.split('@')[0]} se unió al VS`,
+                mentions: [jid]
+            }, { quoted: m })
+        }
 
         // =========================
-        // STATS INICIALES
+        // LISTA
         // =========================
-        let hp1 = 100
-        let hp2 = 100
+        if (cmd === 'list') {
 
-        let msg = `
-⚔️ *VERSUS INICIADO*
+            if (!data.active) return m.reply('❌ No hay guerra activa.')
 
-👤 @${name1} VS @${name2}
+            let txt = `
+⚔️ *VS CLAN LOBBY*
 
-🔥 ¡La batalla comienza!
+🅰️ Equipo A (${data.playersA.length}/${data.limit})
+${data.playersA.map((p, i) => `#${i + 1} @${p.split('@')[0]}`).join('\n') || '— vacío'}
+
+\n🅱️ Equipo B (${data.playersB.length}/${data.limit})
+${data.playersB.map((p, i) => `#${i + 1} @${p.split('@')[0]}`).join('\n') || '— vacío'}
 `
 
-        await conn.sendMessage(m.chat, {
-            text: msg,
-            mentions: [user1, user2]
-        }, { quoted: m })
-
-        // =========================
-        // SIMULACIÓN DE PELEA
-        // =========================
-        while (hp1 > 0 && hp2 > 0) {
-
-            await new Promise(r => setTimeout(r, 900))
-
-            const damage1 = Math.floor(Math.random() * 20) + 5
-            const damage2 = Math.floor(Math.random() * 20) + 5
-
-            hp1 -= damage1
-            hp2 -= damage2
-
-            if (hp1 < 0) hp1 = 0
-            if (hp2 < 0) hp2 = 0
+            return conn.sendMessage(chat, {
+                text: txt,
+                mentions: [...data.playersA, ...data.playersB]
+            }, { quoted: m })
         }
 
         // =========================
-        // RESULTADO
+        // END
         // =========================
-        const winner = hp1 > hp2 ? user1 : user2
-        const loser = hp1 > hp2 ? user2 : user1
+        if (cmd === 'end') {
 
-        const result = `
-🏆 *RESULTADO VS*
+            if (!data.active) return m.reply('❌ No hay guerra activa.')
+            if (jid !== data.host) return m.reply('⚠️ Solo el host puede finalizar.')
 
-🥇 Ganador: @${winner.split('@')[0]}
-💀 Perdedor: @${loser.split('@')[0]}
+            const allA = data.playersA
+            const allB = data.playersB
 
-📊 HP final:
-- @${name1}: ${hp1}
-- @${name2}: ${hp2}
+            const winnerTeam = Math.random() < 0.5 ? 'A' : 'B'
+            const winners = winnerTeam === 'A' ? allA : allB
 
-🔥 ¡Batalla terminada!
-`
+            data.active = false
 
-        await conn.sendMessage(m.chat, {
-            text: result,
-            mentions: [user1, user2]
-        }, { quoted: m })
+            return conn.sendMessage(chat, {
+                text: `
+🏆 *RESULTADO VS CLAN*
+
+🥇 Ganador: Equipo ${winnerTeam}
+
+🅰️ A: ${allA.length} jugadores
+🅱️ B: ${allB.length} jugadores
+
+🔥 Ganadores:
+${winners.map(p => `@${p.split('@')[0]}`).join('\n')}
+                `,
+                mentions: [...allA, ...allB]
+            }, { quoted: m })
+        }
+
+        // =========================
+        // HELP
+        // =========================
+        return m.reply(`
+⚔️ *VS CLAN SYSTEM*
+
+.vs start <limite> → iniciar
+.vs join → entrar manual
+.vs list → ver equipos
+.vs end → finalizar
+        `)
     }
 }
 
