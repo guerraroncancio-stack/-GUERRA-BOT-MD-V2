@@ -20,13 +20,8 @@ const vs = {
         const mode = (text || '').toLowerCase()
 
         if (!limits[mode]) {
-            return m.reply(`⚔️ Usa:
-.vs 1vs1
-.vs 2vs2
-.vs 4vs4`)
+            return m.reply(`⚔️ Usa:\n.vs 1vs1\n.vs 2vs2\n.vs 4vs4`)
         }
-
-        const limit = limits[mode]
 
         const data = {
             chat,
@@ -34,8 +29,8 @@ const vs = {
             host: m.sender,
             teamA: [],
             teamB: [],
-            msgId: null,
-            active: true
+            active: true,
+            msgKey: null // 🔥 CLAVE REAL
         }
 
         const msg = await conn.sendMessage(chat, {
@@ -43,7 +38,9 @@ const vs = {
             mentions: []
         }, { quoted: m })
 
-        data.msgId = msg.key.id
+        // 🔥 GUARDAMOS EL MENSAJE REAL
+        data.msgKey = msg.key
+
         vsData[msg.key.id] = data
     }
 }
@@ -55,6 +52,9 @@ export default vs
 // =========================
 function render(mode, A, B) {
 
+    const maxA = mode === '1vs1' ? 1 : mode === '2vs2' ? 2 : 4
+    const maxB = maxA
+
     const format = (arr, max) => {
         let out = ''
         for (let i = 0; i < max; i++) {
@@ -65,9 +65,6 @@ function render(mode, A, B) {
         return out
     }
 
-    const maxA = mode === '1vs1' ? 1 : mode === '2vs2' ? 2 : 4
-    const maxB = maxA
-
     return `
 ⚔️ *VS ${mode.toUpperCase()}*
 
@@ -77,16 +74,12 @@ ${format(A, maxA)}
 🅱️ EQUIPO B
 ${format(B, maxB)}
 
-📌 Reacciona:
-❤️ = Equipo A
-👍 = Equipo B
-👎 = salir
-❌ = reset (admin)
+📌 ❤️ = A | 👍 = B | 👎 = salir | ❌ = reset
 `
 }
 
 // =========================
-// REACTIONS
+// REACTIONS FIXED
 // =========================
 function register(conn) {
 
@@ -99,16 +92,21 @@ function register(conn) {
 
             if (!msg.message?.reactionMessage) continue
 
-            const id = msg.message.reactionMessage.key.id
+            const key = msg.message.reactionMessage.key
+            const id = key.id
+
             const data = vsData[id]
             if (!data) continue
 
             const user = msg.key.participant || msg.key.remoteJid
-            const emoji = normalize(msg.message.reactionMessage.text)
-
             if (!user) continue
 
-            // ❌ RESET SOLO HOST
+            const emojiRaw = msg.message.reactionMessage.text || ''
+            const emoji = normalize(emojiRaw)
+
+            const max = limits[data.mode]
+
+            // ❌ RESET
             if (emoji === '❌' && user === data.host) {
                 delete vsData[id]
                 await conn.sendMessage(data.chat, {
@@ -118,13 +116,14 @@ function register(conn) {
             }
 
             // =========================
-            // LIMPIAR USUARIO ANTES
+            // LIMPIAR USER
             // =========================
             data.teamA = data.teamA.filter(x => x !== user)
             data.teamB = data.teamB.filter(x => x !== user)
 
-            const max = limits[data.mode]
-
+            // =========================
+            // ENTRADA
+            // =========================
             if (emoji === '❤️') {
                 if (data.teamA.length < max.a) data.teamA.push(user)
             }
@@ -134,27 +133,26 @@ function register(conn) {
             }
 
             if (emoji === '👎') {
-                // solo salir
+                // salir
             }
 
             // =========================
-            // 🔥 EDITAR MISMO MENSAJE (CLAVE)
+            // 🔥 EDIT REAL DEL MENSAJE ORIGINAL
             // =========================
-            const newText = render(data.mode, data.teamA, data.teamB)
-
             try {
                 await conn.sendMessage(data.chat, {
-                    text: newText,
-                    edit: msg.message.reactionMessage.key
+                    text: render(data.mode, data.teamA, data.teamB),
+                    edit: data.msgKey   // 🔥 ESTO ES LO CORRECTO
                 })
-            } catch (err) {
-                // fallback seguro (solo si edit falla)
+            } catch (e) {
+
+                // fallback seguro
                 const sent = await conn.sendMessage(data.chat, {
-                    text: newText,
+                    text: render(data.mode, data.teamA, data.teamB),
                     mentions: [...data.teamA, ...data.teamB]
                 })
 
-                delete vsData[id]
+                data.msgKey = sent.key
                 vsData[sent.key.id] = data
             }
         }
