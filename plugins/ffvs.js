@@ -16,31 +16,27 @@ const vs = {
 
         if (!reactionRegistered) register(conn)
 
-        const chat = m.chat
         const mode = (text || '').toLowerCase()
-
         if (!limits[mode]) {
             return m.reply(`⚔️ Usa:\n.vs 1vs1\n.vs 2vs2\n.vs 4vs4`)
         }
 
         const data = {
-            chat,
+            chat: m.chat,
             mode,
             host: m.sender,
             teamA: [],
             teamB: [],
-            active: true,
-            msgKey: null // 🔥 CLAVE REAL
+            msgKey: null,
+            locked: false
         }
 
-        const msg = await conn.sendMessage(chat, {
+        const msg = await conn.sendMessage(m.chat, {
             text: render(mode, data.teamA, data.teamB),
             mentions: []
         }, { quoted: m })
 
-        // 🔥 GUARDAMOS EL MENSAJE REAL
         data.msgKey = msg.key
-
         vsData[msg.key.id] = data
     }
 }
@@ -48,16 +44,15 @@ const vs = {
 export default vs
 
 // =========================
-// RENDER
+// RENDER UI
 // =========================
 function render(mode, A, B) {
 
-    const maxA = mode === '1vs1' ? 1 : mode === '2vs2' ? 2 : 4
-    const maxB = maxA
+    const max = limits[mode]
 
-    const format = (arr, max) => {
+    const format = (arr, size) => {
         let out = ''
-        for (let i = 0; i < max; i++) {
+        for (let i = 0; i < size; i++) {
             out += arr[i]
                 ? `👤 @${arr[i].split('@')[0]}\n`
                 : `➖ vacío\n`
@@ -66,20 +61,24 @@ function render(mode, A, B) {
     }
 
     return `
-⚔️ *VS ${mode.toUpperCase()}*
+⚔️ *VS ESPORTS ${mode.toUpperCase()}*
 
 🅰️ EQUIPO A
-${format(A, maxA)}
+${format(A, max.a)}
 
 🅱️ EQUIPO B
-${format(B, maxB)}
+${format(B, max.b)}
 
-📌 ❤️ = A | 👍 = B | 👎 = salir | ❌ = reset
+📌 Reacciona:
+❤️ = Equipo A
+👍 = Equipo B
+👎 = salir
+❌ = reset (host)
 `
 }
 
 // =========================
-// REACTIONS FIXED
+// REACTION ENGINE (PRO)
 // =========================
 function register(conn) {
 
@@ -101,12 +100,13 @@ function register(conn) {
             const user = msg.key.participant || msg.key.remoteJid
             if (!user) continue
 
-            const emojiRaw = msg.message.reactionMessage.text || ''
-            const emoji = normalize(emojiRaw)
+            const emoji = normalize(msg.message.reactionMessage.text)
 
             const max = limits[data.mode]
 
-            // ❌ RESET
+            // =========================
+            // RESET SOLO HOST
+            // =========================
             if (emoji === '❌' && user === data.host) {
                 delete vsData[id]
                 await conn.sendMessage(data.chat, {
@@ -116,15 +116,17 @@ function register(conn) {
             }
 
             // =========================
-            // LIMPIAR USER
+            // LIMPIEZA ANTI DUPLICADOS
             // =========================
             data.teamA = data.teamA.filter(x => x !== user)
             data.teamB = data.teamB.filter(x => x !== user)
 
             // =========================
-            // ENTRADA
+            // FIX ❤️ UNICODE REAL
             // =========================
-            if (emoji === '❤️') {
+            const isHeart = emoji.includes('❤')
+
+            if (isHeart) {
                 if (data.teamA.length < max.a) data.teamA.push(user)
             }
 
@@ -133,16 +135,16 @@ function register(conn) {
             }
 
             if (emoji === '👎') {
-                // salir
+                // salir (ya limpiado arriba)
             }
 
             // =========================
-            // 🔥 EDIT REAL DEL MENSAJE ORIGINAL
+            // 🔥 EDIT SAFE (SIN SPAM)
             // =========================
             try {
                 await conn.sendMessage(data.chat, {
                     text: render(data.mode, data.teamA, data.teamB),
-                    edit: data.msgKey   // 🔥 ESTO ES LO CORRECTO
+                    edit: data.msgKey
                 })
             } catch (e) {
 
@@ -159,6 +161,9 @@ function register(conn) {
     })
 }
 
+// =========================
+// NORMALIZER (CRÍTICO)
+// =========================
 function normalize(e = '') {
     return e.replace(/\uFE0F/g, '').trim()
 }
