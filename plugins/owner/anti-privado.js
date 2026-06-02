@@ -1,43 +1,59 @@
 const antiPrivateCommand = {
 
     name: 'antiprivado',
-    alias: ['antipriv', 'privado', 'listblock', 'bloqueados', 'unblock', 'desbloquear'],
+    alias: ['antipriv', 'privado', 'bloqueados', 'unblock', 'desbloquear'],
     category: 'owner',
+
+    // =========================
+    // 🔥 UTILITIES
+    // =========================
+
+    getOwners(conn) {
+        const a = global.owner || []
+        const b = a.map(v => v[0] + '@s.whatsapp.net')
+        const c = conn.user?.id ? [conn.user.id] : []
+        return [...new Set([...b, ...c])]
+    },
+
+    isValidJid(jid = '') {
+        return typeof jid === 'string' && jid.endsWith('@s.whatsapp.net')
+    },
 
     // =========================
     // 🔥 BEFORE (ANTI PRIVADO)
     // =========================
 
-    async before(m, { conn, isOwner, isROwner }) {
+    async before(m, { conn }) {
 
         try {
 
             if (!m.message) return
             if (m.isGroup) return
-            if (m.fromMe) return
             if (m.chat === 'status@broadcast') return
-
-            // ❌ OWNER NO SE TOCA
-            if (isOwner || isROwner) return
 
             const jid = m.sender
 
-            // ❌ FILTRO DE JIDS INVÁLIDOS (CLAVE)
-            if (!jid || !jid.includes('@s.whatsapp.net')) return
+            // ❌ SOLO JIDS REALES
+            if (!this.isValidJid(jid)) return
+
+            const owners = this.getOwners(conn)
+
+            // ❌ OWNER NO TOCAR
+            if (owners.includes(jid)) return
 
             global.db.data = global.db.data || {}
             global.db.data.settings = global.db.data.settings || {}
 
-            const botNumber = conn.user?.jid || conn.user?.id
+            const botId = conn.user?.id || 'default'
 
-            if (!global.db.data.settings[botNumber]) {
-                global.db.data.settings[botNumber] = {
+            if (!global.db.data.settings[botId]) {
+                global.db.data.settings[botId] = {
                     antiPrivate: true,
                     blockedUsers: []
                 }
             }
 
-            const settings = global.db.data.settings[botNumber]
+            const settings = global.db.data.settings[botId]
 
             if (!settings.antiPrivate) return
 
@@ -48,19 +64,19 @@ const antiPrivateCommand = {
 
             await conn.sendMessage(m.chat, {
                 text:
-`╭━━〔 🚫 ANTI PRIVADO 🚫 〕━━⬣
+`╭━━〔 🚫 ANTI PRIVADO PRO MAX 🚫 〕━━⬣
 ┃
-┃ ❌ No puedes escribir al bot.
+┃ ❌ Este bot no recibe mensajes
+┃ en privado.
 ┃
-┃ 👑 Solo el owner tiene acceso.
+┃ 👑 Solo el owner puede usarlo.
 ┃
-┃ 🚷 Serás bloqueado.
+┃ 🚷 Serás bloqueado automáticamente.
 ╰━━━━━━━━━━━━━━━━━━⬣`
             }, { quoted: m })
 
-            await new Promise(r => setTimeout(r, 1200))
+            await new Promise(r => setTimeout(r, 1000))
 
-            // 🔥 BLOQUEO SEGURO
             await conn.updateBlockStatus(jid, 'block').catch(() => {})
 
         } catch (e) {
@@ -71,32 +87,36 @@ const antiPrivateCommand = {
     },
 
     // =========================
-    // 🔥 RUN
+    // 🔥 RUN (CONTROL PANEL)
     // =========================
 
-    async run(m, { conn, args, command, isOwner }) {
+    async run(m, { conn, args, command }) {
 
-        if (!isOwner) return m.reply('❌ Solo owner.')
+        const owners = this.getOwners(conn)
+
+        if (!owners.includes(m.sender)) {
+            return m.reply('❌ Solo owner.')
+        }
 
         global.db.data = global.db.data || {}
         global.db.data.settings = global.db.data.settings || {}
 
-        const botNumber = conn.user?.jid || conn.user?.id
+        const botId = conn.user?.id || 'default'
 
-        if (!global.db.data.settings[botNumber]) {
-            global.db.data.settings[botNumber] = {
+        if (!global.db.data.settings[botId]) {
+            global.db.data.settings[botId] = {
                 antiPrivate: true,
                 blockedUsers: []
             }
         }
 
-        const settings = global.db.data.settings[botNumber]
+        const settings = global.db.data.settings[botId]
+
+        const option = (args[0] || '').toLowerCase()
 
         // =========================
         // ON / OFF
         // =========================
-
-        const option = (args[0] || '').toLowerCase()
 
         if (option === 'on') {
             settings.antiPrivate = true
@@ -112,13 +132,13 @@ const antiPrivateCommand = {
         // LISTA
         // =========================
 
-        if (command === 'bloqueados' || command === 'listblock') {
+        if (command === 'bloqueados') {
 
             const list = settings.blockedUsers || []
 
             if (!list.length) return m.reply('📭 No hay bloqueados.')
 
-            let txt = `🚫 *BLOQUEADOS*\n\n`
+            let txt = `🚫 *USUARIOS BLOQUEADOS*\n\n`
 
             for (let u of list) {
                 txt += `• wa.me/${u.split('@')[0]}\n`
