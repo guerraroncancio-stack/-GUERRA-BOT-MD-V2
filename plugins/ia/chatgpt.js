@@ -1,6 +1,7 @@
 import fetch from 'node-fetch'
 
 const chatgptCommand = {
+
     name: 'chatgpt',
 
     alias: [
@@ -18,13 +19,15 @@ const chatgptCommand = {
     async run(m, { conn, text }) {
 
         if (!text) {
+
             return conn.reply(
                 m.chat,
-`╭━━〔 👑 GUERRA IA 👑 〕━━⬣
+
+`┏━━━〔 👑 GUERRA IA 👑 〕━━━⬣
 ┃
-┃ 🤖 Inteligencia Artificial
-┃ ⚡ Sistema Online
-┃ 👑 Developer: Kevin Guerra
+┃ ✦ Sistema inteligente activado
+┃ ✦ Modelo: ChatGPT AI
+┃ ✦ Creador: Kevin Guerra
 ┃
 ┃ ✦ Ejemplos:
 ┃ ➥ .ia hola
@@ -32,22 +35,23 @@ const chatgptCommand = {
 ┃ ➥ .chat crea una historia
 ┃ ➥ .ia quien eres
 ┃
-╰━━━━━━━━━━━━━━⬣`,
+┗━━━━━━━━━━━━━━━━━━━━⬣`,
                 m
             )
         }
 
         try {
 
-            m.react('⚡').catch(() => {})
+            await m.react('🧠')
 
-            text = String(text)
-                .trim()
-                .slice(0, 2000)
+            text = String(text || '')
+            .trim()
+            .slice(0, 3000)
 
             const lowerText = text.toLowerCase()
 
             const creatorQuestions = [
+
                 'quien te creo',
                 'quién te creó',
                 'quien es tu creador',
@@ -59,43 +63,54 @@ const chatgptCommand = {
                 'owner'
             ]
 
-            if (creatorQuestions.some(v => lowerText.includes(v))) {
+            if (
+                creatorQuestions.some(v =>
+                    lowerText.includes(v)
+                )
+            ) {
 
-                await m.react('👑')
+                await m.react('✅')
 
                 return conn.sendMessage(
                     m.chat,
                     {
                         text:
-`╭━━〔 👑 GUERRA IA 👑 〕━━⬣
+`┏━━━〔 👑 GUERRA IA 👑 〕━━━⬣
 ┃
-┃ Mi creador oficial es:
+┃ 🤖 Soy GUERRA IA
 ┃
-┃ 👑 Kevin Guerra
+┃ 👑 Mi creador,
+┃ desarrollador y propietario
+┃ oficial es:
 ┃
-┃ Desarrollador principal
-┃ de GUERRA BOT MD
+┃ ➥ Kevin Guerra
 ┃
-╰━━━━━━━━━━━━━━⬣`
+┃ ⚡ Sistema desarrollado
+┃ para automatización,
+┃ inteligencia artificial
+┃ y asistencia avanzada.
+┃
+┗━━━━━━━━━━━━━━━━━━━━⬣`
                     },
-                    { quoted: m }
+                    {
+                        quoted: m
+                    }
                 )
             }
 
-            const api =
-`${global.url_api}/chat?q=${encodeURIComponent(text)}&apikey=${global.key || key}`
+            const controller =
+            new AbortController()
 
-            const controller = new AbortController()
-
-            const timeout = setTimeout(() => {
+            const timeout =
+            setTimeout(() => {
                 controller.abort()
             }, 15000)
 
+            const api =
+`${global.url_api}/chat?q=${encodeURIComponent(text)}&apikey=${global.key}`
+
             const res = await fetch(api, {
-                signal: controller.signal,
-                headers: {
-                    'User-Agent': 'GuerraBot'
-                }
+                signal: controller.signal
             })
 
             clearTimeout(timeout)
@@ -104,7 +119,8 @@ const chatgptCommand = {
                 throw new Error(`HTTP ${res.status}`)
             }
 
-            const json = await res.json()
+            const json =
+            await res.json()
 
             let answer =
 
@@ -119,37 +135,41 @@ const chatgptCommand = {
                 json?.message ||
                 json?.content ||
 
-                (typeof json === 'string' ? json : null)
+                null
 
             if (!answer) {
-                answer = '⚠️ No se obtuvo una respuesta válida.'
+
+                answer =
+'⚠️ La IA no pudo generar una respuesta válida.'
+
             }
 
-            answer = String(answer)
-                .trim()
-                .replace(/\n{3,}/g, '\n\n')
-                .slice(0, 3500)
+            answer =
+            String(answer)
+            .trim()
+            .replace(/\n{3,}/g, '\n\n')
+            .slice(0, 3500)
+
+            const formatted =
+
+            answer
+            .split('\n')
+            .map(v => `┃ ${v}`)
+            .join('\n')
 
             const txt =
-`╔══════════════════════╗
-║      👑 GUERRA IA 👑
-╚══════════════════════╝
 
-👤 Usuario:
-➥ ${m.pushName || 'Usuario'}
-
-🧠 Consulta:
-➥ ${text}
-
-━━━━━━━━━━━━━━━━━━
-
-${answer}
-
-━━━━━━━━━━━━━━━━━━
-
-🤖 Modelo: ChatGPT AI
-⚡ Estado: Online
-👑 Developer: Kevin Guerra`
+`┏━━━〔 👑 GUERRA IA 👑 〕━━━⬣
+┃ 🤖 ChatGPT Intelligence
+┃ 👤 ${m.pushName || 'Usuario'}
+┣━━━━━━━━━━━━━━━━━━⬣
+┃ ❓ ${text}
+┣━━━━━━━━━━━━━━━━━━⬣
+${formatted}
+┣━━━━━━━━━━━━━━━━━━⬣
+┃ 👑 Creador: Kevin Guerra
+┃ ⚡ Powered By Guerra Bot
+┗━━━━━━━━━━━━━━━━━━━━⬣`
 
             await m.react('✅')
 
@@ -167,20 +187,48 @@ ${answer}
 
             console.error(err)
 
-            await m.react('❌').catch(() => {})
+            await m.react('❌')
+
+            let msgError =
+
+`┏━━━〔 ⚠️ GUERRA IA ⚠️ 〕━━━⬣
+┃
+┃ No fue posible obtener
+┃ una respuesta de la IA.
+┃
+┃ Motivos posibles:
+┃ • API fuera de línea
+┃ • Tiempo agotado
+┃ • Servidor saturado
+┃
+┃ Intenta nuevamente.
+┃
+┗━━━━━━━━━━━━━━━━━━━━⬣`
+
+            if (
+                err.name === 'AbortError'
+            ) {
+
+                msgError =
+
+`┏━━━〔 ⚠️ GUERRA IA ⚠️ 〕━━━⬣
+┃
+┃ La solicitud tardó
+┃ demasiado tiempo.
+┃
+┃ El servidor IA no
+┃ respondió antes del
+┃ límite establecido.
+┃
+┃ Intenta nuevamente.
+┃
+┗━━━━━━━━━━━━━━━━━━━━⬣`
+            }
 
             return conn.sendMessage(
                 m.chat,
                 {
-                    text:
-`╭━━〔 ⚠️ GUERRA IA ⚠️ 〕━━⬣
-┃
-┃ ❌ Error de conexión
-┃ con el servidor IA.
-┃
-┃ Intenta nuevamente.
-┃
-╰━━━━━━━━━━━━━━⬣`
+                    text: msgError
                 },
                 {
                     quoted: m
