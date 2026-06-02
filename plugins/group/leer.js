@@ -17,11 +17,17 @@ const leer = {
 
             await m.react('🎙️')
 
-            const voice = 'Brian' // Cambia aquí la voz
+            const voice = 'Brian'
 
             const url = `https://api.streamelements.com/kappa/v2/speech?voice=${voice}&text=${encodeURIComponent(contenido)}`
 
-            const res = await fetch(url)
+            const res = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/137.0.0.0 Safari/537.36',
+                    'Accept': '*/*',
+                    'Referer': 'https://streamelements.com/'
+                }
+            })
 
             if (!res.ok) {
                 const errorText = await res.text()
@@ -44,10 +50,9 @@ const leer = {
             await m.react('✅')
 
         } catch (e) {
-
             console.error(e)
             await m.react('❌')
-            m.reply(`❌ Error al generar la voz.\n${e.message}`)
+            m.reply(`❌ Error: ${e.message}`)
         }
     }
 }
