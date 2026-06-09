@@ -692,11 +692,79 @@ chalk.hex('#00FFB3')(`
            👥 GROUP EVENTS
         ========================================= */
 
-        global.conn.ev.on(
-            'group-participants.update',
-            async (update) => {
+       /* =========================================
+   🤖 ANTI BOT GLOBAL
+========================================= */
 
-                try {
+global.db = global.db || {}
+global.db.settings = global.db.settings || {}
+
+if (
+    global.db.settings.antibots &&
+    update.action === 'add'
+) {
+
+    for (const user of update.participants) {
+
+        try {
+
+            if (!user) continue
+
+            const metadata =
+            await global.conn.groupMetadata(update.id)
+
+            const participant =
+            metadata.participants.find(
+                p => p.id === user
+            )
+
+            if (!participant) continue
+
+            const isBot =
+                user.endsWith('@lid') ||
+                user.includes(':') ||
+                participant?.admin === null &&
+                participant?.id?.includes('bot')
+
+            const isOwner =
+                user === global.conn.user.id
+
+            if (isOwner) continue
+
+            if (isBot) {
+
+                await global.conn.sendMessage(
+                    update.id,
+                    {
+                        text:
+`╭━━〔 🤖 ANTI BOT 〕━━⬣
+┃
+┃ Bot detectado
+┃
+┃ @${user.split('@')[0]}
+┃
+┃ Expulsando...
+┃
+╰━━━━━━━━━━━━━━⬣`,
+                        mentions: [user]
+                    }
+                )
+
+                await global.conn.groupParticipantsUpdate(
+                    update.id,
+                    [user],
+                    'remove'
+                )
+            }
+
+        } catch (e) {
+            console.log(
+                '[ ANTIBOT ERROR ]',
+                e
+            )
+        }
+    }
+}
 
                    for (const participant of update.participants) {
 
