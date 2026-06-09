@@ -145,50 +145,20 @@ const comandoPerfil = {
         else if (esAdmin)
             rango = 'Administrador'
 
-        const textoPerfil = `
-╭━━〔 👤 PERFIL DE USUARIO 〕━━⬣
+const textoPerfil = `
+╭─〔 👤 PERFIL 〕─⬣
+│ 📝 ${datos.name || nombreUsuario}
+│ 🆔 @${quien.split('@')[0]}
+│ 🌎 ${pais}
+│ 🎂 ${datos.age || '--'} años
+│
+│ 💰 ${datos.col || 0} Col
+│ ⭐ ${datos.exp || 0} Exp
+│ 👑 ${rango}
+│ ❤️ ${pareja ? `@${pareja.split('@')[0]}` : 'Soltero/a'}
+╰────────────⬣
 
-┃ 📝 Nombre:
-┃ ➥ ${datos.name || nombreUsuario}
-
-┃ 🎂 Edad:
-┃ ➥ ${datos.age || 'No definida'}
-
-┃ 🌎 País:
-┃ ➥ ${pais}
-
-┃ 🆔 ID:
-┃ ➥ @${quien.split('@')[0]}
-
-┣━━━━━━━━━━━━━━━━━━⬣
-
-┃ 🚻 Género:
-┃ ➥ ${datos.gender || 'No definido'}
-
-┃ 💞 Orientación:
-┃ ➥ ${datos.identity || 'No definida'}
-
-┣━━━━━━━━━━━━━━━━━━⬣
-
-┃ 💰 Monedas:
-┃ ➥ ${datos.col || 0}
-
-┃ ⭐ Experiencia:
-┃ ➥ ${datos.exp || 0}
-
-┃ 👑 Rango:
-┃ ➥ ${rango}
-
-┃ ❤️ ${infoPareja}
-
-${infoFamilia}
-
-┣━━━━━━━━━━━━━━━━━━⬣
-
-┃ 📖 Descripción:
-┃ ➥ ${datos.description || 'Sin descripción'}
-
-╰━━━━━━━━━━━━━━━━━━⬣
+📖 ${datos.description || 'Sin descripción'}
 `
 
         try {
