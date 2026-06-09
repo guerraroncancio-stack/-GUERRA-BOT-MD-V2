@@ -63,11 +63,25 @@ const pinterestCommand = {
             const randomPick = limitedResults[Math.floor(Math.random() * limitedResults.length)];
             const imageUrls = limitedResults.map(r => r.url);
 
-            const caption = `\t\t*── 「 PINTEREST ALBUM 」 ──*\n\n` +
-                             `▢ *BÚSQUEDA:* ${text}\n` +
-                             `▢ *TÍTULO:* ${randomPick.title || 'Sin título'}\n` +
-                             `▢ *AUTOR:* ${randomPick.author || 'Desconocido'}\n` +
-                             `▢ *CANTIDAD:* ${maxImages}\n\n`;
+          const caption = `
+╭─❖「 📌 Pinterest Album 」❖─╮
+
+✦ Consulta:
+${text}
+
+✦ Título:
+${randomPick.title || 'Sin título'}
+
+✦ Autor:
+${randomPick.author || 'Desconocido'}
+
+✦ Imágenes:
+${maxImages}
+
+╰─❖────────────────❖─╯
+
+⚡ GUERRA BOT MD
+👑 Kevin Guerra`
 
             await sendAlbum(conn, m.chat, imageUrls, {
                 caption: caption,
