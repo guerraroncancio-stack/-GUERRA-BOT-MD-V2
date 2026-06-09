@@ -698,52 +698,52 @@ chalk.hex('#00FFB3')(`
 
                 try {
 
-                    for (
-                        const user of update.participants
-                    ) {
+                   for (const participant of update.participants) {
 
-                        if (
-                            update.action ===
-                            'promote'
-                        ) {
+    const user =
+    typeof participant === 'string'
+        ? participant
+        : participant?.id || participant?.jid || ''
 
-                            await global.conn.sendMessage(
-                                update.id,
-                                {
-                                    text:
+    if (!user) continue
+
+    const number =
+    user.split('@')[0]
+
+    if (update.action === 'promote') {
+
+        await global.conn.sendMessage(
+            update.id,
+            {
+                text:
 `╭━━〔 👑 NUEVO ADMIN 👑 〕━━⬣
-┃ @${user.split('@')[0]}
+┃ @${number}
 ┃ AHORA ES ADMIN
 ┃ ⚔️ GUERRA BOT SYSTEM
 ╰━━━━━━━━━━━━━━━━━━⬣`,
-mentions: [user]
-                                }
-                            )
+                mentions: [user]
+            }
+        )
 
-                        }
+    }
 
-                        if (
-                            update.action ===
-                            'demote'
-                        ) {
+    if (update.action === 'demote') {
 
-                            await global.conn.sendMessage(
-                                update.id,
-                                {
-                                    text:
+        await global.conn.sendMessage(
+            update.id,
+            {
+                text:
 `╭━━〔 ⚠️ ADMIN REMOVIDO ⚠️ 〕━━⬣
-┃ @${user.split('@')[0]}
+┃ @${number}
 ┃ YA NO ES ADMIN
 ┃ ⚔️ GUERRA BOT SYSTEM
 ╰━━━━━━━━━━━━━━━━━━⬣`,
-mentions: [user]
-                                }
-                            )
+                mentions: [user]
+            }
+        )
 
-                        }
-
-                    }
-
+    }
+}
                 } catch (err) {
 
                     console.error(
