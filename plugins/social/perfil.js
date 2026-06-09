@@ -1,7 +1,4 @@
 import { jidNormalizedUser } from '@whiskeysockets/baileys'
-import phoneNumber from 'google-libphonenumber'
-
-const phoneUtil = phoneNumber.PhoneNumberUtil.getInstance()
 
 const comandoPerfil = {
     name: 'perfil',
@@ -17,14 +14,6 @@ const comandoPerfil = {
 
         const nombreUsuario =
             m.pushName || 'Usuario'
-
-        let fotoPerfil
-
-        try {
-            fotoPerfil = await conn.profilePictureUrl(quien, 'image')
-        } catch {
-            fotoPerfil = 'https://api.dix.lat/me/1776379459477.png'
-        }
 
         let datos = null
 
@@ -50,27 +39,6 @@ const comandoPerfil = {
             padres: []
         }
 
-        let pais = 'Desconocido'
-
-        try {
-
-            const numero =
-                quien.split('@')[0]
-
-            const parsed =
-                phoneUtil.parse('+' + numero)
-
-            const region =
-                phoneUtil.getRegionCodeForNumber(parsed)
-
-            pais =
-                new Intl.DisplayNames(
-                    ['es'],
-                    { type: 'region' }
-                ).of(region) || 'Desconocido'
-
-        } catch {}
-
         const pareja =
             datos.casado ||
             datos.marry ||
@@ -78,43 +46,14 @@ const comandoPerfil = {
 
         let menciones = [quien]
 
-        let infoPareja =
-            'ESTADO CIVIL: Soltero/a'
-
-        if (pareja) {
-
-            infoPareja =
-                `CASADO/A CON: @${pareja.split('@')[0]}`
-
+        if (pareja)
             menciones.push(pareja)
 
-        }
-
-        let infoFamilia = ''
-
-        if (
-            Array.isArray(datos.padres) &&
-            datos.padres.length
-        ) {
-
-            infoFamilia +=
-                `\n┝PADRES: ${datos.padres.map(v => `@${v.split('@')[0]}`).join(', ')}`
-
-            menciones.push(...datos.padres)
-
-        }
-
-        if (
-            Array.isArray(datos.hijos) &&
-            datos.hijos.length
-        ) {
-
-            infoFamilia +=
-                `\n┝HIJOS: ${datos.hijos.map(v => `@${v.split('@')[0]}`).join(', ')}`
-
+        if (Array.isArray(datos.hijos))
             menciones.push(...datos.hijos)
 
-        }
+        if (Array.isArray(datos.padres))
+            menciones.push(...datos.padres)
 
         const esOwner =
             Array.isArray(global.owner) &&
@@ -138,18 +77,15 @@ const comandoPerfil = {
 
         if (esBot)
             rango = 'Bot Principal'
-
         else if (esOwner)
             rango = 'Owner'
-
         else if (esAdmin)
             rango = 'Administrador'
 
-const textoPerfil = `
+        const textoPerfil = `
 ╭─〔 👤 PERFIL 〕─⬣
 │ 📝 ${datos.name || nombreUsuario}
 │ 🆔 @${quien.split('@')[0]}
-│ 🌎 ${pais}
 │ 🎂 ${datos.age || '--'} años
 │
 │ 💰 ${datos.col || 0} Col
@@ -159,30 +95,63 @@ const textoPerfil = `
 ╰────────────⬣
 
 📖 ${datos.description || 'Sin descripción'}
-`
+`.trim()
 
         try {
 
-            await conn.sendMessage(
-                m.chat,
-                {
-                    image: { url: fotoPerfil },
-                    caption: textoPerfil,
-                    mentions: [...new Set(menciones)]
-                },
-                { quoted: m }
-            )
+            let foto = null
+
+            try {
+                foto = await conn.profilePictureUrl(
+                    quien,
+                    'image'
+                )
+            } catch {}
+
+            if (foto) {
+
+                await conn.sendMessage(
+                    m.chat,
+                    {
+                        image: {
+                            url: foto
+                        },
+                        caption: textoPerfil,
+                        mentions: [...new Set(menciones)]
+                    },
+                    {
+                        quoted: m
+                    }
+                )
+
+            } else {
+
+                await conn.sendMessage(
+                    m.chat,
+                    {
+                        text: textoPerfil,
+                        mentions: [...new Set(menciones)]
+                    },
+                    {
+                        quoted: m
+                    }
+                )
+
+            }
 
         } catch (e) {
 
-            console.error(e)
+            console.error('[PERFIL ERROR]', e)
 
             await conn.sendMessage(
                 m.chat,
                 {
-                    text: '❌ No pude generar el perfil.'
+                    text: textoPerfil,
+                    mentions: [...new Set(menciones)]
                 },
-                { quoted: m }
+                {
+                    quoted: m
+                }
             )
 
         }
