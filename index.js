@@ -766,63 +766,130 @@ if (
     }
 }
 
-                   for (const participant of update.participants) {
+global.conn.ev.on(
+    'group-participants.update',
+    async (update) => {
 
-    const user =
-    typeof participant === 'string'
-        ? participant
-        : participant?.id || participant?.jid || ''
+        try {
 
-    if (!user) continue
+            const participants = update.participants || []
 
-    const number =
-    user.split('@')[0]
+            for (const user of participants) {
 
-    if (update.action === 'promote') {
+                const number = String(user).split('@')[0]
 
-        await global.conn.sendMessage(
-            update.id,
-            {
-                text:
+                if (update.action === 'promote') {
+
+                    await global.conn.sendMessage(
+                        update.id,
+                        {
+                            text:
 `╭━━〔 👑 NUEVO ADMIN 👑 〕━━⬣
+┃
 ┃ @${number}
-┃ AHORA ES ADMIN
-┃ ⚔️ GUERRA BOT SYSTEM
-╰━━━━━━━━━━━━━━━━━━⬣`,
-                mentions: [user]
-            }
-        )
+┃
+┃ Ahora es administrador
+┃
+╰━━━━━━━━━━━━━━⬣`,
+                            mentions: [user]
+                        }
+                    )
 
-    }
+                }
 
-    if (update.action === 'demote') {
+                if (update.action === 'demote') {
 
-        await global.conn.sendMessage(
-            update.id,
-            {
-                text:
+                    await global.conn.sendMessage(
+                        update.id,
+                        {
+                            text:
 `╭━━〔 ⚠️ ADMIN REMOVIDO ⚠️ 〕━━⬣
+┃
 ┃ @${number}
-┃ YA NO ES ADMIN
-┃ ⚔️ GUERRA BOT SYSTEM
-╰━━━━━━━━━━━━━━━━━━⬣`,
-                mentions: [user]
-            }
-        )
-
-    }
-}
-                } catch (err) {
-
-                    console.error(
-                        '[ GROUP EVENT ERROR ]',
-                        err
+┃
+┃ Ya no es administrador
+┃
+╰━━━━━━━━━━━━━━⬣`,
+                            mentions: [user]
+                        }
                     )
 
                 }
 
             }
-        )
+
+            if (
+                global.db?.settings?.antibots &&
+                update.action === 'add'
+            ) {
+
+                for (const user of participants) {
+
+                    try {
+
+                        if (!user) continue
+
+                        const isBot =
+                            String(user).includes(':') ||
+                            String(user).endsWith('@lid')
+
+                        const myJid =
+                            global.conn.user?.id?.split(':')[0] +
+                            '@s.whatsapp.net'
+
+                        if (user === myJid) continue
+
+                        if (isBot) {
+
+                            await global.conn.sendMessage(
+                                update.id,
+                                {
+                                    text:
+`╭━━〔 🤖 ANTI BOT 〕━━⬣
+┃
+┃ Bot detectado
+┃
+┃ @${String(user).split('@')[0]}
+┃
+┃ Expulsando...
+┃
+╰━━━━━━━━━━━━━━⬣`,
+                                    mentions: [user]
+                                }
+                            )
+
+                            await global.conn.groupParticipantsUpdate(
+                                update.id,
+                                [user],
+                                'remove'
+                            )
+
+                        }
+
+                    } catch (e) {
+
+                        console.log(
+                            '[ ANTIBOT ERROR ]',
+                            e
+                        )
+
+                    }
+
+                }
+
+            }
+
+        } catch (err) {
+
+            console.error(
+                '[ GROUP EVENT ERROR ]',
+                err
+            )
+
+        }
+
+    }
+)
 
         /* =========================================
            📡 CONNECTION UPDATE
