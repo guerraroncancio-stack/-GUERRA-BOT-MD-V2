@@ -10,6 +10,13 @@ const ping = {
 
         const start = speed()
 
+        const msg = await conn.sendMessage(
+            m.chat,
+            {
+                text: '🏓'
+            }
+        )
+
         const latency = speed() - start
 
         const ram = (
@@ -22,17 +29,19 @@ const ping = {
 
         const h = Math.floor(uptime / 3600)
         const min = Math.floor((uptime % 3600) / 60)
-        const sec = Math.floor(uptime % 60)
-
-        const cpu = os.loadavg()[0].toFixed(2)
 
         let estado = '🟢 Óptimo'
 
-        if (latency > 200) estado = '🟡 Estable'
-        if (latency > 500) estado = '🟠 Lento'
-        if (latency > 1000) estado = '🔴 Saturado'
+        if (latency > 200)
+            estado = '🟡 Estable'
 
-const texto = `
+        if (latency > 500)
+            estado = '🟠 Lento'
+
+        if (latency > 1000)
+            estado = '🔴 Saturado'
+
+        const texto = `
 ╭─〔 ⚡ PONG 〕─⬣
 │ 🏓 ${latency.toFixed(0)} ms
 │ 📶 ${estado}
@@ -44,12 +53,22 @@ const texto = `
         await conn.sendMessage(
             m.chat,
             {
-                text: texto
-            },
-            {
-                quoted: m
+                text: texto,
+                edit: msg.key
             }
-        )
+        ).catch(async () => {
+
+            await conn.sendMessage(
+                m.chat,
+                {
+                    text: texto
+                },
+                {
+                    quoted: m
+                }
+            )
+
+        })
     }
 }
 
