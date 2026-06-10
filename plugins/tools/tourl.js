@@ -119,81 +119,112 @@ const uploadCommand = {
                 fileName
             )
 
-            // =========================================
-            // 🌐 UPLOAD
-            // =========================================
+           // =========================================
+// 🌐 UPLOAD
+// =========================================
 
-            const response =
-            await fetch(
-                'https://cdn.dix.lat/upload',
-                {
-                    method: 'POST',
-                    body: form,
-                    headers: {
-                        'User-Agent':
-                        'GUERRA-BOT-UPLOADER'
-                    }
-                }
-            )
+let uploadedUrl = null
+let provider = 'DIX CDN'
 
-            // =========================================
-            // ❌ HTTP ERROR
-            // =========================================
+try {
 
-            if (!response.ok) {
-
-                throw new Error(
-                    `HTTP ${response.status}`
-                )
-
+    const response = await fetch(
+        'https://cdn.dix.lat/upload',
+        {
+            method: 'POST',
+            body: form,
+            headers: {
+                'User-Agent':
+                'GUERRA-BOT-UPLOADER'
             }
+        }
+    )
 
-            const json =
-            await response.json()
+    if (response.ok) {
 
-            // =========================================
-            // 🔍 VALIDAR RESPUESTA
-            // =========================================
+        const json =
+        await response.json()
 
-            if (
-                !json ||
-                !json.status ||
-                !json.data
-            ) {
+        uploadedUrl =
+            json?.data?.url ||
+            json?.url ||
+            null
+    }
 
-                throw new Error(
-                    'Respuesta inválida'
-                )
+} catch {}
 
-            }
+// =========================================
+// 🔄 FALLBACK CATBOX
+// =========================================
 
-            const result =
-            json.data
+if (!uploadedUrl) {
 
-            // =========================================
-            // 📱 TIPO
-            // =========================================
+    provider = 'CATBOX'
 
-            let mediaType =
-            'FILE'
+    const FormDataNode =
+    (await import('form-data')).default
 
-            if (
-                mime.startsWith('image')
-            ) mediaType = 'IMAGE'
+    const fallback =
+    new FormDataNode()
 
-            if (
-                mime.startsWith('video')
-            ) mediaType = 'VIDEO'
+    fallback.append(
+        'reqtype',
+        'fileupload'
+    )
 
-            if (
-                mime.startsWith('audio')
-            ) mediaType = 'AUDIO'
+    fallback.append(
+        'fileToUpload',
+        buffer,
+        fileName
+    )
 
-            // =========================================
-            // ✨ DISEÑO
-            // =========================================
+    const cat =
+    await fetch(
+        'https://catbox.moe/user/api.php',
+        {
+            method: 'POST',
+            body: fallback
+        }
+    )
 
-            const txt =
+    const txt =
+    await cat.text()
+
+    if (
+        txt &&
+        txt.startsWith('http')
+    ) {
+        uploadedUrl = txt.trim()
+    }
+}
+
+if (!uploadedUrl) {
+
+    throw new Error(
+        'No se pudo obtener URL'
+    )
+}
+
+// =========================================
+// 📱 TIPO
+// =========================================
+
+let mediaType = 'FILE'
+
+if (mime.startsWith('image'))
+    mediaType = 'IMAGE'
+
+if (mime.startsWith('video'))
+    mediaType = 'VIDEO'
+
+if (mime.startsWith('audio'))
+    mediaType = 'AUDIO'
+
+// =========================================
+// ✨ DISEÑO
+// =========================================
+
+const txt =
 
 `╭━━〔 🚀 GUERRA CDN 🚀 〕━━⬣
 ┃
@@ -204,13 +235,16 @@ const uploadCommand = {
 ┃ ➥ ${mediaType}
 ┃
 ┃ ✦ Formato:
-┃ ➥ ${result.format || ext}
+┃ ➥ ${ext.toUpperCase()}
 ┃
 ┃ ✦ Archivo:
 ┃ ➥ ${fileName}
 ┃
+┃ ✦ Servidor:
+┃ ➥ ${provider}
+┃
 ┃ ✦ URL:
-┃ ➥ ${result.url}
+┃ ➥ ${uploadedUrl}
 ┃
 ┣━━━━━━━━━━━━━━━━━━⬣
 ┃ 👑 Powered By:
