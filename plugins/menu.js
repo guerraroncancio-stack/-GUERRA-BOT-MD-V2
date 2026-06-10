@@ -161,16 +161,13 @@ const menu = `
     video: {
       url: 'https://cdn.dix.lat/me/99ec88ba-77e9-4bda-b8a6-c777e271249a.mp4'
     },
-
     gifPlayback: true,
-    jpegThumbnail: thumb,
     caption: menu
   },
   {
     quoted: fkontak
   }
 )
-
 export default {
 
   name: 'menu',
