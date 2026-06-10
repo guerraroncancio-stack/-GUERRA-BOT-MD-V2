@@ -6,7 +6,7 @@ async function makeFkontak() {
   try {
 
     const res =
-    await fetch('https://cdn.dix.lat/me/bb174465-aa94-4844-8b89-ff4bc5f77f17.jpg')
+    await fetch('https://cdn.dix.lat/me/1f91392e-cda4-4ba7-a925-87390a4e751a.webp')
 
     const thumb =
     Buffer.from(await res.arrayBuffer())
