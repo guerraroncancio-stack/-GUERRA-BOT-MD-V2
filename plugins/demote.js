@@ -3,147 +3,203 @@ import fetch from 'node-fetch'
 let thumb = null
 
 fetch('https://api.dix.lat/media2/1777604199636.jpg')
-  .then(r => r.arrayBuffer())
-  .then(buf => {
-    thumb = Buffer.from(buf)
-  })
-  .catch(() => null)
+    .then(r => r.arrayBuffer())
+    .then(buf => {
+        thumb = Buffer.from(buf)
+    })
+    .catch(() => null)
 
 export default {
+    name: 'demote',
+    command: ['demote', 'degradar'],
+    tags: ['group'],
+    group: true,
+    admin: true,
+    botAdmin: true,
 
-  name: 'demote',
-  command: ['demote', 'degradar'],
-  tags: ['group'],
-  group: true,
-  admin: true,
-  botAdmin: true,
+    async run(m, { conn, text }) {
 
-  async run(m, { conn, text }) {
+        try {
 
-    try {
+            const metadata = await conn.groupMetadata(m.chat)
+            const participants = metadata.participants || []
 
-      if (!m.isGroup) {
-        return m.reply('❌ Solo funciona en grupos')
-      }
+            const fkontak = {
+                key: {
+                    remoteJid: m.chat,
+                    fromMe: false,
+                    id: 'Guerra'
+                },
+                message: {
+                    locationMessage: {
+                        name: '👑 GUERRA BOT',
+                        jpegThumbnail: thumb || null
+                    }
+                },
+                participant: '0@s.whatsapp.net'
+            }
 
-      const metadata = await conn.groupMetadata(m.chat)
-      const participants = metadata.participants || []
+            // =========================
+            // OBTENER USUARIO
+            // =========================
 
-      const fkontak = {
-        key: {
-          remoteJid: m.chat,
-          fromMe: false,
-          id: 'Guerra'
-        },
-        message: {
-          locationMessage: {
-            name: '👑 GUERRA BOT ',
-            jpegThumbnail: thumb
-          }
-        },
-        participant: '0@s.whatsapp.net'
-      }
+            let user = null
 
-      // =========================
-      // 🔥 OBTENER USUARIO
-      // =========================
-   let user =
-  m.quoted?.sender ||
-  m.quoted?.participant ||
-  m.quoted?.key?.participant ||
-  m.mentionedJid?.[0] ||
-  null
+            if (m.quoted) {
+                user =
+                    m.quoted.sender ||
+                    m.quoted.author ||
+                    m.quoted.participant ||
+                    m.quoted.key?.participant ||
+                    null
+            }
 
-      // =========================
-      // 🔥 SI VIENE POR TEXTO
-      // =========================
-      if (!user && text) {
+            if (!user && m.mentionedJid?.length) {
+                user = m.mentionedJid[0]
+            }
 
-        const number = text.replace(/[^0-9]/g, '')
+            if (!user && text) {
 
-        if (number.length < 7) {
-          return conn.sendMessage(m.chat, {
-            text: '❌ Número inválido'
-          }, { quoted: fkontak })
+                const number = text.replace(/\D/g, '')
+
+                if (number.length >= 7) {
+                    user = `${number}@s.whatsapp.net`
+                }
+            }
+
+            if (!user) {
+                return conn.sendMessage(
+                    m.chat,
+                    {
+                        text: '🍭 Responde o menciona al administrador que deseas degradar.'
+                    },
+                    { quoted: fkontak }
+                )
+            }
+
+            user = conn.decodeJid(user)
+
+            // =========================
+            // BUSCAR PARTICIPANTE
+            // =========================
+
+            const target = participants.find(p => {
+
+                const jid = conn.decodeJid(
+                    p.id ||
+                    p.jid ||
+                    p.participant ||
+                    ''
+                )
+
+                return jid === user
+
+            })
+
+            if (!target) {
+
+                return conn.sendMessage(
+                    m.chat,
+                    {
+                        text: '❌ El usuario no pertenece a este grupo.'
+                    },
+                    { quoted: fkontak }
+                )
+            }
+
+            // =========================
+            // VALIDAR ADMIN
+            // =========================
+
+            const isAdmin =
+                target.admin === 'admin' ||
+                target.admin === 'superadmin'
+
+            if (!isAdmin) {
+
+                return conn.sendMessage(
+                    m.chat,
+                    {
+                        text: '❌ Ese usuario no es administrador.'
+                    },
+                    { quoted: fkontak }
+                )
+            }
+
+            // =========================
+            // PROTECCIONES
+            // =========================
+
+            const ownerGroup =
+                metadata.owner ||
+                `${m.chat.split('-')[0]}@s.whatsapp.net`
+
+            if (
+                conn.decodeJid(ownerGroup) ===
+                conn.decodeJid(user)
+            ) {
+
+                return conn.sendMessage(
+                    m.chat,
+                    {
+                        text: '🚫 No puedes degradar al propietario del grupo.'
+                    },
+                    { quoted: fkontak }
+                )
+            }
+
+            if (
+                conn.decodeJid(user) ===
+                conn.decodeJid(conn.user.id)
+            ) {
+
+                return conn.sendMessage(
+                    m.chat,
+                    {
+                        text: '🚫 No puedo degradarme a mí mismo.'
+                    },
+                    { quoted: fkontak }
+                )
+            }
+
+            // =========================
+            // DEMOTE
+            // =========================
+
+            await conn.groupParticipantsUpdate(
+                m.chat,
+                [user],
+                'demote'
+            )
+
+            await conn.sendMessage(
+                m.chat,
+                {
+                    text:
+`╭━━〔 📉 ADMIN REMOVIDO 〕━━⬣
+┃
+┃ 👤 Usuario:
+┃ @${user.split('@')[0]}
+┃
+┃ ⚠️ Ya no es administrador
+┃
+╰━━━━━━━━━━━━━━━━⬣`,
+                    mentions: [user]
+                },
+                { quoted: fkontak }
+            )
+
+        } catch (e) {
+
+            console.error('[DEMOTE ERROR]', e)
+
+            return conn.sendMessage(
+                m.chat,
+                {
+                    text: '❌ Error al ejecutar el demote.'
+                },
+                { quoted: m }
+            )
         }
-
-        user = number + '@s.whatsapp.net'
-      }
-
-      if (!user) {
-        return conn.sendMessage(m.chat, {
-          text: '> ➤ Menciona o responde a un admin para degradarlo 🍭'
-        }, { quoted: fkontak })
-      }
-
-      user = conn.decodeJid(user)
-
-      // =========================
-      // 🔍 BUSCAR USUARIO EN GRUPO
-      // =========================
-      const target = participants.find(p =>
-        conn.decodeJid(p.id || p.jid || p.participant) === user
-      )
-
-      if (!target) {
-        return conn.sendMessage(m.chat, {
-          text: '❌ Usuario no encontrado en el grupo'
-        }, { quoted: fkontak })
-      }
-
-      // =========================
-      // 👑 VALIDAR ADMIN
-      // =========================
-      const isAdmin =
-        target.admin === 'admin' ||
-        target.admin === 'superadmin'
-
-      if (!isAdmin) {
-        return conn.sendMessage(m.chat, {
-          text: '❌ Este usuario no es administrador'
-        }, { quoted: fkontak })
-      }
-
-      // =========================
-      // 🚫 PROTECCIONES
-      // =========================
-      const ownerGroup =
-        metadata.owner ||
-        m.chat.split('-')[0] + '@s.whatsapp.net'
-
-      if (user === ownerGroup) {
-        return conn.sendMessage(m.chat, {
-          text: '🚫 No puedes degradar al owner del grupo'
-        }, { quoted: fkontak })
-      }
-
-      if (user === conn.user.jid) {
-        return conn.sendMessage(m.chat, {
-          text: '🚫 No puedo degradarme a mí mismo'
-        }, { quoted: fkontak })
-      }
-
-      // =========================
-      // 🔻 DEMOTE
-      // =========================
-      await conn.groupParticipantsUpdate(
-        m.chat,
-        [user],
-        'demote'
-      )
-
-      return conn.sendMessage(m.chat, {
-        text: `🍭 USUARIO DEGRADADO\n\n👤 Usuario: @${user.split('@')[0]}\n📉 Estado: Ya no es administrador`,
-        mentions: [user]
-      }, { quoted: fkontak })
-
-    } catch (e) {
-
-      console.log(e)
-
-      return conn.sendMessage(m.chat, {
-        text: '🚫 Error al degradar usuario'
-      }, { quoted: m })
     }
-  }
 }
