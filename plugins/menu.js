@@ -152,31 +152,25 @@ const menu = `
 > ⚡ Powered By Kevin Guerra
 > 🚀 GUERRA BOT MD - Ultimate Edition
 `
-  const fkontak =
-  await makeFkontak()
+ const fkontak =
+await makeFkontak()
 
-const res = await fetch(
+// FOTO PORTADA
+const thumbRes = await fetch(
 'https://cdn.dix.lat/me/tmp/7b22e418-15b3-4b92-b9e1-4b767b8e6577.jpg'
 )
 
-const thumb = Buffer.from(
-await res.arrayBuffer()
+const thumbMenu = Buffer.from(
+await thumbRes.arrayBuffer()
 )
 
+// VIDEO MENU
 const videoRes = await fetch(
 'https://cdn.dix.lat/me/99ec88ba-77e9-4bda-b8a6-c777e271249a.mp4'
 )
 
 const videoBuffer = Buffer.from(
 await videoRes.arrayBuffer()
-)
-
-const thumbRes = await fetch(
-'https://cdn.dix.lat/me/tmp/7b22e418-15b3-4b92-b9e1-4b767b8e6577.jpg'
-)
-
-const thumb = Buffer.from(
-await thumbRes.arrayBuffer()
 )
 
 await conn.sendMessage(
@@ -186,9 +180,9 @@ await conn.sendMessage(
 
     gifPlayback: true,
 
-    jpegThumbnail: thumb,
+    jpegThumbnail: thumbMenu,
 
-    thumbnail: thumb,
+    thumbnail: thumbMenu,
 
     mimetype: 'video/mp4',
 
