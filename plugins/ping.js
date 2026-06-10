@@ -32,28 +32,13 @@ const ping = {
         if (latency > 500) estado = '🟠 Lento'
         if (latency > 1000) estado = '🔴 Saturado'
 
-        const texto = `
-╭━━〔 ⚡ SISTEMA BOT 〕━━⬣
-┃
-┃ 🏓 Latencia
-┃ ➜ ${latency.toFixed(0)} ms
-┃
-┃ 📶 Conexión
-┃ ➜ ${estado}
-┃
-┃ 🧠 RAM
-┃ ➜ ${ram} MB
-┃
-┃ ⚙️ CPU Load
-┃ ➜ ${cpu}
-┃
-┃ ⏱️ Uptime
-┃ ➜ ${h}h ${min}m ${sec}s
-┃
-┃ 🤖 Motor
-┃ ➜ Node ${process.version}
-┃
-╰━━━━━━━━━━━━━━⬣
+const texto = `
+╭─〔 ⚡ PONG 〕─⬣
+│ 🏓 ${latency.toFixed(0)} ms
+│ 📶 ${estado}
+│ 🧠 ${ram} MB
+│ ⏱️ ${h}h ${min}m
+╰──────────⬣
 `
 
         await conn.sendMessage(
