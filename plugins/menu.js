@@ -152,47 +152,37 @@ const menu = `
 > ⚡ Powered By Kevin Guerra
 > 🚀 GUERRA BOT MD - Ultimate Edition
 `
- const fkontak =
-await makeFkontak()
+  const fkontak =
+  await makeFkontak()
 
-// FOTO PORTADA
-const thumbRes = await fetch(
-'https://cdn.dix.lat/me/tmp/7b22e418-15b3-4b92-b9e1-4b767b8e6577.jpg'
-)
-
-const thumbMenu = Buffer.from(
-await thumbRes.arrayBuffer()
-)
-
-// VIDEO MENU
-const videoRes = await fetch(
-'https://cdn.dix.lat/me/99ec88ba-77e9-4bda-b8a6-c777e271249a.mp4'
-)
-
-const videoBuffer = Buffer.from(
-await videoRes.arrayBuffer()
-)
-
-await conn.sendMessage(
+ await conn.sendMessage(
   m.chat,
   {
-    video: videoBuffer,
-
+    video: {
+      url: 'https://cdn.dix.lat/me/99ec88ba-77e9-4bda-b8a6-c777e271249a.mp4'
+    },
     gifPlayback: true,
+    caption: menu,
 
-    jpegThumbnail: thumbMenu,
+    contextInfo: {
+      externalAdReply: {
+        title: '⚔️ GUERRA BOT MD',
+        body: 'Ultimate Edition',
+        thumbnailUrl: 'https://cdn.dix.lat/me/tmp/7b22e418-15b3-4b92-b9e1-4b767b8e6577.jpg',
 
-    thumbnail: thumbMenu,
+        mediaType: 1,
+        renderLargerThumbnail: true,
+        showAdAttribution: false,
 
-    mimetype: 'video/mp4',
-
-    caption: menu
+        sourceUrl: 'https://whatsapp.com'
+      }
+    }
   },
   {
     quoted: fkontak
   }
 )
-} // ← ESTA LLAVE FALTABA
+}
 
 export default {
 
