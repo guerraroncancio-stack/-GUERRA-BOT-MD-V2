@@ -1,4 +1,5 @@
 import speed from 'performance-now'
+import os from 'os'
 
 const ping = {
     name: 'ping',
@@ -9,23 +10,61 @@ const ping = {
 
         const start = speed()
 
-        const sent = await conn.sendMessage(m.chat, {
-            text: '🏓 midiendo ping...'
-        }, { quoted: m })
-
         const latency = speed() - start
 
-        let estado = '🟢 bueno'
-        if (latency > 300) estado = '🟡 normal'
-        if (latency > 700) estado = '🔴 lento'
+        const ram = (
+            process.memoryUsage().heapUsed /
+            1024 /
+            1024
+        ).toFixed(2)
 
-        await conn.sendMessage(m.chat, {
-            text: `🏓 *PONG*
+        const uptime = process.uptime()
 
-⚡ Ping: ${latency.toFixed(2)} ms
-📡 Estado: ${estado}`,
-            edit: sent.key
-        })
+        const h = Math.floor(uptime / 3600)
+        const min = Math.floor((uptime % 3600) / 60)
+        const sec = Math.floor(uptime % 60)
+
+        const cpu = os.loadavg()[0].toFixed(2)
+
+        let estado = '🟢 Óptimo'
+
+        if (latency > 200) estado = '🟡 Estable'
+        if (latency > 500) estado = '🟠 Lento'
+        if (latency > 1000) estado = '🔴 Saturado'
+
+        const texto = `
+╭━━〔 ⚡ SISTEMA BOT 〕━━⬣
+┃
+┃ 🏓 Latencia
+┃ ➜ ${latency.toFixed(0)} ms
+┃
+┃ 📶 Conexión
+┃ ➜ ${estado}
+┃
+┃ 🧠 RAM
+┃ ➜ ${ram} MB
+┃
+┃ ⚙️ CPU Load
+┃ ➜ ${cpu}
+┃
+┃ ⏱️ Uptime
+┃ ➜ ${h}h ${min}m ${sec}s
+┃
+┃ 🤖 Motor
+┃ ➜ Node ${process.version}
+┃
+╰━━━━━━━━━━━━━━⬣
+`
+
+        await conn.sendMessage(
+            m.chat,
+            {
+                text: texto
+            },
+            {
+                quoted: m
+            }
+        )
     }
 }
 
