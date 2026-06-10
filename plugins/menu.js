@@ -168,6 +168,9 @@ const menu = `
     quoted: fkontak
   }
 )
+
+} // ← ESTA LLAVE FALTABA
+
 export default {
 
   name: 'menu',
