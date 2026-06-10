@@ -159,7 +159,7 @@ const menu = `
     m.chat,
     {
       image: {
-        url: 'https://api.dix.lat/media2/1777431468205.jpg'
+        url: 'https://cdn.dix.lat/me/tmp/7b22e418-15b3-4b92-b9e1-4b767b8e6577.jpg'
       },
 
       caption: menu
