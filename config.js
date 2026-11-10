@@ -9,7 +9,7 @@ import moment from 'moment-timezone'
 import path from 'path'
 import { jidNormalizedUser } from '@whiskeysockets/baileys'
 
-global.owner = [['573102286030'], ['573189668896'], [' ']]
+global.owner = [['573102286030'], ['573102286030'], [' ']]
 global.dev1 = '573102286030'
 
 global.botNames = [
